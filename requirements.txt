@@ -1,0 +1,7 @@
+pydantic
+pytest
+pytest-asyncio
+pytest-cov
+python-dateutil
+python-dotenv
+temporalio==1.8.0
