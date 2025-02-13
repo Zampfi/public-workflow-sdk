@@ -23,7 +23,7 @@ class TemporalClientConfig:
     client_key: str | None = ""
     server_root_ca_cert: str | None = ""
     is_cloud: bool = False
-    custom_data_converter: DataConverter = DataConverter.default
+    data_converter: DataConverter = DataConverter.default
 
 class TemporalService:
     def __init__(self, client: TemporalClient):
@@ -38,7 +38,8 @@ class TemporalService:
         if not config.is_cloud:
             client = await Client.connect(
                 config.host,
-                namespace=config.namespace
+                namespace=config.namespace,
+                data_converter=config.data_converter
             )
         else:
             if not all([config.client_cert, config.client_key]):
@@ -54,7 +55,7 @@ class TemporalService:
                 config.host,
                 namespace=config.namespace,
                 tls=tls_config,
-                data_converter=config.custom_data_converter
+                data_converter=config.data_converter
             )
 
         temporal_client = TemporalClient(client)
