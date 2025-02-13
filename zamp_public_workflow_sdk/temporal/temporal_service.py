@@ -2,6 +2,7 @@ from dataclasses import dataclass
 
 from temporalio.client import Client
 from temporalio.service import TLSConfig
+from temporalio.converter import DataConverter
 
 from zamp_public_workflow_sdk.temporal.models.temporal_models import (
     CancelWorkflowParams, CancelWorkflowResponse, GetWorkflowDetailsParams,
@@ -22,6 +23,7 @@ class TemporalClientConfig:
     client_key: str | None = ""
     server_root_ca_cert: str | None = ""
     is_cloud: bool = False
+    custom_data_converter: DataConverter = DataConverter.default
 
 class TemporalService:
     def __init__(self, client: TemporalClient):
@@ -51,7 +53,8 @@ class TemporalService:
             client = await Client.connect(
                 config.host,
                 namespace=config.namespace,
-                tls=tls_config
+                tls=tls_config,
+                data_converter=config.custom_data_converter
             )
 
         temporal_client = TemporalClient(client)
