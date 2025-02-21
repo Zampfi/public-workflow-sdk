@@ -63,6 +63,9 @@ class PydanticJSONPayloadConverter(JSONPlainPayloadConverter):
         # If we're expecting a Pydantic model, decode bytes fields automatically
         if isinstance(type_hint, type) and issubclass(type_hint, BaseModel):
             for name, field in type_hint.model_fields.items():
+                if field.annotation is BytesIO:
+                    obj[name] = BytesIO(obj[name])
+                    
                 if field.annotation is Type[BaseModel] and name in obj and isinstance(obj[name], str):
                     obj[name] = get_reference_from_fqn(obj[name])
 
