@@ -9,6 +9,7 @@ from pydantic._internal._model_construction import ModelMetaclass
 from temporalio.api.common.v1 import Payload
 from temporalio.converter import CompositePayloadConverter, JSONPlainPayloadConverter, DefaultPayloadConverter
 from typing import Any, Type, Optional, TypeVar
+from datetime import datetime
 
 def get_fqn(cls):
     if cls.__module__ == "builtins":
@@ -104,6 +105,10 @@ def custom_model_dump(o):
                 d[name] = base64.b64encode(property_value).decode("ascii")
                 continue
 
+            if property_type is datetime:
+                d[name] = property_value.isoformat()
+                continue
+
     return d
 
 def custom_model_validate(obj, type_hint):
@@ -143,12 +148,18 @@ def custom_model_validate(obj, type_hint):
                 list_base_model_type = "__" + name + "_type"
                 if list_base_model_type in obj:
                     setattr(pydantic_model, name, [custom_model_validate(item, list_base_model_type) for item in obj[name]])
+
+            if isinstance(first_arg, type) and issubclass(first_arg, BaseModel):
+                setattr(pydantic_model, name, [custom_model_validate(item, first_arg) for item in obj[name]])
                                 
         if field_annotation is bytes:
             setattr(pydantic_model, name, base64.b64decode(obj[name]))
 
         if field_annotation is BytesIO:
-            setattr(pydantic_model, name, BytesIO(obj[name].encode("ascii")))
+            setattr(pydantic_model, name, BytesIO(base64.b64decode(obj[name])))
+
+        if field_annotation is datetime:
+            setattr(pydantic_model, name, datetime.fromisoformat(obj[name]))
 
     return pydantic_model
 
