@@ -142,6 +142,10 @@ def custom_model_validate(obj, type_hint):
             setattr(pydantic_model, name, custom_model_validate(obj[name], field_class))
             continue
 
+        if isinstance(field_annotation, type) and issubclass(field_annotation, BaseModel):
+            setattr(pydantic_model, name, custom_model_validate(obj[name], field_annotation))
+            continue
+
         if field_origin == list or field_class == list:
             first_arg_bound = getattr(first_arg, "__bound__", None) if first_arg else None
             if first_arg_bound is BaseModel:
