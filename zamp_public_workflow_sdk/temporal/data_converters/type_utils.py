@@ -10,6 +10,12 @@ def get_fqn(cls):
     return f"{cls.__module__}.{cls.__name__}"
 
 def get_reference_from_fqn(fqn: str):
+    # Handle built-in types
+    if "." not in fqn:
+        if fqn in __builtins__:
+            return __builtins__[fqn]
+    
+    # Handle fully qualified names
     module_name, class_name = fqn.rsplit(".", 1)
     module = importlib.import_module(module_name)
     return getattr(module, class_name)

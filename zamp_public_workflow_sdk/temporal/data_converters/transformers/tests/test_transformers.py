@@ -10,6 +10,7 @@ from datetime import datetime
 from io import BytesIO
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.pydantic_model_metaclass_transformer import PydanticModelMetaclassTransformer
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.pydantic_type_transformer import PydanticTypeTransformer
+from zamp_public_workflow_sdk.temporal.data_converters.transformers.dict_transformer import DictTransformer
 
 def test_pydantic_transformer_basic():
     model = TestModelWithInteger(integer=1)
@@ -61,9 +62,21 @@ def test_pydantic_transformer_generic_type_var():
     assert serialized["list_generic_type_var"]["serialized_type_hint"][1] == "zamp_public_workflow_sdk.temporal.data_converters.transformers.tests.test_models.TestModelWithInteger"
 
 def test_pydantic_transformer_generic_dictionary():
-    model = TestModelWithGenericDictionary(generic_dict={"key": "value"})
+    test_model = TestModelWithInteger(integer=1)
+    model = TestModelWithGenericDictionary(generic_dict={"key": 1, "key2": test_model, "key3": [test_model]})
     serialized = Transformer.serialize(model, TestModelWithGenericDictionary)
-    assert serialized["generic_dict"] == {"key": "value"}
+    assert serialized["generic_dict"]["serialized_value"]["key"] == 1
+    assert serialized["generic_dict"]["serialized_value"]["key2"] == {"integer": 1}
+    assert serialized["generic_dict"]["serialized_value"]["key3"]["serialized_value"][0] == {"integer": 1}
+    assert serialized["generic_dict"]["serialized_type_hint"]["key"] == "int"
+    assert serialized["generic_dict"]["serialized_type_hint"]["key2"] == "zamp_public_workflow_sdk.temporal.data_converters.transformers.tests.test_models.TestModelWithInteger"
+    assert serialized["generic_dict"]["serialized_type_hint"]["key3"] == "list"
+
+    # Deserialize the serialized value
+    deserialized = Transformer.deserialize(serialized, TestModelWithGenericDictionary)
+    assert deserialized.generic_dict["key"] == 1
+    assert deserialized.generic_dict["key2"] == test_model
+    assert deserialized.generic_dict["key3"] == [test_model]
 
 if __name__ == "__main__":
     Transformer.register_transformer(PydanticTypeTransformer())
@@ -73,9 +86,10 @@ if __name__ == "__main__":
     Transformer.register_transformer(BytesTransformer())
     Transformer.register_transformer(BytesIOTransformer())
     Transformer.register_transformer(PydanticModelMetaclassTransformer())
-
+    Transformer.register_transformer(DictTransformer())
     test_pydantic_transformer_basic()
     test_pydantic_transformer_list()
     test_pydantic_transformer_composite()
     test_pydantic_transformer_generic_type_var()
     test_pydantic_transformer_pydantic_type()
+    test_pydantic_transformer_generic_dictionary()

@@ -35,18 +35,18 @@ class ListTransformer(BaseTransformer):
     def _deserialize_internal(self, value: Any, type_hint: Any) -> Any:
         generic_serialized_value = GenericSerializedValue.model_validate(value)
         value: list = generic_serialized_value.serialized_value
-        type_hint = get_reference_from_fqn(generic_serialized_value.serialized_type_hint)
+        type_hint = generic_serialized_value.serialized_type_hint
 
         deserialized_items = []
 
         if isinstance(type_hint, list):
             for item, type_hint in zip(value, type_hint):
-                deserialized_item = Transformer.deserialize(item, type_hint)
+                deserialized_item = Transformer.deserialize(item, get_reference_from_fqn(type_hint))
                 if deserialized_item is not None:
                     deserialized_items.append(deserialized_item)
         else:
             for item in value:
-                deserialized_item = Transformer.deserialize(item, type_hint)
+                deserialized_item = Transformer.deserialize(item, get_reference_from_fqn(type_hint))
                 if deserialized_item is not None:
                     deserialized_items.append(deserialized_item)
 
