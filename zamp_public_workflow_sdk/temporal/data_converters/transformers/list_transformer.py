@@ -33,9 +33,14 @@ class ListTransformer(BaseTransformer):
         ).model_dump()
 
     def _deserialize_internal(self, value: Any, type_hint: Any) -> Any:
-        generic_serialized_value = GenericSerializedValue.model_validate(value)
-        value: list = generic_serialized_value.serialized_value
-        type_hint = generic_serialized_value.serialized_type_hint
+        try:
+            generic_serialized_value = GenericSerializedValue.model_validate(value)
+            value: list = generic_serialized_value.serialized_value
+            type_hint = generic_serialized_value.serialized_type_hint
+        except:
+            type_hint = getattr(type_hint, "__args__", None)
+            if type_hint is not None and len(type_hint) > 0:
+                type_hint = type_hint[0]
 
         deserialized_items = []
 

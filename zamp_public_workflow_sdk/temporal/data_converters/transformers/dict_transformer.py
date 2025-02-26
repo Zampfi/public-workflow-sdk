@@ -14,6 +14,9 @@ class DictTransformer(BaseTransformer):
         serialized_dict = {}
         type_hint_dict = {}
         for key, value in value.items():
+            if key == "error":
+                print(value)
+                
             value_type = type(value)
             serialized_dict[key] = Transformer.serialize(value, value_type)
             type_hint_dict[key] = get_fqn(value_type)
@@ -24,9 +27,18 @@ class DictTransformer(BaseTransformer):
         ).model_dump()
 
     def _deserialize_internal(self, value: Any, type_hint: Any) -> Any:
-        generic_serialized_value = GenericSerializedValue.model_validate(value)
-        value: dict = generic_serialized_value.serialized_value
-        type_hint: dict = generic_serialized_value.serialized_type_hint
+        try:
+            generic_serialized_value = GenericSerializedValue.model_validate(value)
+            value: dict = generic_serialized_value.serialized_value
+            type_hint: dict = generic_serialized_value.serialized_type_hint
+        except:
+            new_type_hint = getattr(type_hint, "__args__", None)
+            if new_type_hint is not None and len(new_type_hint) > 0:
+                new_type_hint = new_type_hint[0]
+
+            type_hint = {}
+            for key, _ in value.items():
+                type_hint[key] = new_type_hint
 
         deserialized_dict = {}
         for key, value in value.items():
