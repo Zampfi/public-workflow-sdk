@@ -48,3 +48,6 @@ class TestModelWithTuple(BaseModel):
 
 class TestModelWithUnionAndOptional[T: BaseModel](BaseModel):
     data: Optional[Union[Dict[str, Any], T]]
+
+class TestModelWithAny(BaseModel):
+    any: Any

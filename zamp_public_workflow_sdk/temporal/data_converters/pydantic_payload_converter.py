@@ -15,6 +15,7 @@ from zamp_public_workflow_sdk.temporal.data_converters.transformers.pydantic_tra
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.union_transformer import UnionTransformer
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.tuple_transformer import TupleTransformer
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.datetime_transformer import DateTransformer
+from zamp_public_workflow_sdk.temporal.data_converters.transformers.any_transformer import AnyTransformer
 
 class PydanticJSONPayloadConverter(JSONPlainPayloadConverter):
     """Pydantic JSON payload converter.
@@ -24,6 +25,7 @@ class PydanticJSONPayloadConverter(JSONPlainPayloadConverter):
     """
     def __init__(self):
         super().__init__()
+        Transformer.register_transformer(AnyTransformer())
         Transformer.register_transformer(UnionTransformer())
         Transformer.register_transformer(PydanticTypeTransformer())
         Transformer.register_transformer(PydanticTypeVarTransformer())
