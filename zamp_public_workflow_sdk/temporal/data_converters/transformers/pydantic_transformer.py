@@ -31,7 +31,8 @@ class PydanticTransformer(BaseTransformer):
         pydantic_model = type_hint.model_construct(**value)
         for name, field in pydantic_model.model_fields.items():
             field_annotation = field.annotation
-            deserialized_value = Transformer.deserialize(value[name], field_annotation)
+            field_value = value.get(name, None)
+            deserialized_value = Transformer.deserialize(field_value, field_annotation)
             if deserialized_value is not None:
                 setattr(pydantic_model, name, deserialized_value)
 

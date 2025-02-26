@@ -21,7 +21,7 @@ class Transformer:
 
     @classmethod
     def deserialize(cls, value: Any, type_hint: Any) -> Any:
-        if type_hint is None:
+        if type_hint is None or value is None:
             return value
                 
         for transformer in cls._transformers:

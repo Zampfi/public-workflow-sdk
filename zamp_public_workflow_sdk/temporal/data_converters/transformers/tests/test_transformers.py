@@ -11,9 +11,9 @@ from io import BytesIO
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.pydantic_model_metaclass_transformer import PydanticModelMetaclassTransformer
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.pydantic_type_transformer import PydanticTypeTransformer
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.dict_transformer import DictTransformer
-from zamp_public_workflow_sdk.temporal.data_converters.transformers.tests.test_models import TestModelWithUnion
+from zamp_public_workflow_sdk.temporal.data_converters.transformers.tests.test_models import TestModelWithUnion, TestModelWithTuple
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.union_transformer import UnionTransformer
-
+from zamp_public_workflow_sdk.temporal.data_converters.transformers.tuple_transformer import TupleTransformer
 def test_pydantic_transformer_basic():
     model = TestModelWithInteger(integer=1)
     serialized = Transformer.serialize(model, TestModelWithInteger)
@@ -32,7 +32,7 @@ def test_pydantic_transformer_composite():
     assert serialized["integer"] == {"integer": 1}
     assert serialized["string"] == {"string": "test"}
     assert serialized["integers"]["serialized_value"] == [{"integer": 1}, {"integer": 2}]
-    assert serialized["bytesIo"] == b"test"
+    assert serialized["bytesIo"] == "dGVzdA=="
     assert serialized["bytes"] == "dGVzdA=="
     assert serialized["datetime"] == current_datetime.isoformat()
 
@@ -89,16 +89,34 @@ def test_pydantic_transformer_union():
     deserialized = Transformer.deserialize(serialized, TestModelWithUnion)
     assert deserialized.union == 1
 
+def test_pydantic_transformer_tuple():
+    model = TestModelWithTuple(tuple=(1, "str", TestModelWithInteger(integer=3), {"key": "value"}))
+    serialized = Transformer.serialize(model, TestModelWithTuple)
+    assert serialized["tuple"]["serialized_value"][0] == 1
+    assert serialized["tuple"]["serialized_value"][1] == "str"
+    assert serialized["tuple"]["serialized_value"][2]["integer"] == 3
+    assert serialized["tuple"]["serialized_value"][3]["serialized_value"]["key"] == "value"
+    assert serialized["tuple"]["serialized_type_hint"][0] == "int"
+    assert serialized["tuple"]["serialized_type_hint"][1] == "str"
+    assert serialized["tuple"]["serialized_type_hint"][2] == "zamp_public_workflow_sdk.temporal.data_converters.transformers.tests.test_models.TestModelWithInteger"
+    assert serialized["tuple"]["serialized_type_hint"][3] == "dict"
+
+    # Deserialize the serialized value
+    deserialized = Transformer.deserialize(serialized, TestModelWithTuple)
+    assert deserialized.tuple == (1, "str", TestModelWithInteger(integer=3), {"key": "value"})
+
 if __name__ == "__main__":
     Transformer.register_transformer(PydanticTypeTransformer())
     Transformer.register_transformer(PydanticTypeVarTransformer())
     Transformer.register_transformer(PydanticTransformer())
+    Transformer.register_transformer(TupleTransformer())
     Transformer.register_transformer(ListTransformer())
     Transformer.register_transformer(BytesTransformer())
     Transformer.register_transformer(BytesIOTransformer())
     Transformer.register_transformer(PydanticModelMetaclassTransformer())
     Transformer.register_transformer(DictTransformer())
     Transformer.register_transformer(UnionTransformer())
+
 
     test_pydantic_transformer_basic()
     test_pydantic_transformer_list()
@@ -107,3 +125,4 @@ if __name__ == "__main__":
     test_pydantic_transformer_pydantic_type()
     test_pydantic_transformer_generic_dictionary()
     test_pydantic_transformer_union()
+    test_pydantic_transformer_tuple()

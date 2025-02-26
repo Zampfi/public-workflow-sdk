@@ -42,3 +42,6 @@ class TestModelWithGenericDictionary(BaseModel):
 class TestModelWithUnion(BaseModel):
     union: Union[int, str]
     optional: Optional[int] = None
+
+class TestModelWithTuple(BaseModel):
+    tuple: tuple
