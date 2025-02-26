@@ -19,7 +19,7 @@ from zamp_public_workflow_sdk.temporal.data_converters.transformers.pydantic_mod
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.pydantic_type_transformer import PydanticTypeTransformer
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.pydantic_type_var_transformer import PydanticTypeVarTransformer
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.pydantic_transformer import PydanticTransformer
-from zamp_public_workflow_sdk.temporal.data_converters.transformers.none_transformer import NoneTransformer
+
 def get_fqn(cls):
     if cls.__module__ == "builtins":
         return cls.__name__
@@ -187,7 +187,6 @@ class PydanticJSONPayloadConverter(JSONPlainPayloadConverter):
         Transformer.register_transformer(DictTransformer())
         Transformer.register_transformer(BytesTransformer())
         Transformer.register_transformer(BytesIOTransformer())
-        Transformer.register_transformer(NoneTransformer())
 
     def to_payload(self, value: Any) -> Optional[Payload]:        
         json_data = json.dumps(value, separators=(",", ":"), sort_keys=True, default=lambda x: Transformer.serialize(x))
