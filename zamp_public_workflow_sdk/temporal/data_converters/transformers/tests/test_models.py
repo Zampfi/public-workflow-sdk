@@ -7,7 +7,7 @@ from zamp_public_workflow_sdk.temporal.data_converters.transformers.pydantic_typ
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.list_transformer import ListTransformer
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.bytes_transformer import BytesTransformer
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.bytesio_transformer import BytesIOTransformer
-from typing import Any, Dict, Type
+from typing import Any, Dict, Type, Optional, Union
 
 class TestModelWithInteger(BaseModel):
     integer: int
@@ -38,3 +38,7 @@ class TestModelWithGenericTypeVar[T: BaseModel](BaseModel):
 
 class TestModelWithGenericDictionary(BaseModel):
     generic_dict: Dict[str, Any]
+
+class TestModelWithUnion(BaseModel):
+    union: Union[int, str]
+    optional: Optional[int] = None

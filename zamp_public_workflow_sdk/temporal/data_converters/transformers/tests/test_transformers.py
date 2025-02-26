@@ -11,6 +11,8 @@ from io import BytesIO
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.pydantic_model_metaclass_transformer import PydanticModelMetaclassTransformer
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.pydantic_type_transformer import PydanticTypeTransformer
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.dict_transformer import DictTransformer
+from zamp_public_workflow_sdk.temporal.data_converters.transformers.tests.test_models import TestModelWithUnion
+from zamp_public_workflow_sdk.temporal.data_converters.transformers.union_transformer import UnionTransformer
 
 def test_pydantic_transformer_basic():
     model = TestModelWithInteger(integer=1)
@@ -78,6 +80,15 @@ def test_pydantic_transformer_generic_dictionary():
     assert deserialized.generic_dict["key2"] == test_model
     assert deserialized.generic_dict["key3"] == [test_model]
 
+def test_pydantic_transformer_union():
+    model = TestModelWithUnion(union=1)
+    serialized = Transformer.serialize(model, TestModelWithUnion)
+    assert serialized["union"] == 1
+
+    # Deserialize the serialized value
+    deserialized = Transformer.deserialize(serialized, TestModelWithUnion)
+    assert deserialized.union == 1
+
 if __name__ == "__main__":
     Transformer.register_transformer(PydanticTypeTransformer())
     Transformer.register_transformer(PydanticTypeVarTransformer())
@@ -87,9 +98,12 @@ if __name__ == "__main__":
     Transformer.register_transformer(BytesIOTransformer())
     Transformer.register_transformer(PydanticModelMetaclassTransformer())
     Transformer.register_transformer(DictTransformer())
+    Transformer.register_transformer(UnionTransformer())
+
     test_pydantic_transformer_basic()
     test_pydantic_transformer_list()
     test_pydantic_transformer_composite()
     test_pydantic_transformer_generic_type_var()
     test_pydantic_transformer_pydantic_type()
     test_pydantic_transformer_generic_dictionary()
+    test_pydantic_transformer_union()
