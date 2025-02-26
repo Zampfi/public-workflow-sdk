@@ -185,13 +185,13 @@ class PydanticJSONPayloadConverter(JSONPlainPayloadConverter):
         Transformer.register_transformer(PydanticTypeTransformer())
         Transformer.register_transformer(PydanticTypeVarTransformer())
         Transformer.register_transformer(PydanticModelMetaclassTransformer())
+        Transformer.register_transformer(UnionTransformer())
         Transformer.register_transformer(PydanticTransformer())
         Transformer.register_transformer(TupleTransformer())
         Transformer.register_transformer(ListTransformer())
         Transformer.register_transformer(DictTransformer())
         Transformer.register_transformer(BytesTransformer())
         Transformer.register_transformer(BytesIOTransformer())
-        Transformer.register_transformer(UnionTransformer())
         
     def to_payload(self, value: Any) -> Optional[Payload]:        
         json_data = json.dumps(value, separators=(",", ":"), sort_keys=True, default=lambda x: Transformer.serialize(x))

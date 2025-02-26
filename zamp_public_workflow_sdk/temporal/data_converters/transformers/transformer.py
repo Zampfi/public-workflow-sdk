@@ -12,9 +12,12 @@ class Transformer:
 
     @classmethod
     def serialize(cls, value, type_hint: Any=None) -> Any:
+        if value is None:
+            return value
+        
         for transformer in cls._transformers:
             serialized = transformer.serialize(value, type_hint)
-            if serialized:
+            if serialized is not None:
                 return serialized
             
         return to_jsonable_python(value)
@@ -26,7 +29,7 @@ class Transformer:
                 
         for transformer in cls._transformers:
             deserialized = transformer.deserialize(value, type_hint)
-            if deserialized:
+            if deserialized is not None:
                 return deserialized
             
         return value
