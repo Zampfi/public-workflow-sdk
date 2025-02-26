@@ -11,9 +11,11 @@ from io import BytesIO
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.pydantic_model_metaclass_transformer import PydanticModelMetaclassTransformer
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.pydantic_type_transformer import PydanticTypeTransformer
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.dict_transformer import DictTransformer
-from zamp_public_workflow_sdk.temporal.data_converters.transformers.tests.test_models import TestModelWithUnion, TestModelWithTuple
+from zamp_public_workflow_sdk.temporal.data_converters.transformers.tests.test_models import TestModelWithUnion, TestModelWithTuple, TestModelWithUnionAndOptional
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.union_transformer import UnionTransformer
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.tuple_transformer import TupleTransformer
+from zamp_public_workflow_sdk.temporal.data_converters.transformers.tests.test_models import TestModelWithUnionAndOptional
+
 def test_pydantic_transformer_basic():
     model = TestModelWithInteger(integer=1)
     serialized = Transformer.serialize(model, TestModelWithInteger)
@@ -105,17 +107,48 @@ def test_pydantic_transformer_tuple():
     deserialized = Transformer.deserialize(serialized, TestModelWithTuple)
     assert deserialized.tuple == (1, "str", TestModelWithInteger(integer=3), {"key": "value"})
 
+def test_pydantic_transformer_union_and_optional():
+    model = TestModelWithUnionAndOptional(data=TestModelWithInteger(integer=1))
+    serialized = Transformer.serialize(model, TestModelWithUnionAndOptional)
+    assert serialized["data"]["serialized_value"] == {"integer": 1}
+    assert serialized["data"]["serialized_type_hint"] == "zamp_public_workflow_sdk.temporal.data_converters.transformers.tests.test_models.TestModelWithInteger"
+
+    # Deserialize the serialized value
+    deserialized = Transformer.deserialize(serialized, TestModelWithUnionAndOptional)
+    assert deserialized.data == TestModelWithInteger(integer=1)
+
+    model = TestModelWithUnionAndOptional(data=TestModelWithGenericDictionary(generic_dict={"key": 1, "key2": TestModelWithInteger(integer=2), "key3": [TestModelWithInteger(integer=3)]}))
+    serialized = Transformer.serialize(model, TestModelWithUnionAndOptional)
+    assert serialized["data"]["serialized_value"]["generic_dict"]["serialized_value"]["key"] == 1
+    assert serialized["data"]["serialized_value"]["generic_dict"]["serialized_value"]["key2"] == {"integer": 2}
+    assert serialized["data"]["serialized_value"]["generic_dict"]["serialized_value"]["key3"]["serialized_value"][0] == {"integer": 3}
+    assert serialized["data"]["serialized_value"]["generic_dict"]["serialized_type_hint"]["key"] == "int"
+    assert serialized["data"]["serialized_value"]["generic_dict"]["serialized_type_hint"]["key2"] == "zamp_public_workflow_sdk.temporal.data_converters.transformers.tests.test_models.TestModelWithInteger"
+    assert serialized["data"]["serialized_value"]["generic_dict"]["serialized_type_hint"]["key3"] == "list"
+
+    # Deserialize the serialized value
+    deserialized = Transformer.deserialize(serialized, TestModelWithUnionAndOptional)
+    assert deserialized.data == TestModelWithGenericDictionary(generic_dict={"key": 1, "key2": TestModelWithInteger(integer=2), "key3": [TestModelWithInteger(integer=3)]})
+
+    model = TestModelWithUnionAndOptional(data=None)
+    serialized = Transformer.serialize(model, TestModelWithUnionAndOptional)
+    assert serialized["data"] is None
+
+    # Deserialize the serialized value
+    deserialized = Transformer.deserialize(serialized, TestModelWithUnionAndOptional)
+    assert deserialized.data is None
+
 if __name__ == "__main__":
+    Transformer.register_transformer(UnionTransformer())
     Transformer.register_transformer(PydanticTypeTransformer())
     Transformer.register_transformer(PydanticTypeVarTransformer())
-    Transformer.register_transformer(PydanticTransformer())
     Transformer.register_transformer(TupleTransformer())
-    Transformer.register_transformer(ListTransformer())
     Transformer.register_transformer(BytesTransformer())
     Transformer.register_transformer(BytesIOTransformer())
     Transformer.register_transformer(PydanticModelMetaclassTransformer())
+    Transformer.register_transformer(PydanticTransformer())
+    Transformer.register_transformer(ListTransformer())
     Transformer.register_transformer(DictTransformer())
-    Transformer.register_transformer(UnionTransformer())
 
 
     test_pydantic_transformer_basic()
@@ -126,3 +159,4 @@ if __name__ == "__main__":
     test_pydantic_transformer_generic_dictionary()
     test_pydantic_transformer_union()
     test_pydantic_transformer_tuple()
+    test_pydantic_transformer_union_and_optional()
