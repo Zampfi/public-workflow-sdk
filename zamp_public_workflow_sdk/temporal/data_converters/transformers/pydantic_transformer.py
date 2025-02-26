@@ -4,6 +4,7 @@ from pydantic.fields import FieldInfo
 from typing import Any
 from pydantic.json_schema import to_jsonable_python
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.transformer import Transformer
+from typing import TypeVar
 
 class PydanticTransformer(BaseTransformer):
     def __init__(self):
@@ -18,7 +19,7 @@ class PydanticTransformer(BaseTransformer):
             dict_obj = value.model_dump(warnings=False)
 
         for name, field in value.model_fields.items():
-            property_type = field.annotation
+            property_type = self._get_property_type(field)
             property_value = getattr(value, name)
             property_serialized = Transformer.serialize(property_value, property_type)
             if property_serialized is not None:
@@ -44,3 +45,10 @@ class PydanticTransformer(BaseTransformer):
             return True
 
         return False
+    
+    def _get_property_type(self, field: FieldInfo) -> Any:
+        annotation = field._attributes_set.get("annotation", None)
+        if annotation is None:
+            return field.annotation
+        
+        return annotation

@@ -10,7 +10,16 @@ from temporalio.api.common.v1 import Payload
 from temporalio.converter import CompositePayloadConverter, JSONPlainPayloadConverter, DefaultPayloadConverter
 from typing import Any, Type, Optional, TypeVar
 from datetime import datetime
-
+from zamp_public_workflow_sdk.temporal.data_converters.transformers.transformer import Transformer
+from zamp_public_workflow_sdk.temporal.data_converters.transformers.list_transformer import ListTransformer
+from zamp_public_workflow_sdk.temporal.data_converters.transformers.dict_transformer import DictTransformer
+from zamp_public_workflow_sdk.temporal.data_converters.transformers.bytes_transformer import BytesTransformer
+from zamp_public_workflow_sdk.temporal.data_converters.transformers.bytesio_transformer import BytesIOTransformer
+from zamp_public_workflow_sdk.temporal.data_converters.transformers.pydantic_model_metaclass_transformer import PydanticModelMetaclassTransformer
+from zamp_public_workflow_sdk.temporal.data_converters.transformers.pydantic_type_transformer import PydanticTypeTransformer
+from zamp_public_workflow_sdk.temporal.data_converters.transformers.pydantic_type_var_transformer import PydanticTypeVarTransformer
+from zamp_public_workflow_sdk.temporal.data_converters.transformers.pydantic_transformer import PydanticTransformer
+from zamp_public_workflow_sdk.temporal.data_converters.transformers.none_transformer import NoneTransformer
 def get_fqn(cls):
     if cls.__module__ == "builtins":
         return cls.__name__
@@ -169,9 +178,19 @@ class PydanticJSONPayloadConverter(JSONPlainPayloadConverter):
     This extends the :py:class:`JSONPlainPayloadConverter` to override
     :py:meth:`to_payload` using the Pydantic encoder.
     """
+    def __init__(self):
+        super().__init__()
+        Transformer.register_transformer(PydanticTypeTransformer())
+        Transformer.register_transformer(PydanticTypeVarTransformer())
+        Transformer.register_transformer(PydanticTransformer())
+        Transformer.register_transformer(ListTransformer())
+        Transformer.register_transformer(DictTransformer())
+        Transformer.register_transformer(BytesTransformer())
+        Transformer.register_transformer(BytesIOTransformer())
+        Transformer.register_transformer(NoneTransformer())
 
-    def to_payload(self, value: Any) -> Optional[Payload]:
-        json_data = json.dumps(value, separators=(",", ":"), sort_keys=True, default=custom_model_dump)
+    def to_payload(self, value: Any) -> Optional[Payload]:        
+        json_data = json.dumps(value, separators=(",", ":"), sort_keys=True, default=lambda x: Transformer.serialize(x))
         return Payload(
             metadata={"encoding": self.encoding.encode()},
             data=json_data.encode(),
@@ -179,11 +198,7 @@ class PydanticJSONPayloadConverter(JSONPlainPayloadConverter):
 
     def from_payload(self, payload: Payload, type_hint: Type | None = None) -> Any:
         obj = from_json(payload.data)
-        if isinstance(type_hint, type) and issubclass(type_hint, BaseModel):
-            custom_model = custom_model_validate(obj, type_hint)
-            return custom_model
-        
-        return obj
+        return Transformer.deserialize(obj, type_hint)
     
 class PydanticPayloadConverter(CompositePayloadConverter):
     """Payload converter that replaces Temporal JSON conversion with Pydantic

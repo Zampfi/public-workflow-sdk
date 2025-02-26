@@ -20,7 +20,10 @@ class Transformer:
         return to_jsonable_python(value)
 
     @classmethod
-    def deserialize(cls, value: Any, type_hint: Any) -> Any:        
+    def deserialize(cls, value: Any, type_hint: Any) -> Any:
+        if type_hint is None:
+            return value
+                
         for transformer in cls._transformers:
             deserialized = transformer.deserialize(value, type_hint)
             if deserialized:

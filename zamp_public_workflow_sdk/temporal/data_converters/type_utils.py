@@ -4,12 +4,18 @@ from pydantic import BaseModel
 from pydantic.fields import FieldInfo
 
 def get_fqn(cls):
+    if cls == type(None):
+        return "None"
+
     if cls.__module__ == "builtins":
         return cls.__name__
 
     return f"{cls.__module__}.{cls.__name__}"
 
 def get_reference_from_fqn(fqn: str):
+    if fqn == "None":
+        return type(None)
+
     # Handle built-in types
     if "." not in fqn:
         if fqn in __builtins__:
@@ -46,4 +52,3 @@ def safe_issubclass(obj, cls):
     if isinstance(obj, type):
         return issubclass(obj, cls)
     return False
-    

@@ -37,5 +37,5 @@ class DictTransformer(BaseTransformer):
     def _should_transform(self, value: Any, type_hint: Any) -> bool:
         args = getattr(type_hint, "__args__", None)
         return isinstance(value, dict) or type_hint is dict or \
-            getattr(type_hint, "__origin__", None) == dict or \
-            (args is not None and len(args) == 2 and args[0] is str)
+            getattr(type_hint, "__origin__", None) == dict
+            #(args is not None and len(args) == 2 and args[0] is str)
