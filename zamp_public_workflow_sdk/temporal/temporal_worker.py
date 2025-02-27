@@ -41,7 +41,7 @@ class TemporalWorkerConfig:
     max_task_queue_activities_per_second: float | None = None
     graceful_shutdown_timeout: timedelta = timedelta()
     debug_mode: bool = False
-
+    interceptors: Sequence[object] = field(default_factory=list)
 
 class TemporalWorker(Worker):
     def __init__(self, temporal_client: TemporalClient, config: TemporalWorkerConfig):
@@ -74,6 +74,7 @@ class TemporalWorker(Worker):
             max_task_queue_activities_per_second=config.max_task_queue_activities_per_second,
             graceful_shutdown_timeout=config.graceful_shutdown_timeout,
             debug_mode=config.debug_mode,
+            interceptors=config.interceptors,
         )
 
     def _register_tasks(self):
