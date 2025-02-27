@@ -51,3 +51,6 @@ class TestModelWithUnionAndOptional[T: BaseModel](BaseModel):
 
 class TestModelWithAny(BaseModel):
     any: Any
+
+class TestModelWithOptionalAny(BaseModel):
+    optional_any: Optional[Any] = None

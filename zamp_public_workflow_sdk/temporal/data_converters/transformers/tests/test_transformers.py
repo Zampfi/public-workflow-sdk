@@ -11,7 +11,7 @@ from io import BytesIO
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.pydantic_model_metaclass_transformer import PydanticModelMetaclassTransformer
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.pydantic_type_transformer import PydanticTypeTransformer
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.dict_transformer import DictTransformer
-from zamp_public_workflow_sdk.temporal.data_converters.transformers.tests.test_models import TestModelWithUnion, TestModelWithTuple, TestModelWithUnionAndOptional, TestModelWithAny
+from zamp_public_workflow_sdk.temporal.data_converters.transformers.tests.test_models import TestModelWithUnion, TestModelWithTuple, TestModelWithUnionAndOptional, TestModelWithAny, TestModelWithOptionalAny
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.union_transformer import UnionTransformer
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.tuple_transformer import TupleTransformer
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.tests.test_models import TestModelWithUnionAndOptional
@@ -170,6 +170,39 @@ def test_pydantic_transformer_any():
     deserialized = Transformer.deserialize(serialized, TestModelWithAny)
     assert deserialized.any == {"key": 1, "key2": TestModelWithInteger(integer=2)}
 
+def test_pydantic_transformer_optional_any():
+    model = TestModelWithOptionalAny(optional_any=1)
+    serialized = Transformer.serialize(model, TestModelWithOptionalAny)
+    assert serialized["optional_any"]["serialized_value"] == 1
+    assert serialized["optional_any"]["serialized_type_hint"] == "int"
+    
+    # Deserialize the serialized value
+    deserialized = Transformer.deserialize(serialized, TestModelWithOptionalAny)
+    assert deserialized.optional_any == 1
+
+    model = TestModelWithOptionalAny(optional_any=None)
+    serialized = Transformer.serialize(model, TestModelWithOptionalAny)
+    assert serialized["optional_any"] is None
+
+    model = TestModelWithOptionalAny(optional_any=TestModelWithInteger(integer=1))
+    serialized = Transformer.serialize(model, TestModelWithOptionalAny)
+    assert serialized["optional_any"]["serialized_value"] == {"integer": 1}
+    assert serialized["optional_any"]["serialized_type_hint"] == "zamp_public_workflow_sdk.temporal.data_converters.transformers.tests.test_models.TestModelWithInteger"
+
+    # Deserialize the serialized value
+    deserialized = Transformer.deserialize(serialized, TestModelWithOptionalAny)
+    assert deserialized.optional_any == TestModelWithInteger(integer=1)
+
+    model = TestModelWithOptionalAny(optional_any={"key": 1, "key2": TestModelWithInteger(integer=2)})
+    serialized = Transformer.serialize(model, TestModelWithOptionalAny)
+    assert serialized["optional_any"]["serialized_value"]["serialized_value"]["key"] == 1
+    assert serialized["optional_any"]["serialized_value"]["serialized_value"]["key2"] == {"integer": 2}
+    assert serialized["optional_any"]["serialized_value"]["serialized_type_hint"]["key"] == "int"
+
+    # Deserialize the serialized value
+    deserialized = Transformer.deserialize(serialized, TestModelWithOptionalAny)
+    assert deserialized.optional_any == {"key": 1, "key2": TestModelWithInteger(integer=2)}
+
 if __name__ == "__main__":
     Transformer.register_transformer(AnyTransformer())
     Transformer.register_transformer(UnionTransformer())
@@ -194,3 +227,4 @@ if __name__ == "__main__":
     test_pydantic_transformer_tuple()
     test_pydantic_transformer_union_and_optional()
     test_pydantic_transformer_any()
+    test_pydantic_transformer_optional_any()
