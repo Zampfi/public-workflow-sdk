@@ -1,4 +1,5 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Sequence
 
 from temporalio.client import Client
 from temporalio.service import TLSConfig
@@ -14,6 +15,8 @@ from zamp_public_workflow_sdk.temporal.temporal_client import TemporalClient
 from zamp_public_workflow_sdk.temporal.temporal_worker import (TemporalWorker,
                                                        TemporalWorkerConfig)
 
+from typing import Sequence
+from dataclasses import field
 
 @dataclass
 class TemporalClientConfig:
@@ -24,6 +27,7 @@ class TemporalClientConfig:
     server_root_ca_cert: str | None = ""
     is_cloud: bool = False
     data_converter: BaseDataConverter = BaseDataConverter()
+    interceptors: Sequence[object] = field(default_factory=list)
 
 class TemporalService:
     def __init__(self, client: TemporalClient):
@@ -39,7 +43,8 @@ class TemporalService:
             client = await Client.connect(
                 config.host,
                 namespace=config.namespace,
-                data_converter=config.data_converter.get_converter()
+                data_converter=config.data_converter.get_converter(),
+                interceptors=config.interceptors
             )
         else:
             if not all([config.client_cert, config.client_key]):
@@ -55,7 +60,8 @@ class TemporalService:
                 config.host,
                 namespace=config.namespace,
                 tls=tls_config,
-                data_converter=config.data_converter.get_converter()
+                data_converter=config.data_converter.get_converter(),
+                interceptors=config.interceptors
             )
 
         temporal_client = TemporalClient(client)
