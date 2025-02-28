@@ -22,7 +22,7 @@ class TupleTransformer(BaseTransformer):
         return GenericSerializedValue(
             serialized_value=serialized_items, 
             serialized_type_hint=generic_type_hints
-        ).model_dump()
+        )
 
     def _deserialize_internal(self, value, type_hint) -> Any:
         try:
