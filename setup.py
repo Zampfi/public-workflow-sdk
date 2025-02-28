@@ -15,6 +15,7 @@ setup(
         'zamp_public_workflow_sdk.temporal.codec',
         'zamp_public_workflow_sdk.temporal.data_converters',
         'zamp_public_workflow_sdk.temporal.data_converters.transformers',
+        'zamp_public_workflow_sdk.temporal.interceptors',
     ],
     install_requires=[
         'pydantic',
