@@ -30,7 +30,7 @@ class ListTransformer(BaseTransformer):
         return GenericSerializedValue(
             serialized_value=serialized_items, 
             serialized_type_hint=get_fqn(list_item_type_hint) if is_all_items_same_type else generic_type_hints
-        ).model_dump()
+        )
 
     def _deserialize_internal(self, value: Any, type_hint: Any) -> Any:
         try:

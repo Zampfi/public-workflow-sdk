@@ -5,13 +5,11 @@ from temporalio.converter import CompositePayloadConverter, JSONPlainPayloadConv
 from typing import Any, Type, Optional
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.transformer import Transformer
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.list_transformer import ListTransformer
-from zamp_public_workflow_sdk.temporal.data_converters.transformers.dict_transformer import DictTransformer
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.bytes_transformer import BytesTransformer
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.bytesio_transformer import BytesIOTransformer
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.pydantic_model_metaclass_transformer import PydanticModelMetaclassTransformer
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.pydantic_type_transformer import PydanticTypeTransformer
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.pydantic_type_var_transformer import PydanticTypeVarTransformer
-from zamp_public_workflow_sdk.temporal.data_converters.transformers.pydantic_transformer import PydanticTransformer
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.union_transformer import UnionTransformer
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.tuple_transformer import TupleTransformer
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.datetime_transformer import DateTransformer
@@ -25,6 +23,7 @@ class PydanticJSONPayloadConverter(JSONPlainPayloadConverter):
     """
     def __init__(self):
         super().__init__()
+        Transformer.register_transformer(ListTransformer())
         Transformer.register_transformer(AnyTransformer())
         Transformer.register_transformer(UnionTransformer())
         Transformer.register_transformer(PydanticTypeTransformer())
@@ -34,14 +33,9 @@ class PydanticJSONPayloadConverter(JSONPlainPayloadConverter):
         Transformer.register_transformer(BytesTransformer())
         Transformer.register_transformer(BytesIOTransformer())
         Transformer.register_transformer(DateTransformer())
-
-        # Keep this in the last position
-        Transformer.register_transformer(PydanticTransformer())
-        Transformer.register_transformer(ListTransformer())
-        Transformer.register_transformer(DictTransformer())
         
     def to_payload(self, value: Any) -> Optional[Payload]:        
-        json_data = json.dumps(value, separators=(",", ":"), sort_keys=True, default=lambda x: Transformer.serialize(x))
+        json_data = json.dumps(value, separators=(",", ":"), sort_keys=True, default=lambda x: Transformer.serialize(x).serialized_value)
         return Payload(
             metadata={"encoding": self.encoding.encode()},
             data=json_data.encode(),

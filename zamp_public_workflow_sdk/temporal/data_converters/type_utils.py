@@ -1,8 +1,6 @@
 import importlib
-from typing import TypeVar
+from typing import Any
 from pydantic import BaseModel
-from pydantic.fields import FieldInfo
-
 def get_fqn(cls):
     if cls == type(None):
         return "None"
@@ -26,29 +24,16 @@ def get_reference_from_fqn(fqn: str):
     module = importlib.import_module(module_name)
     return getattr(module, class_name)
 
-def _is_base_model_type_var(field: FieldInfo) -> bool:
-        if (
-            field.annotation.__class__ is TypeVar
-            and field.annotation.__bound__ is BaseModel
-        ):
-            return True
-
-        if field._attributes_set.get("annotation") is not None:
-            annotations_attribute_set = field._attributes_set.get("annotation")
-            if getattr(annotations_attribute_set, "__class__", None) is TypeVar and getattr(annotations_attribute_set, "__bound__", None) is BaseModel:
-                return True
-
-            # Check if the field is a list of BaseModel
-            if getattr(annotations_attribute_set, "__origin__", None) is list and getattr(annotations_attribute_set, "__args__", None) is not None:
-                if getattr(annotations_attribute_set.__args__[0], "__bound__", None) is BaseModel:
-                    return True
-
-        return False
-
-def get_annotation_type_field(field_name: str) -> str:
+def get_type_field_name(field_name: str) -> str:
     return "__" + field_name + "_type"
     
 def safe_issubclass(obj, cls):
     if isinstance(obj, type):
         return issubclass(obj, cls)
     return False
+
+def is_dict_type(type_hint: Any) -> bool:
+    return type_hint is dict or getattr(type_hint, '__origin__', None) is dict
+
+def is_pydantic_model(type_hint: Any) -> bool:
+    return safe_issubclass(type_hint, BaseModel)
