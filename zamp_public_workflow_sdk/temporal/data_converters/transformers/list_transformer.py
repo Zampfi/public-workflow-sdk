@@ -12,24 +12,16 @@ class ListTransformer(BaseTransformer):
 
     def _serialize_internal(self, value: Any, type_hint: Any) -> Any:
         serialized_items = []
-        generic_type_hints = []
+        generic_type = None
 
-        args = getattr(type_hint, "__args__", None)
-        bound = getattr(type_hint, "__bound__", None)
-        list_item_type_hint = None
-        if args is not None and len(args) > 0:
-            list_item_type_hint = args[0]
-
-        is_all_items_same_type = True
         for item in value:
-            serialized_items.append(Transformer.serialize(item, type(item)))
-            generic_type_hints.append(get_fqn(type(item)))
-            if type(item) != list_item_type_hint:
-                is_all_items_same_type = False
+            serialized_value = Transformer.serialize(item)
+            serialized_items.append(serialized_value.serialized_value)
+            generic_type = serialized_value.serialized_type_hint
 
         return GenericSerializedValue(
             serialized_value=serialized_items, 
-            serialized_type_hint=get_fqn(list_item_type_hint) if is_all_items_same_type else generic_type_hints
+            serialized_type_hint=generic_type
         )
 
     def _deserialize_internal(self, value: Any, type_hint: Any) -> Any:

@@ -14,30 +14,26 @@ class Transformer:
         cls._transformers.append(transformer)
 
     @classmethod
-    def serialize(cls, value, type_hint: Any=None) -> Any:
-        return cls._serialize(value, type_hint).serialized_value
-
-    @classmethod
-    def _serialize(cls, value, type_hint: Any=None) -> GenericSerializedValue:
+    def serialize(cls, value) -> GenericSerializedValue:
         # Temporary hack to serialize ColumnMappingResult
         if "TableDetectionOutput" in str(type(value)):
             return to_jsonable_python(value)
         
         if value is None:
             return GenericSerializedValue(
-                serialized_value=value,
-                serialized_type_hint=get_fqn(type_hint)
+                serialized_value=None,
+                serialized_type_hint=get_fqn(type(value))
             )
     
         for transformer in cls._transformers:
-            serialized = transformer.serialize(value, type_hint)
+            serialized = transformer.serialize(value)
             if serialized is not None:
                 return serialized
         
-        if cls._should_serialize(value, type_hint):
+        if cls._should_serialize(value):
             serialized_result = {}
             for item_key, item_type, item_value in cls._get_enumerator(value):
-                serialized = cls._serialize(item_value, item_type)
+                serialized = cls.serialize(item_value, item_type)
                 if type(serialized) is GenericSerializedValue:
                     serialized_result[item_key] = serialized.serialized_value
                     serialized_result[get_type_field_name(item_key)] = serialized.serialized_type_hint
@@ -46,12 +42,12 @@ class Transformer:
                 
             return GenericSerializedValue(
                 serialized_value=serialized_result,
-                serialized_type_hint=get_fqn(type_hint)
+                serialized_type_hint=get_fqn(type(value))
             )
             
         return GenericSerializedValue(
             serialized_value=to_jsonable_python(value),
-            serialized_type_hint=get_fqn(type_hint)
+            serialized_type_hint=get_fqn(type(value))
         )
 
     @classmethod
@@ -59,11 +55,12 @@ class Transformer:
         if type_hint is None or value is None:
             return value
         
+        for transformer in cls._transformers:
+            deserialized = transformer.deserialize(value, type_hint)
+            if deserialized is not None:
+                return deserialized
+        
         if cls._should_deserialize(type_hint):
-            if isinstance(value, GenericSerializedValue):
-                type_hint = get_reference_from_fqn(value.serialized_type_hint)
-                value = value.serialized_value
-
             deserialized_result = cls._default_deserialized_model(value, type_hint)
             for item_key, item_type, item_value in cls._get_enumerator(deserialized_result):
                 if item_key.startswith("__") and item_key.endswith("_type"):
@@ -78,15 +75,11 @@ class Transformer:
 
                 deserialized = cls.deserialize(item_value, item_type)
                 cls._set_attribute(deserialized_result, item_key, deserialized)
-
-            return deserialized_result
                 
-        for transformer in cls._transformers:
-            deserialized = transformer.deserialize(value, type_hint)
-            if deserialized is not None:
-                return deserialized
+            deserialized_result = cls._delete_type_keys(deserialized_result)
+            return deserialized_result
         
-        if isinstance(value, GenericSerializedValue):
+        if isinstance(value, GenericSerializedValue):                
             return value.serialized_value
         
         return value
@@ -94,6 +87,19 @@ class Transformer:
     """
     Private methods
     """
+    @classmethod
+    def _delete_type_keys(cls, value: dict):
+        if isinstance(value, dict):
+            keys_to_delete = []
+            for key in value.keys():
+                if key.startswith("__") and key.endswith("_type"):
+                    keys_to_delete.append(key)
+
+            for key in keys_to_delete:
+                del value[key]
+
+        return value
+    
     @classmethod
     def _get_enumerator(cls, value: dict | BaseModel):
         if isinstance(value, dict):

@@ -16,8 +16,9 @@ class TupleTransformer(BaseTransformer):
         serialized_items = []
         generic_type_hints = []
         for item in value:
-            serialized_items.append(Transformer.serialize(item, type(item)))
-            generic_type_hints.append(get_fqn(type(item)))
+            serialized_value = Transformer._serialize(item, type(item))
+            serialized_items.append(serialized_value.serialized_value)
+            generic_type_hints.append(serialized_value.serialized_type_hint)
 
         return GenericSerializedValue(
             serialized_value=serialized_items, 

@@ -12,9 +12,10 @@ class AnyTransformer(BaseTransformer):
 
     def _serialize_internal(self, value: Any, type_hint: Any) -> Any:
         type_of_value = type(value)
+        serialized_value = Transformer._serialize(value, type_of_value)
         return GenericSerializedValue(
-            serialized_value=Transformer.serialize(value, type_of_value),
-            serialized_type_hint=get_fqn(type_of_value)
+            serialized_value=serialized_value.serialized_value,
+            serialized_type_hint=serialized_value.serialized_type_hint
         )
     
     def _deserialize_internal(self, value: Any, type_hint: Any) -> Any:

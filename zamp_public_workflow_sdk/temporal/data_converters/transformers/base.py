@@ -2,12 +2,12 @@ from abc import ABC, abstractmethod
 from typing import Any, Callable
 
 class BaseTransformer(ABC):
-    should_serialize: Callable[[Any, Any], bool]
+    should_serialize: Callable[[Any], bool]
     should_deserialize: Callable[[Any, Any], bool]
 
-    def serialize(self, value: Any, type_hint: Any=None) -> Any:
-        if self.should_serialize(value, type_hint):
-            return self._serialize_internal(value, type_hint)
+    def serialize(self, value: Any) -> Any:
+        if self.should_serialize(value):
+            return self._serialize_internal(value)
         
         return None
 
@@ -18,7 +18,7 @@ class BaseTransformer(ABC):
         return None
 
     @abstractmethod
-    def _serialize_internal(self, value: Any, type_hint: Any=None) -> Any:
+    def _serialize_internal(self, value: Any) -> Any:
         pass
 
     @abstractmethod

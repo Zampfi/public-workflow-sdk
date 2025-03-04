@@ -14,9 +14,10 @@ class PydanticTypeVarTransformer(BaseTransformer):
 
     def _serialize_internal(self, value: Any, type_hint: Any) -> Any:
         property_class = value.__class__
+        serialized_value = Transformer._serialize(value, property_class)
         return GenericSerializedValue(
-            serialized_value=Transformer.serialize(value, property_class),
-            serialized_type_hint=get_fqn(property_class)
+            serialized_value=serialized_value.serialized_value,
+            serialized_type_hint=serialized_value.serialized_type_hint
         )
 
     def _deserialize_internal(self, value: Any, type_hint: Any) -> Any:
