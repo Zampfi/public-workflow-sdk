@@ -81,15 +81,21 @@ def get_reference_from_fqn(fqn: str) -> type:
 
     return get_class_from_fqn(fqn)
 
-def get_inner_type(fqn: str) -> type:
-    type = get_reference_from_fqn(fqn)
-    if hasattr(type, "__args__"):
-        return type.__args__[0]
+def get_inner_type(type_hint: type) -> type:
+    if hasattr(type_hint, "__args__"):
+        return type_hint.__args__[0]
     
     return type
 
 def get_type_field_name(field_name: str) -> str:
     return "__" + field_name + "_type"
+
+def get_individual_type_field_name(field_name: str) -> str:
+    return "__" + field_name + "_individual_type"
+
+def is_type_field(field_name: str) -> bool:
+    return (field_name.startswith("__") and field_name.endswith("_type")) or \
+        (field_name.startswith("__") and field_name.endswith("_individual_type"))
     
 def safe_issubclass(obj, cls):
     if isinstance(obj, type):

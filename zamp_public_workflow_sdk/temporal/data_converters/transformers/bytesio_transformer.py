@@ -6,10 +6,10 @@ from io import BytesIO
 class BytesIOTransformer(BaseTransformer):
     def __init__(self):
         super().__init__()
-        self.should_serialize = lambda value, type_hint: isinstance(value, BytesIO) or type_hint is BytesIO
+        self.should_serialize = lambda value: isinstance(value, BytesIO) 
         self.should_deserialize = lambda value, type_hint: type_hint is BytesIO
 
-    def _serialize_internal(self, value: Any, type_hint: Any) -> Any:
+    def _serialize_internal(self, value: Any) -> Any:
         return base64.b64encode(value.getvalue()).decode("utf-8")
 
     def _deserialize_internal(self, value: Any, type_hint: Any) -> Any:

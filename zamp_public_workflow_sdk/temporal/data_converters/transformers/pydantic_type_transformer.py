@@ -6,10 +6,10 @@ from typing import Any
 class PydanticTypeTransformer(BaseTransformer):
     def __init__(self):
         super().__init__()
-        self.should_serialize = self._should_transform
-        self.should_deserialize = self._should_transform
+        self.should_serialize = lambda value: isinstance(value, type) and issubclass(value, BaseModel)
+        self.should_deserialize = lambda value, type_hint: self._should_transform(value, type_hint)
 
-    def _serialize_internal(self, value: Any, type_hint: Any) -> Any:
+    def _serialize_internal(self, value: Any) -> Any:
         return get_fqn(value)
 
     def _deserialize_internal(self, value: Any, type_hint: Any) -> Any:

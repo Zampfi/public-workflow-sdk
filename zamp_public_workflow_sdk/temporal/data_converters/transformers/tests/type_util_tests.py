@@ -1,7 +1,7 @@
 from zamp_public_workflow_sdk.temporal.data_converters.type_utils import get_fqn, get_reference_from_fqn
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.tests.test_models import TestModelWithListOfIntegers
 from pydantic import BaseModel
-from typing import List, Dict, TypeVar
+from typing import List, Dict, TypeVar, Type
 
 T = TypeVar("T", bound=BaseModel)
 

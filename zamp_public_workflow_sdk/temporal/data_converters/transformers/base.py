@@ -11,7 +11,7 @@ class BaseTransformer(ABC):
         
         return None
 
-    def deserialize(self, value: Any, type_hint: Any=None) -> Any:
+    def deserialize(self, value: Any, type_hint: Any) -> Any:
         if self.should_deserialize(value, type_hint):
             return self._deserialize_internal(value, type_hint)
         
@@ -22,5 +22,5 @@ class BaseTransformer(ABC):
         pass
 
     @abstractmethod
-    def _deserialize_internal(self, value: Any, type_hint: Any=None) -> Any:
+    def _deserialize_internal(self, value: Any, type_hint: Any) -> Any:
         pass
