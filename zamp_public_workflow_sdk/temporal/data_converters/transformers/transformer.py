@@ -157,6 +157,9 @@ class Transformer:
         if is_dict_type(type_hint):
             return value
         elif is_pydantic_model(type_hint):
+            if type(value) == type_hint:
+                return value 
+            
             return type_hint.model_construct(**value)
         
         return value
