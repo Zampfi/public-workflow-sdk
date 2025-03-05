@@ -22,6 +22,7 @@ class TestModelCompositeModel(BaseModel):
     bytesIo: BytesIO
     bytes: bytes
     datetime: datetime
+    type_obj: Type[BaseModel]
 
     class Config:
         arbitrary_types_allowed = True

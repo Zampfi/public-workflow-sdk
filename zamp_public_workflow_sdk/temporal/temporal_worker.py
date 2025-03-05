@@ -3,8 +3,7 @@ from dataclasses import dataclass, field
 from datetime import timedelta
 from typing import Callable, Sequence
 
-from temporalio.worker import Worker
-
+from temporalio.worker import Worker, UnsandboxedWorkflowRunner
 from zamp_public_workflow_sdk.temporal.temporal_client import TemporalClient
 
 
@@ -42,6 +41,7 @@ class TemporalWorkerConfig:
     graceful_shutdown_timeout: timedelta = timedelta()
     debug_mode: bool = False
     interceptors: Sequence[object] = field(default_factory=list)
+    disable_sandbox: bool = False
 
 class TemporalWorker(Worker):
     def __init__(self, temporal_client: TemporalClient, config: TemporalWorkerConfig):
@@ -51,6 +51,10 @@ class TemporalWorker(Worker):
 
         activities = [activity.func for activity in self.activities]
         workflows = [workflow.workflow for workflow in self.workflows]
+        
+        additional_options = {}
+        if config.disable_sandbox:
+            additional_options["workflow_runner"] = UnsandboxedWorkflowRunner()
 
         super().__init__(
             client=temporal_client.client,
@@ -75,6 +79,7 @@ class TemporalWorker(Worker):
             graceful_shutdown_timeout=config.graceful_shutdown_timeout,
             debug_mode=config.debug_mode,
             interceptors=config.interceptors,
+            **additional_options
         )
 
     def _register_tasks(self):

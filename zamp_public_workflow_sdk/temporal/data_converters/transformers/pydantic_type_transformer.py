@@ -1,16 +1,20 @@
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.base import BaseTransformer
+from zamp_public_workflow_sdk.temporal.data_converters.transformers.models import GenericSerializedValue
 from zamp_public_workflow_sdk.temporal.data_converters.type_utils import get_fqn, get_reference_from_fqn
 from pydantic import BaseModel
-from typing import Any
+from typing import Any, Type
 
 class PydanticTypeTransformer(BaseTransformer):
     def __init__(self):
         super().__init__()
-        self.should_serialize = self._should_transform
-        self.should_deserialize = self._should_transform
+        self.should_serialize = lambda value: isinstance(value, type) and issubclass(value, BaseModel)
+        self.should_deserialize = lambda value, type_hint: self._should_transform(value, type_hint)
 
-    def _serialize_internal(self, value: Any, type_hint: Any) -> Any:
-        return get_fqn(value)
+    def _serialize_internal(self, value: Any) -> Any:
+        return GenericSerializedValue(
+            serialized_value=get_fqn(value),
+            serialized_type_hint=get_fqn(type[BaseModel])
+        )
 
     def _deserialize_internal(self, value: Any, type_hint: Any) -> Any:
         return get_reference_from_fqn(value)

@@ -1,99 +1,123 @@
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.base import BaseTransformer
+from zamp_public_workflow_sdk.temporal.data_converters.transformers.collections.base import BaseCollectionsTransformer
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.models import GenericSerializedValue
 from typing import Any, Dict
 from pydantic import BaseModel
 from pydantic_core import to_jsonable_python
 from pydantic.fields import FieldInfo
-from zamp_public_workflow_sdk.temporal.data_converters.type_utils import get_type_field_name, get_fqn, safe_issubclass, is_dict_type, is_pydantic_model, get_reference_from_fqn
+from zamp_public_workflow_sdk.temporal.data_converters.type_utils import get_type_field_name, get_fqn, is_dict_type, is_pydantic_model, get_individual_type_field_name, is_type_field, get_reference_from_fqn
 
 class Transformer:
     _transformers: list[BaseTransformer] = []
+    _collection_transformers: list[BaseCollectionsTransformer] = []
 
     @classmethod
     def register_transformer(cls, transformer: BaseTransformer):
         cls._transformers.append(transformer)
 
     @classmethod
-    def serialize(cls, value, type_hint: Any=None) -> Any:
-        return cls._serialize(value, type_hint).serialized_value
+    def register_collection_transformer(cls, transformer: BaseCollectionsTransformer):
+        cls._collection_transformers.append(transformer)
 
     @classmethod
-    def _serialize(cls, value, type_hint: Any=None) -> GenericSerializedValue:
+    def serialize(cls, value) -> GenericSerializedValue:
         # Temporary hack to serialize ColumnMappingResult
         if "TableDetectionOutput" in str(type(value)):
             return to_jsonable_python(value)
         
         if value is None:
             return GenericSerializedValue(
-                serialized_value=value,
-                serialized_type_hint=get_fqn(type_hint)
+                serialized_value=None,
+                serialized_type_hint=get_fqn(type(value))
             )
     
-        for transformer in cls._transformers:
-            serialized = transformer.serialize(value, type_hint)
+        for collection_transformer in cls._collection_transformers:
+            serialized = collection_transformer.serialize(value)
             if serialized is not None:
                 return serialized
         
-        if cls._should_serialize(value, type_hint):
+        if cls._should_serialize(value):
             serialized_result = {}
             for item_key, item_type, item_value in cls._get_enumerator(value):
-                serialized = cls._serialize(item_value, item_type)
+                serialized = cls.serialize(item_value)
                 if type(serialized) is GenericSerializedValue:
                     serialized_result[item_key] = serialized.serialized_value
                     serialized_result[get_type_field_name(item_key)] = serialized.serialized_type_hint
+                    if serialized.serialized_individual_type_hints is not None:
+                        serialized_result[get_individual_type_field_name(item_key)] = serialized.serialized_individual_type_hints
                 else:
                     serialized_result[item_key] = serialized
                 
             return GenericSerializedValue(
                 serialized_value=serialized_result,
-                serialized_type_hint=get_fqn(type_hint)
+                serialized_type_hint=get_fqn(type(value))
             )
+        
+        for transformer in cls._transformers:
+            serialized = transformer.serialize(value)
+            if serialized is not None:
+                return serialized
             
         return GenericSerializedValue(
             serialized_value=to_jsonable_python(value),
-            serialized_type_hint=get_fqn(type_hint)
+            serialized_type_hint=get_fqn(type(value))
         )
 
     @classmethod
-    def deserialize(cls, value: Any, type_hint: Any) -> Any:
+    def deserialize(cls, value: Any, type_hint: type, individual_type_hints: list[str] | None = None) -> Any:
         if type_hint is None or value is None:
             return value
         
+        for collection_transformer in cls._collection_transformers:
+            deserialized = collection_transformer.deserialize(value, type_hint, individual_type_hints)
+            if deserialized is not None:
+                return deserialized
+        
         if cls._should_deserialize(type_hint):
-            if isinstance(value, GenericSerializedValue):
-                type_hint = get_reference_from_fqn(value.serialized_type_hint)
-                value = value.serialized_value
-
             deserialized_result = cls._default_deserialized_model(value, type_hint)
             for item_key, item_type, item_value in cls._get_enumerator(deserialized_result):
-                if item_key.startswith("__") and item_key.endswith("_type"):
+                if is_type_field(item_key):
                     continue
 
                 type_key = get_type_field_name(item_key)
                 if type_key in value:
-                    item_value = GenericSerializedValue(
-                        serialized_value=cls._get_attribute(value, item_key),
-                        serialized_type_hint=cls._get_attribute(value, type_key)
-                    )
+                    item_type = get_reference_from_fqn(cls._get_attribute(value, type_key))
 
-                deserialized = cls.deserialize(item_value, item_type)
+                individual_type_hints = None
+                individual_type_hints_key = get_individual_type_field_name(item_key)
+                if individual_type_hints_key in value:
+                    individual_type_hints = cls._get_attribute(value, individual_type_hints_key)
+                    individual_type_hints = [get_reference_from_fqn(hint) for hint in individual_type_hints]
+
+                deserialized = cls.deserialize(item_value, item_type, individual_type_hints)
                 cls._set_attribute(deserialized_result, item_key, deserialized)
-
-            return deserialized_result
                 
+            deserialized_result = cls._delete_type_keys(deserialized_result)
+            return deserialized_result
+        
         for transformer in cls._transformers:
             deserialized = transformer.deserialize(value, type_hint)
             if deserialized is not None:
                 return deserialized
-        
-        if isinstance(value, GenericSerializedValue):
-            return value.serialized_value
         
         return value
 
     """
     Private methods
     """
+    @classmethod
+    def _delete_type_keys(cls, value: dict):
+        if isinstance(value, dict):
+            keys_to_delete = []
+            for key in value.keys():
+                if is_type_field(key):
+                    keys_to_delete.append(key)
+
+            for key in keys_to_delete:
+                del value[key]
+
+        return value
+    
     @classmethod
     def _get_enumerator(cls, value: dict | BaseModel):
         if isinstance(value, dict):
@@ -104,11 +128,8 @@ class Transformer:
                 yield name, cls._get_property_type(field), getattr(value, name)
     
     @classmethod
-    def _should_serialize(cls, value: Any, type_hint: Any) -> bool:
+    def _should_serialize(cls, value: Any) -> bool:
         if isinstance(value, dict) or isinstance(value, BaseModel):
-            return True
-        
-        if is_dict_type(type_hint) or is_pydantic_model(type_hint):
             return True
         
         return False
