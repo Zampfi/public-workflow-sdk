@@ -23,7 +23,10 @@ class Transformer:
     def serialize(cls, value) -> GenericSerializedValue:
         # Temporary hack to serialize ColumnMappingResult
         if "TableDetectionOutput" in str(type(value)):
-            return to_jsonable_python(value)
+            return GenericSerializedValue(
+                serialized_value=to_jsonable_python(value),
+                serialized_type_hint=get_fqn(type(value))
+            )
         
         if value is None:
             return GenericSerializedValue(
