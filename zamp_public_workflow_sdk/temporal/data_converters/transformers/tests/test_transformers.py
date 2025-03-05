@@ -1,17 +1,11 @@
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.transformer import Transformer
-from zamp_public_workflow_sdk.temporal.data_converters.transformers.collections.list_transformer import ListTransformer
-from zamp_public_workflow_sdk.temporal.data_converters.transformers.bytes_transformer import BytesTransformer
-from zamp_public_workflow_sdk.temporal.data_converters.transformers.bytesio_transformer import BytesIOTransformer
-from zamp_public_workflow_sdk.temporal.data_converters.transformers.tests.test_models import TestModelWithInteger, TestModelWithListOfIntegers, TestModelCompositeModel, TestModelWithString, TestModelWithGenericTypeVar, TestModelWithGenericDictionary, TestModelWithPydanticType
+from zamp_public_workflow_sdk.temporal.data_converters.transformers.tests.test_models import TestModelWithInteger, TestModelWithListOfIntegers, TestModelCompositeModel, TestModelWithString, TestModelWithGenericTypeVar, TestModelWithGenericDictionary, TestModelWithPydanticType, TestModelWithUnion, TestModelWithTuple, TestModelWithUnionAndOptional, TestModelWithAny, TestModelWithOptionalAny
 from zamp_public_workflow_sdk.temporal.data_converters.type_utils import get_fqn
+from zamp_public_workflow_sdk.temporal.data_converters.pydantic_payload_converter import PydanticJSONPayloadConverter
 from datetime import datetime
 from io import BytesIO
-from zamp_public_workflow_sdk.temporal.data_converters.transformers.pydantic_model_metaclass_transformer import PydanticModelMetaclassTransformer
-from zamp_public_workflow_sdk.temporal.data_converters.transformers.pydantic_type_transformer import PydanticTypeTransformer
-from zamp_public_workflow_sdk.temporal.data_converters.transformers.tests.test_models import TestModelWithUnion, TestModelWithTuple, TestModelWithUnionAndOptional, TestModelWithAny, TestModelWithOptionalAny
-from zamp_public_workflow_sdk.temporal.data_converters.transformers.collections.tuple_transformer import TupleTransformer
-from zamp_public_workflow_sdk.temporal.data_converters.transformers.tests.test_models import TestModelWithUnionAndOptional
-from zamp_public_workflow_sdk.temporal.data_converters.pydantic_payload_converter import PydanticJSONPayloadConverter
+from pydantic import BaseModel
+from typing import Optional
 
 def test_pydantic_transformer_basic():
     model = TestModelWithInteger(integer=1)
@@ -32,7 +26,7 @@ def test_pydantic_transformer_list():
 
 def test_pydantic_transformer_composite():
     current_datetime = datetime.now()
-    model = TestModelCompositeModel(integer=TestModelWithInteger(integer=1), string=TestModelWithString(string="test"), integers=[TestModelWithInteger(integer=1), TestModelWithInteger(integer=2)], bytesIo=BytesIO(b"test"), bytes=b"test", datetime=current_datetime)
+    model = TestModelCompositeModel(integer=TestModelWithInteger(integer=1), string=TestModelWithString(string="test"), integers=[TestModelWithInteger(integer=1), TestModelWithInteger(integer=2)], bytesIo=BytesIO(b"test"), bytes=b"test", datetime=current_datetime, type_obj=TestModelWithInteger)
     serialized = Transformer.serialize(model).serialized_value
     assert serialized["integer"]["integer"] == 1
     assert serialized["string"] == {"string": "test", "__string_type": "str"}
@@ -40,6 +34,7 @@ def test_pydantic_transformer_composite():
     assert serialized["bytesIo"] == "dGVzdA=="
     assert serialized["bytes"] == "dGVzdA=="
     assert serialized["datetime"] == current_datetime.isoformat()
+    assert serialized["type_obj"] == "zamp_public_workflow_sdk.temporal.data_converters.transformers.tests.test_models.TestModelWithInteger"
 
     # Deserialize the serialized value
     deserialized = Transformer.deserialize(serialized, TestModelCompositeModel)
@@ -48,6 +43,8 @@ def test_pydantic_transformer_composite():
     assert deserialized.integers == [TestModelWithInteger(integer=1), TestModelWithInteger(integer=2)]
     assert deserialized.bytesIo.getvalue() == b"test"
     assert deserialized.bytes == b"test"
+    assert deserialized.datetime == current_datetime
+    assert deserialized.type_obj == TestModelWithInteger
 
 def test_pydantic_transformer_pydantic_type():
     model = TestModelWithPydanticType(pydantic_type=TestModelWithInteger)
@@ -203,6 +200,39 @@ def test_pydantic_transformer_optional_any():
     deserialized = Transformer.deserialize(serialized, TestModelWithOptionalAny)
     assert deserialized.optional_any == {"key": 1, "key2": TestModelWithInteger(integer=2)}
 
+
+def test_pydantic_normal_dict():
+    dict_value = {
+        "key1": 1,
+        "key2": {
+            "integer": 2
+        },
+        "key3": [
+            {
+                "integer": 2
+            }
+        ],
+        "key4": None
+    }
+
+    class TestModelWithNormalDict(BaseModel):
+        key1: int
+        key2: TestModelWithInteger
+        key3: list[TestModelWithInteger]
+        key4: Optional[TestModelWithInteger]
+
+    deserialized = Transformer.deserialize(dict_value, TestModelWithNormalDict)
+    assert deserialized.key1 == 1
+    assert deserialized.key2.integer == 2
+    assert deserialized.key3 == [TestModelWithInteger(integer=2)]
+    assert deserialized.key4 is None
+
+    serialized = Transformer.serialize(deserialized).serialized_value
+    assert serialized["key1"] == 1
+    assert serialized["key2"] == {"integer": 2, "__integer_type": "int"}
+    assert serialized["key3"] == [{"integer": 2, "__integer_type": "int"}]
+    assert serialized["key4"] is None
+
 if __name__ == "__main__":
     
     PydanticJSONPayloadConverter()
@@ -218,3 +248,4 @@ if __name__ == "__main__":
     test_pydantic_transformer_union_and_optional()
     test_pydantic_transformer_any()
     test_pydantic_transformer_optional_any()
+    test_pydantic_normal_dict()

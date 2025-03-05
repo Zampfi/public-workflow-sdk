@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='zamp_public_workflow_sdk',
-    version='0.0.39',    
+    version='0.0.42',    
     description='Workflow Manager',
     url='https://github.com/zamp-engineering/workflow_manager',
     author='Zamp Engineering',
@@ -15,6 +15,7 @@ setup(
         'zamp_public_workflow_sdk.temporal.codec',
         'zamp_public_workflow_sdk.temporal.data_converters',
         'zamp_public_workflow_sdk.temporal.data_converters.transformers',
+        'zamp_public_workflow_sdk.temporal.data_converters.transformers.collections',
         'zamp_public_workflow_sdk.temporal.interceptors',
     ],
     install_requires=[
