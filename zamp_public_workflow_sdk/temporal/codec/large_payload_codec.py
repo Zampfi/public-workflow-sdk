@@ -4,7 +4,7 @@ from typing import Iterable, List
 from uuid import uuid4
 import json
 from zamp_public_workflow_sdk.temporal.codec.models import BucketData
-from zamp_public_workflow_sdk.temporal.codec.bucket_operations import StorageClient
+from zamp_public_workflow_sdk.temporal.codec.storage_client import StorageClient
 
 PAYLOAD_SIZE_THRESHOLD = 2 * 1024 * 1024
 CODEC_BUCKET_ENCODING = "codec_bucket"
