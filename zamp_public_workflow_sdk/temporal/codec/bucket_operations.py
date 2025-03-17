@@ -3,7 +3,7 @@ from google.cloud import storage
 
 class StorageClient(ABC):
     @abstractmethod
-    def upload_from_string(self, object_name: str, data: bytes | str) -> None:
+    def upload_file(self, object_name: str, data: bytes | str) -> None:
         pass
 
     @abstractmethod
