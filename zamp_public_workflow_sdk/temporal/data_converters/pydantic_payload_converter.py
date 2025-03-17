@@ -11,6 +11,8 @@ from zamp_public_workflow_sdk.temporal.data_converters.transformers.pydantic_mod
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.pydantic_type_transformer import PydanticTypeTransformer
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.collections.tuple_transformer import TupleTransformer
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.datetime_transformer import DateTransformer
+from zamp_public_workflow_sdk.temporal.codec.large_payload_codec import CODEC_SENSITIVE_METADATA_KEY, CODEC_SENSITIVE_METADATA_VALUE
+from zamp_public_workflow_sdk.temporal.codec.models import CodecModel
 
 class PydanticJSONPayloadConverter(JSONPlainPayloadConverter):
     """Pydantic JSON payload converter.
@@ -29,10 +31,15 @@ class PydanticJSONPayloadConverter(JSONPlainPayloadConverter):
         Transformer.register_collection_transformer(TupleTransformer())
         Transformer.register_collection_transformer(ListTransformer())
         
-    def to_payload(self, value: Any) -> Optional[Payload]:        
+    def to_payload(self, value: Any) -> Optional[Payload]:
+        metadata = {"encoding": self.encoding.encode()}
+        if isinstance(value, CodecModel):
+            value = value.value
+            metadata[CODEC_SENSITIVE_METADATA_KEY] = CODEC_SENSITIVE_METADATA_VALUE.encode()
+
         json_data = json.dumps(value, separators=(",", ":"), sort_keys=True, default=lambda x: Transformer.serialize(x).serialized_value)
         return Payload(
-            metadata={"encoding": self.encoding.encode()},
+            metadata=metadata,
             data=json_data.encode(),
         )
 
