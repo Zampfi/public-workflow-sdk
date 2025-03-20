@@ -1,7 +1,7 @@
-import importlib
 from typing import Any
 import typing
 from pydantic import BaseModel
+from temporalio import workflow
 
 def get_fqn(cls: type) -> str:
     if cls == type(None) or cls == None:
@@ -29,15 +29,16 @@ def get_fqn(cls: type) -> str:
     return cls_name
 
 def get_class_from_fqn(fqn: str) -> type:
-    # Get the module and class name
-    if "." in fqn:
-        module_name, class_name = fqn.rsplit(".", 1)
-    else:
-        module_name, class_name = "builtins", fqn
+    # TODO (Giri): Figure out why this is needed.
+    with workflow.unsafe.imports_passed_through():
+        if "." in fqn:
+            module_name, class_name = fqn.rsplit(".", 1)
+        else:
+            module_name, class_name = "builtins", fqn
 
-    # Import the module and get the class
-    module = __import__(module_name, fromlist=[class_name])
-    return getattr(module, class_name)
+        # Import the module and get the class
+        module = __import__(module_name, fromlist=[class_name])
+        return getattr(module, class_name)
 
 def get_split_args(args: str) -> list[str]:
     splits = []
@@ -56,30 +57,34 @@ def get_split_args(args: str) -> list[str]:
     return splits
 
 def get_reference_from_fqn(fqn: str) -> type:
-    # Check for None type
-    if fqn == "None":
-        return None
+    try:
+        # Check for None type
+        if fqn == "None":
+            return None
 
-    # Handle basic types like int, str, etc.
-    if fqn in {"int", "str", "bool", "float", "None"}:
-        return eval(fqn)
+        # Handle basic types like int, str, etc.
+        if fqn in {"int", "str", "bool", "float", "None"}:
+            return eval(fqn)
 
-    # Split the FQN by the brackets to detect generics
-    if "[" in fqn and "]" in fqn:
-        # Get the class from the module
-        cls_name = fqn.split("[")[0].replace("[", "").replace("]`", "")
-        cls = get_class_from_fqn(cls_name)
+        # Split the FQN by the brackets to detect generics
+        if "[" in fqn and "]" in fqn:
+            # Get the class from the module
+            cls_name = fqn.split("[")[0].replace("[", "").replace("]`", "")
+            cls = get_class_from_fqn(cls_name)
 
-        # Do not split if it's a dict[int, int] where there is a comma between [ ]
-        args = fqn[fqn.index("[")+1:fqn.rindex("]")]
-        args_types = [get_reference_from_fqn(arg.strip()) for arg in get_split_args(args)]
+            # Do not split if it's a dict[int, int] where there is a comma between [ ]
+            args = fqn[fqn.index("[")+1:fqn.rindex("]")]
+            args_types = [get_reference_from_fqn(arg.strip()) for arg in get_split_args(args)]
 
-        if hasattr(cls, "__origin__"):
-            return cls.__origin__[tuple(args_types)]  
-        
-        return typing.GenericAlias(cls, tuple(args_types))
+            if hasattr(cls, "__origin__"):
+                return cls.__origin__[tuple(args_types)]  
+            
+            return typing.GenericAlias(cls, tuple(args_types))
 
-    return get_class_from_fqn(fqn)
+        return get_class_from_fqn(fqn)
+    except Exception as e:
+        print(f"Error getting reference from FQN {fqn}: {e}")
+        raise e
 
 def get_inner_type(type_hint: type) -> type:
     if hasattr(type_hint, "__args__"):
