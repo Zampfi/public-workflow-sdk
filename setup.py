@@ -21,6 +21,7 @@ setup(
     install_requires=[
         'pydantic',
         'temporalio',
+        'sentry-sdk',
         'python-dateutil',
         'python-dotenv'
     ],
