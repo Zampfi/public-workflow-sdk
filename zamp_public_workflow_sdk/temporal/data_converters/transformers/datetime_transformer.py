@@ -1,8 +1,10 @@
-from zamp_public_workflow_sdk.temporal.data_converters.transformers.base import BaseTransformer
-from zamp_public_workflow_sdk.temporal.data_converters.transformers.models import GenericSerializedValue
-from datetime import datetime, date
-from typing import Any, Callable
-from zamp_public_workflow_sdk.temporal.data_converters.type_utils import get_fqn
+from temporalio import workflow
+with workflow.unsafe.imports_passed_through():
+    from zamp_public_workflow_sdk.temporal.data_converters.transformers.base import BaseTransformer
+    from zamp_public_workflow_sdk.temporal.data_converters.transformers.models import GenericSerializedValue
+    from datetime import datetime, date
+    from typing import Any, Callable
+    from zamp_public_workflow_sdk.temporal.data_converters.type_utils import get_fqn
 
 class DateTransformer(BaseTransformer):
     def __init__(self):

@@ -19,6 +19,10 @@ from temporalio.worker import (
     WorkflowInterceptorClassInput,
     StartChildWorkflowInput,
 )
+from temporalio import workflow
+
+with workflow.unsafe.imports_passed_through():
+    from sentry_sdk import capture_exception, push_scope, init
 
 
 class SentryActivityInboundInterceptor(ActivityInboundInterceptor):
@@ -39,7 +43,7 @@ class SentryActivityInboundInterceptor(ActivityInboundInterceptor):
         try:
             return await self.next.execute_activity(input)
         except Exception as e:
-            with sentry_sdk.push_scope() as scope:
+            with push_scope() as scope:
                 activity_name = input.fn.__name__
                 # Set activity-specific tags
                 scope.set_tag("activity.name", activity_name)
@@ -57,7 +61,7 @@ class SentryActivityInboundInterceptor(ActivityInboundInterceptor):
                     context.update(additional_context)
                 
                 scope.set_context("activity_details", context)
-                sentry_sdk.capture_exception(e)
+                capture_exception(e)
 
             self.logger.error(
                 "Activity execution failed",
@@ -86,7 +90,7 @@ class SentryActivityOutboundInterceptor(ActivityOutboundInterceptor):
         try:
             return await self.next.execute_activity(input)
         except Exception as e:
-            with sentry_sdk.push_scope() as scope:
+            with push_scope() as scope:
                 activity_name = input.fn.__name__
                 # Set activity-specific tags
                 scope.set_tag("activity.name", activity_name)
@@ -106,7 +110,7 @@ class SentryActivityOutboundInterceptor(ActivityOutboundInterceptor):
                     context.update(additional_context)
                 
                 scope.set_context("activity_details", context)
-                sentry_sdk.capture_exception(e)
+                capture_exception(e)
 
             self.logger.error(
                 "Activity execution failed (outbound)",
@@ -143,7 +147,7 @@ class SentryWorkflowInboundInterceptor(WorkflowInboundInterceptor):
         try:
             return await self.next.execute_workflow(input)
         except Exception as e:
-            with sentry_sdk.push_scope() as scope:
+            with push_scope() as scope:
                 workflow_name = input.type.__name__
                 # Set workflow-specific tags
                 scope.set_tag("workflow.type", workflow_name)
@@ -163,7 +167,7 @@ class SentryWorkflowInboundInterceptor(WorkflowInboundInterceptor):
                     context.update(additional_context)
                 
                 scope.set_context("workflow_details", context)
-                sentry_sdk.capture_exception(e)
+                capture_exception(e)
 
             self.logger.error(
                 "Workflow execution failed (inbound)",
@@ -178,7 +182,7 @@ class SentryWorkflowInboundInterceptor(WorkflowInboundInterceptor):
         try:
             return await self.next.start_child_workflow(input)
         except Exception as e:
-            with sentry_sdk.push_scope() as scope:
+            with push_scope() as scope:
                 # Set workflow-specific tags
                 scope.set_tag("workflow.type", input.workflow)
                 scope.set_tag("workflow.direction", "child_inbound")
@@ -202,7 +206,7 @@ class SentryWorkflowInboundInterceptor(WorkflowInboundInterceptor):
                     context.update(additional_context)
                 
                 scope.set_context("child_workflow_details", context)
-                sentry_sdk.capture_exception(e)
+                capture_exception(e)
 
             self.logger.error(
                 "Child workflow execution failed (inbound)",
@@ -232,7 +236,7 @@ class SentryWorkflowOutboundInterceptor(WorkflowOutboundInterceptor):
         try:
             return await self.next.execute_workflow(input)
         except Exception as e:
-            with sentry_sdk.push_scope() as scope:
+            with push_scope() as scope:
                 workflow_name = input.type.__name__
                 # Set workflow-specific tags
                 scope.set_tag("workflow.type", workflow_name)
@@ -252,7 +256,7 @@ class SentryWorkflowOutboundInterceptor(WorkflowOutboundInterceptor):
                     context.update(additional_context)
                 
                 scope.set_context("workflow_details", context)
-                sentry_sdk.capture_exception(e)
+                capture_exception(e)
 
             self.logger.error(
                 "Workflow execution failed (outbound)",
@@ -267,7 +271,7 @@ class SentryWorkflowOutboundInterceptor(WorkflowOutboundInterceptor):
         try:
             return await self.next.start_child_workflow(input)
         except Exception as e:
-            with sentry_sdk.push_scope() as scope:
+            with push_scope() as scope:
                 # Set workflow-specific tags
                 scope.set_tag("workflow.type", input.workflow)
                 scope.set_tag("workflow.direction", "child_outbound")
@@ -291,7 +295,7 @@ class SentryWorkflowOutboundInterceptor(WorkflowOutboundInterceptor):
                     context.update(additional_context)
                 
                 scope.set_context("child_workflow_details", context)
-                sentry_sdk.capture_exception(e)
+                capture_exception(e)
 
             self.logger.error(
                 "Child workflow execution failed (outbound)",
@@ -334,7 +338,7 @@ class SentryInterceptor(Interceptor):
 
         # Initialize Sentry if DSN is provided
         if sentry_dsn:
-            sentry_sdk.init(
+            init(
                 dsn=sentry_dsn,
                 environment=environment,
                 **sentry_options,
