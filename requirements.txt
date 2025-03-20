@@ -6,4 +6,3 @@ python-dateutil
 python-dotenv
 temporalio==1.8.0
 google-cloud-storage==2.11.0
-sentry-sdk==2.23.1
