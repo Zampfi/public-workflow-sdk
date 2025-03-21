@@ -7,7 +7,6 @@ This interceptor captures workflow and activity failures and reports them to Sen
 import traceback
 from typing import Any, Callable, Optional, Type
 
-import sentry_sdk
 from temporalio.worker import (
     ActivityInboundInterceptor,
     ActivityOutboundInterceptor,
@@ -61,7 +60,14 @@ class SentryActivityInboundInterceptor(ActivityInboundInterceptor):
                     context.update(additional_context)
                 
                 scope.set_context("activity_details", context)
-                capture_exception(e)
+                try:
+                    capture_exception(e)
+                except Exception as e:
+                    self.logger.error(
+                        "Sentry captured failed",
+                        activity_name=activity_name,
+                        error=str(e),
+                    )
 
             self.logger.error(
                 "Activity execution failed",
@@ -110,7 +116,14 @@ class SentryActivityOutboundInterceptor(ActivityOutboundInterceptor):
                     context.update(additional_context)
                 
                 scope.set_context("activity_details", context)
-                capture_exception(e)
+                try:
+                    capture_exception(e)
+                except Exception as e:
+                    self.logger.error(
+                        "Sentry captured failed",
+                        activity_name=activity_name,
+                        error=str(e),
+                    )
 
             self.logger.error(
                 "Activity execution failed (outbound)",
@@ -167,8 +180,14 @@ class SentryWorkflowInboundInterceptor(WorkflowInboundInterceptor):
                     context.update(additional_context)
                 
                 scope.set_context("workflow_details", context)
-                capture_exception(e)
-
+                try:
+                    capture_exception(e)
+                except Exception as e:
+                    self.logger.error(
+                        "Sentry captured failed",
+                        workflow_name=workflow_name,
+                        error=str(e),
+                    )
             self.logger.error(
                 "Workflow execution failed (inbound)",
                 workflow_type=workflow_name,
@@ -206,8 +225,13 @@ class SentryWorkflowInboundInterceptor(WorkflowInboundInterceptor):
                     context.update(additional_context)
                 
                 scope.set_context("child_workflow_details", context)
-                capture_exception(e)
-
+                try:
+                    capture_exception(e)
+                except Exception as e:
+                    self.logger.error(
+                        "Sentry captured failed",
+                        error=str(e),
+                    )
             self.logger.error(
                 "Child workflow execution failed (inbound)",
                 workflow_type=input.workflow,
@@ -256,8 +280,14 @@ class SentryWorkflowOutboundInterceptor(WorkflowOutboundInterceptor):
                     context.update(additional_context)
                 
                 scope.set_context("workflow_details", context)
-                capture_exception(e)
-
+                try:
+                    capture_exception(e)
+                except Exception as e:
+                    self.logger.error(
+                        "Sentry captured failed",
+                        workflow_name=workflow_name,
+                        error=str(e),
+                    )
             self.logger.error(
                 "Workflow execution failed (outbound)",
                 workflow_type=workflow_name,
@@ -295,8 +325,13 @@ class SentryWorkflowOutboundInterceptor(WorkflowOutboundInterceptor):
                     context.update(additional_context)
                 
                 scope.set_context("child_workflow_details", context)
-                capture_exception(e)
-
+                try:
+                    capture_exception(e)
+                except Exception as e:
+                    self.logger.error(
+                        "Sentry captured failed",
+                        error=str(e),
+                    )
             self.logger.error(
                 "Child workflow execution failed (outbound)",
                 workflow_type=input.workflow,
