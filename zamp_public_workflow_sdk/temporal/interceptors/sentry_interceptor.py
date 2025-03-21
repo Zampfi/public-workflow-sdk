@@ -68,13 +68,6 @@ class SentryActivityInboundInterceptor(ActivityInboundInterceptor):
                         activity_name=activity_name,
                         error=str(e),
                     )
-
-            self.logger.error(
-                "Activity execution failed",
-                activity_name=activity_name,
-                error=str(e),
-                traceback=traceback.format_exc(),
-            )
             raise
 
 
@@ -124,13 +117,6 @@ class SentryActivityOutboundInterceptor(ActivityOutboundInterceptor):
                         activity_name=activity_name,
                         error=str(e),
                     )
-
-            self.logger.error(
-                "Activity execution failed (outbound)",
-                activity_name=activity_name,
-                error=str(e),
-                traceback=traceback.format_exc(),
-            )
             raise
 
 
@@ -188,12 +174,6 @@ class SentryWorkflowInboundInterceptor(WorkflowInboundInterceptor):
                         workflow_name=workflow_name,
                         error=str(e),
                     )
-            self.logger.error(
-                "Workflow execution failed (inbound)",
-                workflow_type=workflow_name,
-                error=str(e),
-                traceback=traceback.format_exc(),
-            )
             raise
 
     async def start_child_workflow(self, input: StartChildWorkflowInput) -> Any:
@@ -232,13 +212,6 @@ class SentryWorkflowInboundInterceptor(WorkflowInboundInterceptor):
                         "Sentry captured failed",
                         error=str(e),
                     )
-            self.logger.error(
-                "Child workflow execution failed (inbound)",
-                workflow_type=input.workflow,
-                workflow_id=input.id,
-                error=str(e),
-                traceback=traceback.format_exc(),
-            )
             raise
 
 
@@ -288,12 +261,6 @@ class SentryWorkflowOutboundInterceptor(WorkflowOutboundInterceptor):
                         workflow_name=workflow_name,
                         error=str(e),
                     )
-            self.logger.error(
-                "Workflow execution failed (outbound)",
-                workflow_type=workflow_name,
-                error=str(e),
-                traceback=traceback.format_exc(),
-            )
             raise
 
     async def start_child_workflow(self, input: StartChildWorkflowInput) -> Any:
@@ -332,13 +299,6 @@ class SentryWorkflowOutboundInterceptor(WorkflowOutboundInterceptor):
                         "Sentry captured failed",
                         error=str(e),
                     )
-            self.logger.error(
-                "Child workflow execution failed (outbound)",
-                workflow_type=input.workflow,
-                workflow_id=input.id,
-                error=str(e),
-                traceback=traceback.format_exc(),
-            )
             raise
 
 
