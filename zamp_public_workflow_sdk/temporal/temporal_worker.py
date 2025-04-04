@@ -4,6 +4,7 @@ from datetime import timedelta
 from typing import Callable, Sequence
 
 from temporalio.worker import Worker, UnsandboxedWorkflowRunner
+from temporalio.worker.workflow_sandbox import SandboxedWorkflowRunner, SandboxRestrictions
 from zamp_public_workflow_sdk.temporal.temporal_client import TemporalClient
 
 
@@ -55,7 +56,12 @@ class TemporalWorker(Worker):
         additional_options = {}
         if config.disable_sandbox:
             additional_options["workflow_runner"] = UnsandboxedWorkflowRunner()
-
+        else:
+            additional_options["workflow_runner"] = SandboxedWorkflowRunner(
+                restrictions=SandboxRestrictions.default.with_passthrough_modules(
+                    "sentry_sdk",
+                )
+            )
         super().__init__(
             client=temporal_client.client,
             task_queue=config.task_queue,
