@@ -9,7 +9,7 @@ class DateTransformer(BaseTransformer):
     def __init__(self):
         super().__init__()
         self.should_serialize: Callable[[Any], bool] = lambda value: isinstance(value, datetime) or isinstance(value, date)
-        self.should_deserialize: Callable[[Any, Any], bool] = lambda value, type_hint: issubclass(type_hint, datetime) or issubclass(type_hint, date)
+        self.should_deserialize: Callable[[Any, Any], bool] = lambda value, type_hint: self._should_deserialize_internal(value, type_hint)
 
     def _serialize_internal(self, value: Any) -> Any:
         return GenericSerializedValue(
