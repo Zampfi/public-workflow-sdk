@@ -3,7 +3,7 @@ from zamp_public_workflow_sdk.temporal.data_converters.transformers.base import 
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.models import GenericSerializedValue
 from datetime import datetime, date
 from typing import Any, Callable
-from zamp_public_workflow_sdk.temporal.data_converters.type_utils import get_fqn
+from zamp_public_workflow_sdk.temporal.data_converters.type_utils import get_fqn, safe_issubclass
 
 class DateTransformer(BaseTransformer):
     def __init__(self):
@@ -16,6 +16,12 @@ class DateTransformer(BaseTransformer):
             serialized_value=value.isoformat(),
             serialized_type_hint=get_fqn(type(value))
         )
+    
+    def _should_deserialize_internal(self, value: Any, type_hint: Any) -> bool:
+        if type_hint:
+            return safe_issubclass(type_hint, datetime) or safe_issubclass(type_hint, date)
+        
+        return False
     
     def _deserialize_internal(self, value: Any, type_hint: Any) -> datetime:
         if issubclass(type_hint, datetime):
