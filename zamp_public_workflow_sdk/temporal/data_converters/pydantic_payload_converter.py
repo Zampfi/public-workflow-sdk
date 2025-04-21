@@ -20,32 +20,20 @@ class PydanticJSONPayloadConverter(JSONPlainPayloadConverter):
     This extends the :py:class:`JSONPlainPayloadConverter` to override
     :py:meth:`to_payload` using the Pydantic encoder.
     """
-    def __init__(self):
-        super().__init__()
-        Transformer.register_transformer(PydanticTypeTransformer())
-        Transformer.register_transformer(PydanticModelMetaclassTransformer())
-        Transformer.register_transformer(BytesTransformer())
-        Transformer.register_transformer(BytesIOTransformer())
-        Transformer.register_transformer(DateTransformer())
-
-        Transformer.register_collection_transformer(TupleTransformer())
-        Transformer.register_collection_transformer(ListTransformer())
         
     def to_payload(self, value: Any) -> Optional[Payload]:
-        metadata = {"encoding": self.encoding.encode()}
+        metadata = {"encoding": "raw_pydantic_object"}
         if isinstance(value, CodecModel):
             value = value.value
             metadata[CODEC_SENSITIVE_METADATA_KEY] = CODEC_SENSITIVE_METADATA_VALUE.encode()
 
-        json_data = json.dumps(value, separators=(",", ":"), sort_keys=True, default=lambda x: Transformer.serialize(x).serialized_value)
         return Payload(
             metadata=metadata,
-            data=json_data.encode(),
+            data=value,
         )
 
     def from_payload(self, payload: Payload, type_hint: Type | None = None) -> Any:
-        obj = from_json(payload.data)
-        return Transformer.deserialize(obj, type_hint)
+        return payload.data
     
 class PydanticPayloadConverter(CompositePayloadConverter):
     """Payload converter that replaces Temporal JSON conversion with Pydantic
