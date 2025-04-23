@@ -60,6 +60,7 @@ class TemporalWorker(Worker):
             additional_options["workflow_runner"] = SandboxedWorkflowRunner(
                 restrictions=SandboxRestrictions.default.with_passthrough_modules(
                     "sentry_sdk",
+                    "structlog",
                 )
             )
         super().__init__(
