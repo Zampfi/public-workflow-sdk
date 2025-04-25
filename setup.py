@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='zamp_public_workflow_sdk',
-    version='0.0.62',    
+    version='0.0.63',    
     description='Workflow Manager',
     url='https://github.com/zamp-engineering/workflow_manager',
     author='Zamp Engineering',
