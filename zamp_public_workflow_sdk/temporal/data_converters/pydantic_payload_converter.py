@@ -15,6 +15,7 @@ from zamp_public_workflow_sdk.temporal.codec.large_payload_codec import CODEC_SE
 from zamp_public_workflow_sdk.temporal.codec.models import CodecModel
 import time
 import uuid
+from temporalio import workflow
 
 class PydanticJSONPayloadConverter(JSONPlainPayloadConverter):
     """Pydantic JSON payload converter.
@@ -34,30 +35,24 @@ class PydanticJSONPayloadConverter(JSONPlainPayloadConverter):
         Transformer.register_collection_transformer(ListTransformer())
         
     def to_payload(self, value: Any) -> Optional[Payload]:
-        trace_id = str(uuid.uuid4())[:8]
-        start_time = time.time()
-        print(f"Started serializing [{trace_id}] at {start_time}")
-        metadata = {"encoding": self.encoding.encode()}
-        if isinstance(value, CodecModel):
-            value = value.value
-            metadata[CODEC_SENSITIVE_METADATA_KEY] = CODEC_SENSITIVE_METADATA_VALUE.encode()
+        # Use sandbox_unrestricted to move serialization outside the sandbox
+        with workflow.unsafe.sandbox_unrestricted():
+            metadata = {"encoding": self.encoding.encode()}
+            if isinstance(value, CodecModel):
+                value = value.value
+                metadata[CODEC_SENSITIVE_METADATA_KEY] = CODEC_SENSITIVE_METADATA_VALUE.encode()
 
-        json_data = json.dumps(value, separators=(",", ":"), sort_keys=True, default=lambda x: Transformer.serialize(x).serialized_value)
-        end_time = time.time()
-        print(f"Time taken to serialize [{trace_id}]: {end_time - start_time} seconds")
-        return Payload(
-            metadata=metadata,
-            data=json_data.encode(),
-        )
+            json_data = json.dumps(value, separators=(",", ":"), sort_keys=True, default=lambda x: Transformer.serialize(x).serialized_value)
+            return Payload(
+                metadata=metadata,
+                data=json_data.encode(),
+            )
 
     def from_payload(self, payload: Payload, type_hint: Type | None = None) -> Any:
-        trace_id = str(uuid.uuid4())[:8]
-        print(f"Started deserializing [{trace_id}] at {time.time()}")
-        start_time = time.time()
-        obj = from_json(payload.data)
-        end_time = time.time()
-        print(f"Time taken to deserialize [{trace_id}]: {end_time - start_time} seconds")
-        return Transformer.deserialize(obj, type_hint)
+        # Use sandbox_unrestricted to move deserialization outside the sandbox
+        with workflow.unsafe.sandbox_unrestricted():
+            obj = from_json(payload.data)
+            return Transformer.deserialize(obj, type_hint)
     
 class PydanticPayloadConverter(CompositePayloadConverter):
     """Payload converter that replaces Temporal JSON conversion with Pydantic

@@ -22,10 +22,7 @@ from temporalio import workflow
 import time
 
 with workflow.unsafe.imports_passed_through():
-    start_time = time.time()
     from sentry_sdk import capture_exception, push_scope, init
-    end_time = time.time()
-    print(f"Time taken to import sentry_sdk: {end_time - start_time} seconds, start time {start_time}")
 
 
 class SentryActivityInboundInterceptor(ActivityInboundInterceptor):
