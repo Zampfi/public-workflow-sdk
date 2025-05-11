@@ -67,7 +67,7 @@ class Transformer:
         )
 
     @classmethod
-    def deserialize(cls, value: Any, type_hint: type, individual_type_hints: list[str] | None = None) -> Any:
+    def deserialize(cls, value: Any, type_hint: type, individual_type_hints: list[type] | None = None) -> Any:
         if type_hint is None or value is None:
             return value
         

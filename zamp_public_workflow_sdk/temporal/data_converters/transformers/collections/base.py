@@ -12,7 +12,7 @@ class BaseCollectionsTransformer(ABC):
         
         return self._serialize_internal(value)
     
-    def deserialize(self, value: Any, type_hint: Any, individual_type_hints: list[str]=None) -> Any:
+    def deserialize(self, value: Any, type_hint: Any, individual_type_hints: list[type]=None) -> Any:
         if not self.should_deserialize(value, type_hint):
             return None
         
@@ -23,5 +23,5 @@ class BaseCollectionsTransformer(ABC):
         pass
 
     @abstractmethod
-    def _deserialize_internal(self, value: Any, type_hint: Any, individual_type_hints: list[str]=None) -> Any:
+    def _deserialize_internal(self, value: Any, type_hint: Any, individual_type_hints: list[type]=None) -> Any:
         pass
