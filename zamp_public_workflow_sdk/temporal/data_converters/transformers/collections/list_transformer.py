@@ -38,7 +38,7 @@ class ListTransformer(BaseCollectionsTransformer):
 
         if individual_type_hints is not None and len(individual_type_hints) > 0:
             for item, item_type_hint in zip(value, individual_type_hints):
-                deserialized_item = Transformer.deserialize(item, get_reference_from_fqn(item_type_hint))
+                deserialized_item = Transformer.deserialize(item, item_type_hint)
                 if deserialized_item is not None:
                     deserialized_items.append(deserialized_item)
         else:
