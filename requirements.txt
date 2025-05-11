@@ -4,5 +4,5 @@ pytest-asyncio
 pytest-cov
 python-dateutil
 python-dotenv
-zamp_temporal_sdk==1.0.0
+temporalio
 google-cloud-storage==2.11.0
