@@ -113,9 +113,11 @@ class TraceWorkflowOutboundInterceptor(WorkflowOutboundInterceptor):
         self.trace_context_key = trace_context_key
         self.get_trace_id_fn = get_trace_id_fn
 
-    def _add_trace_to_headers(self, headers: dict) -> None:
+    def _add_trace_to_headers(self, headers: dict, trace_id: Optional[str] = None) -> None:
         """Helper to add trace ID to headers"""
-        trace_id = self.get_trace_id_fn()
+        if trace_id is None:
+            trace_id = self.get_trace_id_fn()
+
         if trace_id:
             payload = workflow.payload_converter().to_payload(trace_id)
             headers[self.trace_header_key] = payload
@@ -125,7 +127,10 @@ class TraceWorkflowOutboundInterceptor(WorkflowOutboundInterceptor):
         return self.next.start_activity(input)
     
     async def start_child_workflow(self, input: StartChildWorkflowInput) -> Any:
-        self._add_trace_to_headers(input.headers)
+        if input.memo and "trace_id" in input.memo:
+            self._add_trace_to_headers(input.headers, input.memo["trace_id"])
+        else:
+            self._add_trace_to_headers(input.headers)
         return await self.next.start_child_workflow(input)
     
     def start_local_activity(self, input: StartLocalActivityInput) -> Any:
