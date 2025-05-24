@@ -47,15 +47,36 @@ class MetadataContextActivityInterceptor(ActivityInboundInterceptor):
         """Extract metadata context from args and bind to context"""
         # Check args for metadata context
         for arg in args:
+            metadata = None
+            # Case 1: arg is a dict with the metadata field
             if isinstance(arg, dict) and METADATA_CONTEXT_FIELD in arg:
-                metadata = arg.get(METADATA_CONTEXT_FIELD)
-                if isinstance(metadata, dict):
-                    # Bind each key-value pair to context
-                    for key, value in metadata.items():
-                        try:
-                            self.context_bind_fn(**{key: value})
-                        except Exception as e:
-                            self.logger.error(f"Error binding metadata context variable {key}: {str(e)}")
+                metadata_value = arg.get(METADATA_CONTEXT_FIELD)
+                # Convert Pydantic model to dict if needed
+                if hasattr(metadata_value, "dict") and callable(getattr(metadata_value, "dict")):
+                    metadata = metadata_value.dict()
+                elif isinstance(metadata_value, dict):
+                    metadata = metadata_value
+            # Case 2: arg itself is the metadata context Pydantic model
+            elif hasattr(arg, "__class__") and arg.__class__.__name__ == "ZampMetadataContext":
+                if hasattr(arg, "dict") and callable(getattr(arg, "dict")):
+                    metadata = arg.dict()
+            # Case 3: arg is a Pydantic model with a zamp_metadata_context attribute
+            elif hasattr(arg, METADATA_CONTEXT_FIELD):
+                metadata_value = getattr(arg, METADATA_CONTEXT_FIELD)
+                # Convert Pydantic model to dict if needed
+                if hasattr(metadata_value, "dict") and callable(getattr(metadata_value, "dict")):
+                    metadata = metadata_value.dict()
+                elif isinstance(metadata_value, dict):
+                    metadata = metadata_value
+            
+            # Bind metadata to context if found
+            if isinstance(metadata, dict):
+                # Bind each key-value pair to context
+                for key, value in metadata.items():
+                    try:
+                        self.context_bind_fn(**{key: value})
+                    except Exception as e:
+                        self.logger.error(f"Error binding metadata context variable {key}: {str(e)}")
 
 
 # Workflow inbound interceptor
@@ -99,13 +120,34 @@ class MetadataContextWorkflowInboundInterceptor(WorkflowInboundInterceptor):
         """Extract metadata context from args and store it"""
         # Check args for metadata context
         for arg in args:
+            metadata = None
+            # Case 1: arg is a dict with the metadata field
             if isinstance(arg, dict) and METADATA_CONTEXT_FIELD in arg:
-                metadata = arg.get(METADATA_CONTEXT_FIELD)
-                if isinstance(metadata, dict):
-                    self._current_metadata = metadata
-                    self.logger.debug("Found metadata context in workflow args", 
-                                    metadata=metadata)
-                    break
+                metadata_value = arg.get(METADATA_CONTEXT_FIELD)
+                # Convert Pydantic model to dict if needed
+                if hasattr(metadata_value, "dict") and callable(getattr(metadata_value, "dict")):
+                    metadata = metadata_value.dict()
+                elif isinstance(metadata_value, dict):
+                    metadata = metadata_value
+            # Case 2: arg itself is the metadata context Pydantic model
+            elif hasattr(arg, "__class__") and arg.__class__.__name__ == "ZampMetadataContext":
+                if hasattr(arg, "dict") and callable(getattr(arg, "dict")):
+                    metadata = arg.dict()
+            # Case 3: arg is a Pydantic model with a zamp_metadata_context attribute
+            elif hasattr(arg, METADATA_CONTEXT_FIELD):
+                metadata_value = getattr(arg, METADATA_CONTEXT_FIELD)
+                # Convert Pydantic model to dict if needed
+                if hasattr(metadata_value, "dict") and callable(getattr(metadata_value, "dict")):
+                    metadata = metadata_value.dict()
+                elif isinstance(metadata_value, dict):
+                    metadata = metadata_value
+            
+            # Store metadata if found
+            if isinstance(metadata, dict):
+                self._current_metadata = metadata
+                self.logger.debug("Found metadata context in workflow args", 
+                                metadata=metadata)
+                break
 
 
 # Workflow outbound interceptor
@@ -168,6 +210,13 @@ class MetadataContextInterceptor(Interceptor):
     This interceptor looks for a 'zamp_metadata_context' field in workflow and activity arguments.
     If found, it binds all key-value pairs from this field to the Python context using the
     provided context binding function.
+    
+    The interceptor can handle three scenarios:
+    1. If an argument is a dict with a 'zamp_metadata_context' key
+    2. If an argument itself is a ZampMetadataContext Pydantic model
+    3. If an argument is a Pydantic model with a 'zamp_metadata_context' attribute
+    
+    In all cases, Pydantic models are converted to dictionaries before processing.
     """
     
     def __init__(
