@@ -127,11 +127,15 @@ class MetadataContextWorkflowInboundInterceptor(WorkflowInboundInterceptor):
             # Check if arg has zamp_metadata_context attribute
             if hasattr(arg, METADATA_CONTEXT_FIELD):
                 metadata_obj = getattr(arg, METADATA_CONTEXT_FIELD)
-                # Convert Pydantic model to dict
+                # Handle both Pydantic model and plain dict
                 if hasattr(metadata_obj, "dict") and callable(getattr(metadata_obj, "dict")):
+                    # It's a Pydantic model
                     metadata = metadata_obj.dict()
                     self._current_metadata = metadata
-                    self.logger.debug("Found metadata context in workflow args", metadata=metadata)
+                    break
+                elif isinstance(metadata_obj, dict):
+                    # It's already a dictionary
+                    self._current_metadata = metadata_obj
                     break
 
     def _extract_metadata_from_headers(self, headers: dict) -> None:
