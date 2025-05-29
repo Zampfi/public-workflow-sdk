@@ -1,0 +1,26 @@
+name: Semgrep diff scan
+on:
+  workflow_dispatch: {}
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  semgrep:
+    name: semgrep/ci
+    runs-on: ubuntu-latest
+    env:
+      SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+    container:
+      image: semgrep/semgrep
+    if: (github.actor != 'dependabot[bot]')
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Set baseline ref
+        run: |
+          echo "SEMGREP_BASELINE_REF=origin/${GITHUB_BASE_REF}" >> $GITHUB_ENV
+
+      - name: Run Semgrep
+        run: semgrep ci
