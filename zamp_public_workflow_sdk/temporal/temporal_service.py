@@ -17,6 +17,16 @@ from zamp_public_workflow_sdk.temporal.temporal_worker import (TemporalWorker,
 
 from typing import Sequence
 from dataclasses import field
+from temporalio.runtime import PrometheusConfig, Runtime, TelemetryConfig
+
+
+async def init_runtime_with_prometheus(address: str) -> Runtime:
+    # Create runtime for use with Prometheus metrics
+    return Runtime(
+        telemetry=TelemetryConfig(
+            metrics=PrometheusConfig(bind_address=address)
+        )
+    )
 
 @dataclass
 class TemporalClientConfig:
@@ -28,6 +38,7 @@ class TemporalClientConfig:
     is_cloud: bool = False
     data_converter: BaseDataConverter = BaseDataConverter()
     interceptors: Sequence[object] = field(default_factory=list)
+    prometheus_address: str = "127.0.0.1:8000"
 
 class TemporalService:
     def __init__(self, client: TemporalClient):
@@ -56,12 +67,18 @@ class TemporalService:
                 server_root_ca_cert=config.server_root_ca_cert.encode('utf-8') if config.server_root_ca_cert else None,
             )
 
+            # Create runtime with prometheus if address is provided
+            runtime = None
+            if config.prometheus_address:
+                runtime = init_runtime_with_prometheus(config.prometheus_address)
+
             client = await Client.connect(
                 config.host,
                 namespace=config.namespace,
                 tls=tls_config,
                 data_converter=config.data_converter.get_converter(),
-                interceptors=config.interceptors
+                interceptors=config.interceptors,
+                runtime=runtime
             )
 
         temporal_client = TemporalClient(client)
