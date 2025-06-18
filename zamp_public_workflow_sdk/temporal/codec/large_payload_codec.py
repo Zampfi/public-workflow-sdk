@@ -6,7 +6,7 @@ import json
 from zamp_public_workflow_sdk.temporal.codec.models import BucketData
 from zamp_public_workflow_sdk.temporal.codec.storage_client import StorageClient
 
-PAYLOAD_SIZE_THRESHOLD = 2 * 1024 * 1024
+PAYLOAD_SIZE_THRESHOLD = 100 * 1024
 CODEC_BUCKET_ENCODING = "codec_bucket"
 CODEC_SENSITIVE_METADATA_KEY = "codec"
 CODEC_SENSITIVE_METADATA_VALUE = "sensitive"
