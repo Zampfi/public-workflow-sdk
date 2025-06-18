@@ -11,6 +11,7 @@ from zamp_public_workflow_sdk.temporal.data_converters.transformers.pydantic_mod
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.pydantic_type_transformer import PydanticTypeTransformer
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.collections.tuple_transformer import TupleTransformer
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.datetime_transformer import DateTransformer
+from zamp_public_workflow_sdk.temporal.data_converters.transformers.union_transformer import UnionTransformer
 from zamp_public_workflow_sdk.temporal.codec.large_payload_codec import CODEC_SENSITIVE_METADATA_KEY, CODEC_SENSITIVE_METADATA_VALUE
 from zamp_public_workflow_sdk.temporal.codec.models import CodecModel
 import time
@@ -30,6 +31,7 @@ class PydanticJSONPayloadConverter(JSONPlainPayloadConverter):
         Transformer.register_transformer(BytesTransformer())
         Transformer.register_transformer(BytesIOTransformer())
         Transformer.register_transformer(DateTransformer())
+        Transformer.register_transformer(UnionTransformer())
 
         Transformer.register_collection_transformer(TupleTransformer())
         Transformer.register_collection_transformer(ListTransformer())
