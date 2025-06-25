@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='zamp_public_workflow_sdk',
-    version='0.0.83',
+    version='0.0.86',
     description='Workflow Manager',
     url='https://github.com/zamp-engineering/workflow_manager',
     author='Zamp Engineering',
@@ -20,7 +20,7 @@ setup(
     ],
     install_requires=[
         'pydantic',
-        'temporalio',
+        'temporalio==1.13.0',
         'python-dateutil',
         'python-dotenv',
         'sentry-sdk'
