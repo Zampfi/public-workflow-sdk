@@ -70,7 +70,7 @@ class TemporalService:
             # Create runtime with prometheus if address is provided
             runtime = None
             if config.prometheus_address:
-                runtime = init_runtime_with_prometheus(config.prometheus_address)
+                runtime = await init_runtime_with_prometheus(config.prometheus_address)
 
             client = await Client.connect(
                 config.host,
