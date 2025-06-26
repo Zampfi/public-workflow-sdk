@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from datetime import timedelta
 from typing import Callable, Sequence, Optional
 
-from temporalio.worker import Worker, UnsandboxedWorkflowRunner, WorkerTuner
+from temporalio.worker import Worker, UnsandboxedWorkflowRunner, WorkerTuner, PollerBehavior, PollerBehaviorSimpleMaximum, PollerBehaviorAutoscaling
 from temporalio.worker.workflow_sandbox import SandboxedWorkflowRunner, SandboxRestrictions
 from zamp_public_workflow_sdk.temporal.temporal_client import TemporalClient
 
@@ -33,7 +33,7 @@ class TemporalWorkerConfig:
     max_concurrent_workflow_task_polls: int = 5
     nonsticky_to_sticky_poll_ratio: float = 0.2
     max_concurrent_activity_task_polls: int = 5
-    no_remote_activities: bool = False
+    no_remote_activities: bool = False,
     sticky_queue_schedule_to_start_timeout: timedelta = timedelta(seconds=10)
     max_heartbeat_throttle_interval: timedelta = timedelta(seconds=60)
     default_heartbeat_throttle_interval: timedelta = timedelta(seconds=30)
@@ -44,6 +44,12 @@ class TemporalWorkerConfig:
     interceptors: Sequence[object] = field(default_factory=list)
     disable_sandbox: bool = False
     tuner: Optional[WorkerTuner] = None
+    workflow_task_poller_behavior: Optional[PollerBehavior] = PollerBehaviorSimpleMaximum(
+            maximum=5
+        )
+    activity_task_poller_behavior: Optional[PollerBehavior] = PollerBehaviorSimpleMaximum(
+            maximum=5
+        )
 
 class TemporalWorker(Worker):
     def __init__(self, temporal_client: TemporalClient, config: TemporalWorkerConfig):
@@ -87,6 +93,8 @@ class TemporalWorker(Worker):
             graceful_shutdown_timeout=config.graceful_shutdown_timeout,
             debug_mode=config.debug_mode,
             tuner=config.tuner,
+            workflow_task_poller_behavior=config.workflow_task_poller_behavior,
+            activity_task_poller_behavior=config.activity_task_poller_behavior,
             interceptors=config.interceptors,
             **additional_options
         )
