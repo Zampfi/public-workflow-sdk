@@ -1,9 +1,9 @@
 import concurrent
 from dataclasses import dataclass, field
 from datetime import timedelta
-from typing import Callable, Sequence
+from typing import Callable, Sequence, Optional
 
-from temporalio.worker import Worker, UnsandboxedWorkflowRunner
+from temporalio.worker import Worker, UnsandboxedWorkflowRunner, WorkerTuner, PollerBehavior, PollerBehaviorSimpleMaximum, PollerBehaviorAutoscaling
 from temporalio.worker.workflow_sandbox import SandboxedWorkflowRunner, SandboxRestrictions
 from zamp_public_workflow_sdk.temporal.temporal_client import TemporalClient
 
@@ -43,6 +43,13 @@ class TemporalWorkerConfig:
     debug_mode: bool = False
     interceptors: Sequence[object] = field(default_factory=list)
     disable_sandbox: bool = False
+    tuner: Optional[WorkerTuner] = None
+    workflow_task_poller_behavior: Optional[PollerBehavior] = PollerBehaviorSimpleMaximum(
+            maximum=5
+        )
+    activity_task_poller_behavior: Optional[PollerBehavior] = PollerBehaviorSimpleMaximum(
+            maximum=5
+        )
 
 class TemporalWorker(Worker):
     def __init__(self, temporal_client: TemporalClient, config: TemporalWorkerConfig):
@@ -85,6 +92,9 @@ class TemporalWorker(Worker):
             max_task_queue_activities_per_second=config.max_task_queue_activities_per_second,
             graceful_shutdown_timeout=config.graceful_shutdown_timeout,
             debug_mode=config.debug_mode,
+            tuner=config.tuner,
+            workflow_task_poller_behavior=config.workflow_task_poller_behavior,
+            activity_task_poller_behavior=config.activity_task_poller_behavior,
             interceptors=config.interceptors,
             **additional_options
         )
