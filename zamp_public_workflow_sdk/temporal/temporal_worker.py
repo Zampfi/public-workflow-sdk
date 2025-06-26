@@ -33,7 +33,7 @@ class TemporalWorkerConfig:
     max_concurrent_workflow_task_polls: int = 5
     nonsticky_to_sticky_poll_ratio: float = 0.2
     max_concurrent_activity_task_polls: int = 5
-    no_remote_activities: bool = False,
+    no_remote_activities: bool = False
     sticky_queue_schedule_to_start_timeout: timedelta = timedelta(seconds=10)
     max_heartbeat_throttle_interval: timedelta = timedelta(seconds=60)
     default_heartbeat_throttle_interval: timedelta = timedelta(seconds=30)
