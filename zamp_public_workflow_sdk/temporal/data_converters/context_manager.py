@@ -16,7 +16,9 @@ class DataConverterContextManager:
     
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.end_time = time.time()
-        logger.info(f"{self.data_conversion_type} took {self.end_time - self.start_time} seconds for a length of {self.data_length}")
+        time_taken = self.end_time - self.start_time
+        if time_taken > 0.1:
+            logger.warning(f"{self.data_conversion_type} took {time_taken} seconds for a length of {self.data_length}")
 
     def set_data_length(self, data_length: int):
         self.data_length = data_length
