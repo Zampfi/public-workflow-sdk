@@ -15,8 +15,11 @@ from zamp_public_workflow_sdk.temporal.data_converters.transformers.union_transf
 from zamp_public_workflow_sdk.temporal.codec.large_payload_codec import CODEC_SENSITIVE_METADATA_KEY, CODEC_SENSITIVE_METADATA_VALUE
 from zamp_public_workflow_sdk.temporal.codec.models import CodecModel
 import time
-import uuid
 from temporalio import workflow
+from zamp_public_workflow_sdk.temporal.data_converters.context_manager import DataConverterContextManager
+
+import structlog
+logger = structlog.get_logger(__name__)
 
 class PydanticJSONPayloadConverter(JSONPlainPayloadConverter):
     """Pydantic JSON payload converter.
@@ -44,17 +47,22 @@ class PydanticJSONPayloadConverter(JSONPlainPayloadConverter):
                 value = value.value
                 metadata[CODEC_SENSITIVE_METADATA_KEY] = CODEC_SENSITIVE_METADATA_VALUE.encode()
 
-            json_data = json.dumps(value, separators=(",", ":"), sort_keys=True, default=lambda x: Transformer.serialize(x).serialized_value)
-            return Payload(
-                metadata=metadata,
-                data=json_data.encode(),
-            )
+            with DataConverterContextManager("PydanticJSONPayloadConverter.Serialize") as context_manager:
+                json_data = json.dumps(value, separators=(",", ":"), sort_keys=True, default=lambda x: Transformer.serialize(x).serialized_value)
+                data = json_data.encode()
+                context_manager.set_data_length(len(data))
+                return Payload(
+                    metadata=metadata,
+                    data=data,
+                )
 
     def from_payload(self, payload: Payload, type_hint: Type | None = None) -> Any:
         # Use sandbox_unrestricted to move deserialization outside the sandbox
         with workflow.unsafe.sandbox_unrestricted():
-            obj = from_json(payload.data)
-            return Transformer.deserialize(obj, type_hint)
+            with DataConverterContextManager("PydanticJSONPayloadConverter.Deserialize", len(payload.data)):
+                obj = from_json(payload.data)
+                deserialized = Transformer.deserialize(obj, type_hint)
+                return deserialized
     
 class PydanticPayloadConverter(CompositePayloadConverter):
     """Payload converter that replaces Temporal JSON conversion with Pydantic

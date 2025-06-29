@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='zamp_public_workflow_sdk',
-    version='0.0.88',
+    version='0.0.89',
     description='Workflow Manager',
     url='https://github.com/zamp-engineering/workflow_manager',
     author='Zamp Engineering',
@@ -23,7 +23,8 @@ setup(
         'temporalio==1.13.0',
         'python-dateutil',
         'python-dotenv',
-        'sentry-sdk'
+        'sentry-sdk',
+        'structlog'
     ],
     classifiers=[],
 )
