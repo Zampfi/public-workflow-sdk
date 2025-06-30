@@ -127,7 +127,9 @@ class TraceWorkflowOutboundInterceptor(WorkflowOutboundInterceptor):
         return self.next.start_activity(input)
     
     async def start_child_workflow(self, input: StartChildWorkflowInput) -> Any:
-        if input.memo and "trace_id" in input.memo:
+        if input.parent_close_policy == workflow.ParentClosePolicy.ABANDON:
+            self._add_trace_to_headers(input.headers, input.id)
+        elif input.memo and "trace_id" in input.memo:
             self._add_trace_to_headers(input.headers, input.memo["trace_id"])
         else:
             self._add_trace_to_headers(input.headers)
