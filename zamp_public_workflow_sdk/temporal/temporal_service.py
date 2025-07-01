@@ -38,7 +38,7 @@ class TemporalClientConfig:
     is_cloud: bool = False
     data_converter: BaseDataConverter = BaseDataConverter()
     interceptors: Sequence[object] = field(default_factory=list)
-    prometheus_address: str = "127.0.0.1:8000"
+    prometheus_address: str | None = ""
 
 class TemporalService:
     def __init__(self, client: TemporalClient):
