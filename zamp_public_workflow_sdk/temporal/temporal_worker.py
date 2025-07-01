@@ -50,6 +50,7 @@ class TemporalWorkerConfig:
     activity_task_poller_behavior: Optional[PollerBehavior] = PollerBehaviorSimpleMaximum(
             maximum=5
         )
+    passthrough_modules: Sequence[str] = field(default_factory=list)
 
 class TemporalWorker(Worker):
     def __init__(self, temporal_client: TemporalClient, config: TemporalWorkerConfig):
@@ -66,8 +67,7 @@ class TemporalWorker(Worker):
         else:
             additional_options["workflow_runner"] = SandboxedWorkflowRunner(
                 restrictions=SandboxRestrictions.default.with_passthrough_modules(
-                    "sentry_sdk",
-                    "structlog",
+                    *config.passthrough_modules
                 )
             )
         super().__init__(
