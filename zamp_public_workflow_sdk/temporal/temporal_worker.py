@@ -50,12 +50,14 @@ class TemporalWorkerConfig:
     activity_task_poller_behavior: Optional[PollerBehavior] = PollerBehaviorSimpleMaximum(
             maximum=5
         )
+    
 
 class TemporalWorker(Worker):
     def __init__(self, temporal_client: TemporalClient, config: TemporalWorkerConfig):
         self.activities = config.activities
         self.workflows = config.workflows
         self.register_tasks = config.register_tasks
+        self.worker_config = config
 
         activities = [activity.func for activity in self.activities]
         workflows = [workflow.workflow for workflow in self.workflows]
@@ -68,6 +70,7 @@ class TemporalWorker(Worker):
                 restrictions=SandboxRestrictions.default.with_passthrough_modules(
                     "sentry_sdk",
                     "structlog",
+                    "pydantic",
                 )
             )
         super().__init__(
@@ -105,4 +108,16 @@ class TemporalWorker(Worker):
     async def run(self):
         if self.register_tasks:
             self.register_tasks()
+
+        if self.worker_config.debug_mode:
+            from prometheus_client import start_http_server, REGISTRY
+            from prometheus_client import multiprocess, CollectorRegistry, ProcessCollector, GCCollector
+
+            # Start Prometheus metrics server on a different port
+            start_http_server(9002)
+
+            # Register GC and process metrics
+            REGISTRY.register(ProcessCollector())
+            REGISTRY.register(GCCollector())
+            
         await super().run()
