@@ -50,7 +50,7 @@ class TemporalWorkerConfig:
     activity_task_poller_behavior: Optional[PollerBehavior] = PollerBehaviorSimpleMaximum(
             maximum=5
         )
-    passthrough_modules: Sequence[str] = field(default=["pydantic", "sentry_sdk", "structlog"])
+    passthrough_modules: Sequence[str] = field(default_factory=list)
 
 class TemporalWorker(Worker):
     def __init__(self, temporal_client: TemporalClient, config: TemporalWorkerConfig):
