@@ -1,4 +1,6 @@
 import json
+import threading
+import concurrent.futures
 from pydantic_core import from_json
 from temporalio.api.common.v1 import Payload
 from temporalio.converter import CompositePayloadConverter, JSONPlainPayloadConverter, DefaultPayloadConverter
@@ -20,6 +22,20 @@ from zamp_public_workflow_sdk.temporal.data_converters.context_manager import Da
 
 import structlog
 logger = structlog.get_logger(__name__)
+_serialization_executor = None
+_serialization_executor_lock = threading.Lock()
+
+def _get_serialization_executor():
+    """Get or create a global thread pool executor for serialization."""
+    global _serialization_executor
+    if _serialization_executor is None:
+        with _serialization_executor_lock:
+            if _serialization_executor is None:
+                _serialization_executor = concurrent.futures.ThreadPoolExecutor(
+                    max_workers=40,
+                    thread_name_prefix="temporal-serializer"
+                )
+    return _serialization_executor
 
 class PydanticJSONPayloadConverter(JSONPlainPayloadConverter):
     """Pydantic JSON payload converter.
@@ -27,8 +43,9 @@ class PydanticJSONPayloadConverter(JSONPlainPayloadConverter):
     This extends the :py:class:`JSONPlainPayloadConverter` to override
     :py:meth:`to_payload` using the Pydantic encoder.
     """
-    def __init__(self):
+    def __init__(self, timeout_seconds: int = 10):
         super().__init__()
+        self.timeout_seconds = timeout_seconds
         Transformer.register_transformer(PydanticTypeTransformer())
         Transformer.register_transformer(PydanticModelMetaclassTransformer())
         Transformer.register_transformer(BytesTransformer())
@@ -38,7 +55,7 @@ class PydanticJSONPayloadConverter(JSONPlainPayloadConverter):
 
         Transformer.register_collection_transformer(TupleTransformer())
         Transformer.register_collection_transformer(ListTransformer())
-        
+
     def to_payload(self, value: Any) -> Optional[Payload]:
         # Use sandbox_unrestricted to move serialization outside the sandbox
         with workflow.unsafe.sandbox_unrestricted():
@@ -48,7 +65,9 @@ class PydanticJSONPayloadConverter(JSONPlainPayloadConverter):
                 metadata[CODEC_SENSITIVE_METADATA_KEY] = CODEC_SENSITIVE_METADATA_VALUE.encode()
 
             with DataConverterContextManager("PydanticJSONPayloadConverter.Serialize") as context_manager:
-                json_data = json.dumps(value, separators=(",", ":"), sort_keys=True, default=lambda x: Transformer.serialize(x).serialized_value)
+                executor = _get_serialization_executor()
+                future = executor.submit(json.dumps, value, separators=(",", ":"), sort_keys=True, default=lambda x: Transformer.serialize(x).serialized_value)
+                json_data = future.result(timeout=self.timeout_seconds)
                 data = json_data.encode()
                 context_manager.set_data_length(len(data))
                 return Payload(
@@ -60,7 +79,9 @@ class PydanticJSONPayloadConverter(JSONPlainPayloadConverter):
         # Use sandbox_unrestricted to move deserialization outside the sandbox
         with workflow.unsafe.sandbox_unrestricted():
             with DataConverterContextManager("PydanticJSONPayloadConverter.Deserialize", len(payload.data)):
-                obj = from_json(payload.data)
+                executor = _get_serialization_executor()
+                future = executor.submit(from_json, payload.data)
+                obj = future.result(timeout=self.timeout_seconds)
                 deserialized = Transformer.deserialize(obj, type_hint)
                 return deserialized
     
