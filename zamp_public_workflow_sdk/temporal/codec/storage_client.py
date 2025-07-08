@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-import asyncio
 from google.cloud import storage
 
 class StorageClient(ABC):
@@ -17,12 +16,7 @@ class GCSClient(StorageClient):
         self.bucket = self.client.bucket(bucket_name)
 
     async def upload_file(self, object_name: str, data: bytes | str) -> None:
-        await asyncio.to_thread(
-            self.bucket.blob(object_name).upload_from_string,
-            data
-        )
+        self.bucket.blob(object_name).upload_from_string(data)
 
     async def get_file(self, object_name: str) -> bytes:
-        return await asyncio.to_thread(
-            self.bucket.blob(object_name).download_as_bytes
-        )
+        return self.bucket.blob(object_name).download_as_bytes()
