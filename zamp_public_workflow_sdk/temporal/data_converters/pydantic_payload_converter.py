@@ -1,4 +1,5 @@
 import json
+import asyncio
 from pydantic_core import from_json
 from temporalio.api.common.v1 import Payload
 from temporalio.converter import CompositePayloadConverter, JSONPlainPayloadConverter, DefaultPayloadConverter
@@ -39,7 +40,8 @@ class PydanticJSONPayloadConverter(JSONPlainPayloadConverter):
         Transformer.register_collection_transformer(TupleTransformer())
         Transformer.register_collection_transformer(ListTransformer())
         
-    def to_payload(self, value: Any) -> Optional[Payload]:
+    def _serialize_sync(self, value: Any) -> Payload:
+        """Synchronous serialization method to be run in thread pool."""
         # Use sandbox_unrestricted to move serialization outside the sandbox
         with workflow.unsafe.sandbox_unrestricted():
             metadata = {"encoding": self.encoding.encode()}
@@ -56,13 +58,22 @@ class PydanticJSONPayloadConverter(JSONPlainPayloadConverter):
                     data=data,
                 )
 
-    def from_payload(self, payload: Payload, type_hint: Type | None = None) -> Any:
+    def _deserialize_sync(self, payload: Payload, type_hint: Type | None = None) -> Any:
+        """Synchronous deserialization method to be run in thread pool."""
         # Use sandbox_unrestricted to move deserialization outside the sandbox
         with workflow.unsafe.sandbox_unrestricted():
             with DataConverterContextManager("PydanticJSONPayloadConverter.Deserialize", len(payload.data)):
                 obj = from_json(payload.data)
                 deserialized = Transformer.deserialize(obj, type_hint)
                 return deserialized
+        
+    async def to_payload(self, value: Any) -> Optional[Payload]:
+        # Run heavy serialization in thread pool to avoid blocking the event loop
+        return await asyncio.to_thread(self._serialize_sync, value)
+
+    async def from_payload(self, payload: Payload, type_hint: Type | None = None) -> Any:
+        # Run heavy deserialization in thread pool to avoid blocking the event loop
+        return await asyncio.to_thread(self._deserialize_sync, payload, type_hint)
     
 class PydanticPayloadConverter(CompositePayloadConverter):
     """Payload converter that replaces Temporal JSON conversion with Pydantic
