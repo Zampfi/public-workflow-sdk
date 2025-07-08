@@ -1,5 +1,6 @@
 import json
 import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from pydantic_core import from_json
 from temporalio.api.common.v1 import Payload
 from temporalio.converter import CompositePayloadConverter, JSONPlainPayloadConverter, DefaultPayloadConverter
@@ -40,6 +41,9 @@ class PydanticJSONPayloadConverter(JSONPlainPayloadConverter):
         Transformer.register_collection_transformer(TupleTransformer())
         Transformer.register_collection_transformer(ListTransformer())
         
+        # Use Python's default executor for automatic management
+        self._executor = ThreadPoolExecutor(thread_name_prefix="payload-serializer")
+        
     def _serialize_sync(self, value: Any) -> Payload:
         """Synchronous serialization method to be run in thread pool."""
         # Use sandbox_unrestricted to move serialization outside the sandbox
@@ -67,14 +71,16 @@ class PydanticJSONPayloadConverter(JSONPlainPayloadConverter):
                 deserialized = Transformer.deserialize(obj, type_hint)
                 return deserialized
         
-    async def to_payload(self, value: Any) -> Optional[Payload]:
-        # Run heavy serialization in thread pool to avoid blocking the event loop
-        return await asyncio.to_thread(self._serialize_sync, value)
+    def to_payload(self, value: Any) -> Optional[Payload]:
+        # Use thread pool without interfering with global event loop
+        future = self._executor.submit(self._serialize_sync, value)
+        return future.result()
 
-    async def from_payload(self, payload: Payload, type_hint: Type | None = None) -> Any:
-        # Run heavy deserialization in thread pool to avoid blocking the event loop
-        return await asyncio.to_thread(self._deserialize_sync, payload, type_hint)
-    
+    def from_payload(self, payload: Payload, type_hint: Type | None = None) -> Any:
+        # Use thread pool without interfering with global event loop
+        future = self._executor.submit(self._deserialize_sync, payload, type_hint)
+        return future.result()
+
 class PydanticPayloadConverter(CompositePayloadConverter):
     """Payload converter that replaces Temporal JSON conversion with Pydantic
     JSON conversion.
