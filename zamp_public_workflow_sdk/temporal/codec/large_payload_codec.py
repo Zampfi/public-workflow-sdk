@@ -8,7 +8,7 @@ from zamp_public_workflow_sdk.temporal.codec.storage_client import StorageClient
 
 from zamp_public_workflow_sdk.temporal.data_converters.context_manager import DataConverterContextManager
 
-PAYLOAD_SIZE_THRESHOLD = 10 * 1024
+PAYLOAD_SIZE_THRESHOLD = 100 * 1024
 CODEC_BUCKET_ENCODING = "codec_bucket"
 CODEC_SENSITIVE_METADATA_KEY = "codec"
 CODEC_SENSITIVE_METADATA_VALUE = "sensitive"
