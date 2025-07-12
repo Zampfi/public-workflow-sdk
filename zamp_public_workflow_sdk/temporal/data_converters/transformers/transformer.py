@@ -2,6 +2,7 @@ from typing import Any, Dict
 from pydantic import BaseModel
 from pydantic_core import to_jsonable_python
 from pydantic.fields import FieldInfo
+import logging
 
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.base import BaseTransformer
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.collections.base import BaseCollectionsTransformer
@@ -15,6 +16,8 @@ from zamp_public_workflow_sdk.temporal.data_converters.type_utils import (
     is_type_field,
     get_reference_from_fqn,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class Transformer:
@@ -44,7 +47,8 @@ class Transformer:
                     serialized_value=to_jsonable_python(value),
                     serialized_type_hint=get_fqn(type(value))
                 )
-            except Exception:
+            except Exception as e:
+                logger.warning(f"Failed to serialize Pydantic model {type(value).__name__}: {e}")
                 pass  # fallback to full logic below
 
         for collection_transformer in cls._collection_transformers:
@@ -68,7 +72,8 @@ class Transformer:
                     serialized_value=serialized_result,
                     serialized_type_hint=get_fqn(type(value))
                 )
-            except Exception:
+            except Exception as e:
+                logger.warning(f"Failed to serialize object {type(value).__name__} with recursive logic: {e}")
                 pass  # fallback to custom transformers
 
         for transformer in cls._transformers:
@@ -76,7 +81,8 @@ class Transformer:
                 serialized = transformer.serialize(value)
                 if serialized is not None:
                     return serialized
-            except Exception:
+            except Exception as e:
+                logger.warning(f"Failed to serialize with transformer {type(transformer).__name__}: {e}")
                 continue
 
         # Fallback
@@ -99,7 +105,8 @@ class Transformer:
         if is_pydantic_model(type_hint) and isinstance(value, dict):
             try:
                 return type_hint.model_construct(**value)
-            except Exception:
+            except Exception as e:
+                logger.warning(f"Failed to deserialize Pydantic model {type_hint.__name__}: {e}")
                 pass  # fallback to recursive
 
         for collection_transformer in cls._collection_transformers:
@@ -107,7 +114,8 @@ class Transformer:
                 deserialized = collection_transformer.deserialize(value, type_hint, individual_type_hints)
                 if deserialized is not None:
                     return deserialized
-            except Exception:
+            except Exception as e:
+                logger.warning(f"Failed to deserialize with collection transformer {type(collection_transformer).__name__}: {e}")
                 continue
 
         if cls._should_deserialize(type_hint):
@@ -122,7 +130,8 @@ class Transformer:
                     if type_key in value:
                         try:
                             item_type = get_reference_from_fqn(cls._get_attribute(value, type_key))
-                        except Exception:
+                        except Exception as e:
+                            logger.warning(f"Failed to get type reference for field {item_key}: {e}")
                             pass
 
                     individual_type_hints_key = get_individual_type_field_name(item_key)
@@ -130,7 +139,8 @@ class Transformer:
                         try:
                             raw_hints = cls._get_attribute(value, individual_type_hints_key)
                             individual_type_hints = [get_reference_from_fqn(hint) for hint in raw_hints]
-                        except Exception:
+                        except Exception as e:
+                            logger.warning(f"Failed to get individual type hints for field {item_key}: {e}")
                             individual_type_hints = None
 
                     raw_value = cls._get_attribute(value, item_key)
@@ -145,7 +155,8 @@ class Transformer:
 
                 return cls._delete_type_keys(deserialized_result)
 
-            except Exception:
+            except Exception as e:
+                logger.warning(f"Failed to deserialize object {type_hint.__name__} with recursive logic: {e}")
                 pass  # fallback to custom transformers
 
         for transformer in cls._transformers:
@@ -153,7 +164,8 @@ class Transformer:
                 deserialized = transformer.deserialize(value, type_hint)
                 if deserialized is not None:
                     return deserialized
-            except Exception:
+            except Exception as e:
+                logger.warning(f"Failed to deserialize with transformer {type(transformer).__name__}: {e}")
                 continue
 
         return value
