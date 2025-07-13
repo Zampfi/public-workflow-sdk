@@ -1,5 +1,4 @@
 import time
-from temporalio import workflow
 
 class DataConverterContextManager:
     def __init__(self, data_conversion_type: str, data_length: int = 0):
@@ -14,9 +13,6 @@ class DataConverterContextManager:
     
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.end_time = time.time()
-        time_taken = self.end_time - self.start_time
-        if time_taken > 0.1:
-            workflow.logger.warning(f"{self.data_conversion_type} took {time_taken} seconds for a length of {self.data_length}")
 
     def set_data_length(self, data_length: int):
         self.data_length = data_length
