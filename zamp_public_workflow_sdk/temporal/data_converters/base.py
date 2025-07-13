@@ -1,9 +1,10 @@
 from temporalio.converter import DataConverter, PayloadCodec, PayloadConverter, CompositePayloadConverter
 import dataclasses
+from temporalio.contrib.pydantic import pydantic_data_converter
 from typing import Type
 
 class BaseDataConverter:
-    converter = DataConverter.default
+    converter = pydantic_data_converter
 
     def replace_payload_codec(self, payload_codec: PayloadCodec) -> 'BaseDataConverter':
         self.converter = dataclasses.replace(self.converter, payload_codec=payload_codec)
