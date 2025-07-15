@@ -18,8 +18,14 @@ import time
 from temporalio import workflow
 from zamp_public_workflow_sdk.temporal.data_converters.context_manager import DataConverterContextManager
 
+from temporalio.contrib.pydantic import PydanticJSONPlainPayloadConverter
+
+from zamp_public_workflow_sdk.temporal.data_converters.type_utils import is_serialize_by_default_serializer
+
 import structlog
 logger = structlog.get_logger(__name__)
+
+DEFAULT_CONVERTER_METADATA_KEY = "default_converter"
 
 class PydanticJSONPayloadConverter(JSONPlainPayloadConverter):
     """Pydantic JSON payload converter.
@@ -38,6 +44,8 @@ class PydanticJSONPayloadConverter(JSONPlainPayloadConverter):
 
         Transformer.register_collection_transformer(TupleTransformer())
         Transformer.register_collection_transformer(ListTransformer())
+
+        self.temporal_pydantic_converter = PydanticJSONPlainPayloadConverter()
         
     def to_payload(self, value: Any) -> Optional[Payload]:
         # Use sandbox_unrestricted to move serialization outside the sandbox
@@ -48,6 +56,12 @@ class PydanticJSONPayloadConverter(JSONPlainPayloadConverter):
                 metadata[CODEC_SENSITIVE_METADATA_KEY] = CODEC_SENSITIVE_METADATA_VALUE.encode()
 
             with DataConverterContextManager("PydanticJSONPayloadConverter.Serialize") as context_manager:
+
+                if is_serialize_by_default_serializer(value):
+                    payload = self.temporal_pydantic_converter.to_payload(value)
+                    payload.metadata[DEFAULT_CONVERTER_METADATA_KEY] = "true".encode()
+                    return payload
+
                 json_data = json.dumps(value, separators=(",", ":"), sort_keys=True, default=lambda x: Transformer.serialize(x).serialized_value)
                 data = json_data.encode()
                 context_manager.set_data_length(len(data))
@@ -60,6 +74,9 @@ class PydanticJSONPayloadConverter(JSONPlainPayloadConverter):
         # Use sandbox_unrestricted to move deserialization outside the sandbox
         with workflow.unsafe.sandbox_unrestricted():
             with DataConverterContextManager("PydanticJSONPayloadConverter.Deserialize", len(payload.data)):
+                if DEFAULT_CONVERTER_METADATA_KEY in payload.metadata:
+                    return self.temporal_pydantic_converter.from_payload(payload, type_hint)
+
                 obj = from_json(payload.data)
                 deserialized = Transformer.deserialize(obj, type_hint)
                 return deserialized

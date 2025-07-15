@@ -2,6 +2,9 @@ from typing import Any
 import typing
 from pydantic import BaseModel
 from temporalio import workflow
+import io
+from pydantic._internal._model_construction import ModelMetaclass
+from types import UnionType
 
 def get_fqn(cls: type) -> str:
     if cls == type(None) or cls == None:
@@ -112,3 +115,66 @@ def is_dict_type(type_hint: Any) -> bool:
 
 def is_pydantic_model(type_hint: Any) -> bool:
     return safe_issubclass(type_hint, BaseModel)
+
+def is_union_type(type_hint) -> bool:
+    if getattr(type_hint, "__origin__", None) is typing.Union or getattr(type_hint, "__class__", None) is typing.Union:
+        return True
+    
+    if getattr(type_hint, "__origin__", None) is UnionType or getattr(type_hint, "__class__", None) is UnionType:
+        return True
+
+def is_field_annotation_serializable(type_hint) -> bool:
+    if type_hint is typing.Generic:
+        return False
+    
+    if type_hint is type:
+        return False
+    
+    if type_hint is BaseModel:
+        return False
+    
+    if is_union_type(type_hint):
+        args = getattr(type_hint, "__args__")
+        for arg in args:
+            if not is_field_annotation_serializable(arg):
+                return False
+    
+    return True
+
+def should_serialize(value: Any) -> bool:
+    if isinstance(value, dict) or isinstance(value, BaseModel):
+        return True
+    
+    return False
+
+def get_property_type(field) -> Any:
+    annotation = field._attributes_set.get("annotation", None)
+    if annotation is None:
+        return field.annotation
+    
+    return annotation
+
+def get_enumerator(value: dict | BaseModel):
+    if isinstance(value, dict):
+        for key, item_value in value.items():
+            yield key, type(item_value), item_value
+    elif isinstance(value, BaseModel):
+        for name, field in value.model_fields.items():
+            yield name, get_property_type(field), getattr(value, name)
+
+def is_serialize_by_default_serializer(value: Any) -> bool: 
+    if should_serialize(value):
+        for _, annotation, property_value in get_enumerator(value):
+            if not is_field_annotation_serializable(annotation):
+                return False
+            
+            if isinstance(property_value, io.BytesIO):
+                return False
+            
+            if isinstance(property_value, ModelMetaclass):
+                return False
+            
+            if not is_serialize_by_default_serializer(property_value):
+                return False
+    
+    return True
