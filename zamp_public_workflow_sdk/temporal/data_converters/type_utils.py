@@ -136,6 +136,9 @@ def is_field_annotation_serializable(type_hint) -> bool:
     if type_hint is BaseModel:
         return False
     
+    if type_hint is tuple:
+        return False
+    
     if is_union_type(type_hint):
         args = getattr(type_hint, "__args__")
         for arg in args:
