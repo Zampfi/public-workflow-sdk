@@ -117,6 +117,16 @@ def test_nested_base_model():
     }
     assert is_serialize_by_default_serializer(nested_model_dumped) is True
 
+def test_tuple_case():
+    class PydanticModelWithTuple(BaseModel):
+        tuple: tuple
+
+    test = PydanticModelWithTuple(
+        tuple=(1, 2, 3)
+    )
+
+    assert is_serialize_by_default_serializer(test) is False
+
 if __name__ == "__main__":
     test_simple_pydantic_model()
     test_pydantic_model_with_bytesio()
@@ -124,3 +134,4 @@ if __name__ == "__main__":
     test_pydantic_model_with_pydantic_object()
     test_pydantic_model_with_pydantic_object2()
     test_nested_base_model()
+    test_tuple_case()
