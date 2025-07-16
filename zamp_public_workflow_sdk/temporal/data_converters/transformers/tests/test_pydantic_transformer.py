@@ -58,6 +58,34 @@ def test_nested_case():
     assert DEFAULT_CONVERTER_METADATA_KEY not in payload.metadata
     converter.from_payload(payload, Nested2)
 
+def test_generic_case():
+    from pydantic import BaseModel, Field
+    from typing import Any, Dict, Optional
+    from typing import TypeVar
+
+    T = TypeVar("T", bound=BaseModel)
+
+    class ExecutionResult[T: BaseModel](BaseModel):
+        success: bool = Field(..., description="Whether the execution was successful")
+        result: Optional[T] = Field(
+            None, description="Result of the function execution if successful"
+        )
+        error: Optional[str] = Field(None, description="Error message if execution failed")
+        execution_time: float = Field(
+            ..., description="Time taken for execution in seconds"
+        )
+
+    converter = PydanticJSONPayloadConverter()
+    execution_result = ExecutionResult(
+        success=True,
+        result=Basic(string="test"),
+        error=None,
+        execution_time=1.0
+    )
+    payload = converter.to_payload(execution_result)
+    assert DEFAULT_CONVERTER_METADATA_KEY not in payload.metadata
+
 if __name__ == "__main__":
     test_basic()
     test_nested_case()
+    test_generic_case()

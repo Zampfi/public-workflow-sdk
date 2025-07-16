@@ -127,6 +127,9 @@ def is_field_annotation_serializable(type_hint) -> bool:
     if type_hint is typing.Generic:
         return False
     
+    if getattr(type_hint, "__class__", None) is typing.TypeVar:
+        return False
+    
     if type_hint is type:
         return False
     
