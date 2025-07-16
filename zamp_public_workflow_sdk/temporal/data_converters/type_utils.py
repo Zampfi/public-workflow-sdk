@@ -122,6 +122,17 @@ def is_union_type(type_hint) -> bool:
     
     if getattr(type_hint, "__origin__", None) is UnionType or getattr(type_hint, "__class__", None) is UnionType:
         return True
+    
+def is_list_non_serializable_type(type_hint) -> bool:
+    if type_hint is list or getattr(type_hint, "__origin__", None) == list:
+        if not hasattr(type_hint, "__args__"):
+            return True
+
+        args = getattr(type_hint, "__args__", None) 
+        return not is_field_annotation_serializable(args[0])
+
+    return False
+    
 
 def is_field_annotation_serializable(type_hint) -> bool:
     if type_hint is typing.Generic:
@@ -137,6 +148,9 @@ def is_field_annotation_serializable(type_hint) -> bool:
         return False
     
     if type_hint is tuple:
+        return False
+    
+    if is_list_non_serializable_type(type_hint):
         return False
     
     if is_union_type(type_hint):
