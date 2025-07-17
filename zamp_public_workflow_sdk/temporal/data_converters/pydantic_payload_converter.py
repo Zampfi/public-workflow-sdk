@@ -58,9 +58,13 @@ class PydanticJSONPayloadConverter(JSONPlainPayloadConverter):
             with DataConverterContextManager("PydanticJSONPayloadConverter.Serialize") as context_manager:
 
                 if is_serialize_by_default_serializer(value):
-                    payload = self.temporal_pydantic_converter.to_payload(value)
-                    payload.metadata[DEFAULT_CONVERTER_METADATA_KEY] = "true".encode()
-                    return payload
+                    try:
+                        payload = self.temporal_pydantic_converter.to_payload(value)
+                        payload.metadata[DEFAULT_CONVERTER_METADATA_KEY] = "true".encode()
+                        return payload
+                    except Exception as e:
+                        # Failure to convert to payload is not a problem, we will fallback to the default converter
+                        pass
 
                 json_data = json.dumps(value, separators=(",", ":"), sort_keys=True, default=lambda x: Transformer.serialize(x).serialized_value)
                 data = json_data.encode()
