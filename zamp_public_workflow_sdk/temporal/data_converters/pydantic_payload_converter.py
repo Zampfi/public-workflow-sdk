@@ -66,7 +66,7 @@ class PydanticJSONPayloadConverter(JSONPlainPayloadConverter):
                         # Failure to convert to payload is not a problem, we will fallback to the default converter
                         pass
 
-                json_data = json.dumps(value, separators=(",", ":"), sort_keys=True, default=lambda x: Transformer.serialize(x).serialized_value)
+                json_data = json.dumps(value, separators=(",", ":"), sort_keys=False, default=lambda x: Transformer.serialize(x).serialized_value)
                 data = json_data.encode()
                 context_manager.set_data_length(len(data))
                 return Payload(
