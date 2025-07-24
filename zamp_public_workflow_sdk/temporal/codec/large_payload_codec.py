@@ -28,7 +28,9 @@ class LargePayloadCodec(PayloadCodec):
                     blob_name = f"{uuid4()}"
                     await self.storage_client.upload_file(blob_name, p.data)
                     bucket_data = BucketData(blob_name, p.metadata.get("encoding", "binary/plain").decode())
-                    encoded_payloads.append(Payload(data=bucket_data.get_bytes(), metadata={"encoding": CODEC_BUCKET_ENCODING.encode()}))
+                    metadata = p.metadata if p.metadata else {}
+                    metadata["encoding"] = CODEC_BUCKET_ENCODING.encode()
+                    encoded_payloads.append(Payload(data=bucket_data.get_bytes(), metadata=metadata))
                 else:
                     encoded_payloads.append(p)
                     
@@ -48,7 +50,9 @@ class LargePayloadCodec(PayloadCodec):
                     original_encoding = bucket_metadata["encoding"]
                     data = await self.storage_client.get_file(blob_name)
                     byte_size += len(data)
-                    decoded_payloads.append(Payload(data=data, metadata={"encoding": original_encoding.encode()}))
+                    metadata = p.metadata if p.metadata else {}
+                    metadata["encoding"] = original_encoding.encode()
+                    decoded_payloads.append(Payload(data=data, metadata=metadata))
                 else:
                     decoded_payloads.append(p)
                 
