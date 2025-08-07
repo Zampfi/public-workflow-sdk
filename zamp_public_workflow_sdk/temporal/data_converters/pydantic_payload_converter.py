@@ -14,9 +14,7 @@ from zamp_public_workflow_sdk.temporal.data_converters.transformers.datetime_tra
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.union_transformer import UnionTransformer
 from zamp_public_workflow_sdk.temporal.codec.large_payload_codec import CODEC_SENSITIVE_METADATA_KEY, CODEC_SENSITIVE_METADATA_VALUE
 from zamp_public_workflow_sdk.temporal.codec.models import CodecModel
-import time
 from temporalio import workflow
-from zamp_public_workflow_sdk.temporal.data_converters.context_manager import DataConverterContextManager
 
 from temporalio.contrib.pydantic import PydanticJSONPlainPayloadConverter
 
@@ -35,55 +33,25 @@ class PydanticJSONPayloadConverter(JSONPlainPayloadConverter):
     """
     def __init__(self):
         super().__init__()
-        Transformer.register_transformer(PydanticTypeTransformer())
-        Transformer.register_transformer(PydanticModelMetaclassTransformer())
-        Transformer.register_transformer(BytesTransformer())
-        Transformer.register_transformer(BytesIOTransformer())
-        Transformer.register_transformer(DateTransformer())
-        Transformer.register_transformer(UnionTransformer())
-
-        Transformer.register_collection_transformer(TupleTransformer())
-        Transformer.register_collection_transformer(ListTransformer())
-
         self.temporal_pydantic_converter = PydanticJSONPlainPayloadConverter()
         
     def to_payload(self, value: Any) -> Optional[Payload]:
         # Use sandbox_unrestricted to move serialization outside the sandbox
         with workflow.unsafe.sandbox_unrestricted():
-            metadata = {"encoding": self.encoding.encode()}
+            metadata = {}
             if isinstance(value, CodecModel):
                 value = value.value
                 metadata[CODEC_SENSITIVE_METADATA_KEY] = CODEC_SENSITIVE_METADATA_VALUE.encode()
 
-            with DataConverterContextManager("PydanticJSONPayloadConverter.Serialize") as context_manager:
-
-                if is_serialize_by_default_serializer(value):
-                    try:
-                        payload = self.temporal_pydantic_converter.to_payload(value)
-                        payload.metadata[DEFAULT_CONVERTER_METADATA_KEY] = "true".encode()
-                        return payload
-                    except Exception as e:
-                        # Failure to convert to payload is not a problem, we will fallback to the default converter
-                        pass
-
-                json_data = json.dumps(value, separators=(",", ":"), sort_keys=False, default=lambda x: Transformer.serialize(x).serialized_value)
-                data = json_data.encode()
-                context_manager.set_data_length(len(data))
-                return Payload(
-                    metadata=metadata,
-                    data=data,
-                )
+            payload = self.temporal_pydantic_converter.to_payload(value)
+            if metadata and len(metadata) > 0:
+                payload.metadata.update(metadata)
+            return payload
 
     def from_payload(self, payload: Payload, type_hint: Type | None = None) -> Any:
         # Use sandbox_unrestricted to move deserialization outside the sandbox
         with workflow.unsafe.sandbox_unrestricted():
-            with DataConverterContextManager("PydanticJSONPayloadConverter.Deserialize", len(payload.data)):
-                if DEFAULT_CONVERTER_METADATA_KEY in payload.metadata:
-                    return self.temporal_pydantic_converter.from_payload(payload, type_hint)
-
-                obj = from_json(payload.data)
-                deserialized = Transformer.deserialize(obj, type_hint)
-                return deserialized
+            return self.temporal_pydantic_converter.from_payload(payload, type_hint)
     
 class PydanticPayloadConverter(CompositePayloadConverter):
     """Payload converter that replaces Temporal JSON conversion with Pydantic
