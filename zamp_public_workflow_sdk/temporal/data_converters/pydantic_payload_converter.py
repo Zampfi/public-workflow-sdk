@@ -42,9 +42,9 @@ class PydanticJSONPayloadConverter(JSONPlainPayloadConverter):
             if isinstance(value, CodecModel):
                 value = value.value
                 metadata[CODEC_SENSITIVE_METADATA_KEY] = CODEC_SENSITIVE_METADATA_VALUE.encode()
-                
+
             payload = self.temporal_pydantic_converter.to_payload(value)
-            if metadata:
+            if metadata and len(metadata) > 0:
                 payload.metadata.update(metadata)
             return payload
 
