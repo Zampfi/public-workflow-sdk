@@ -1,0 +1,272 @@
+name: OpenGrep Security Scan (Blocking)
+
+on:
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - '**.txt'
+      - '.github/**'
+      - 'docs/**'
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - '**.txt'
+      - '.github/**'
+      - 'docs/**'
+  workflow_dispatch:     
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write  # Required for auto-commit
+      pull-requests: write
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Install OpenGrep
+      run: |
+        echo "📥 Installing OpenGrep..."
+        wget -q https://github.com/opengrep/opengrep/releases/download/v1.0.0-alpha.15/opengrep_manylinux_x86 -O opengrep
+        chmod +x opengrep
+        echo "✅ OpenGrep installed"
+
+    - name: Download Security Rules
+      run: |
+        echo "📥 Downloading security rules..."
+        git clone --depth 1 https://github.com/opengrep/opengrep-rules.git rules
+        echo "✅ Security rules downloaded"
+
+    - name: Run Security Scan
+      run: |
+        echo "🔍 Running security scan..."
+        
+        # Run scan with comprehensive rules
+        ./opengrep ci \
+          --config rules/typescript \
+          --config rules/javascript \
+          --config rules/python \
+          --config rules/go \
+          --config rules/terraform \
+          --config rules/dockerfile \
+          --config rules/yaml \
+          --config rules/generic \
+          --json --json-output scan_results.json \
+          --verbose || true
+        
+        echo "✅ Security scan completed"
+
+    - name: Process Results & Check Waivers
+      id: process-results
+      run: |
+        echo "📊 Processing scan results..."
+        
+        # Create security waivers file if it doesn't exist and track if we created it
+        WAIVERS_CREATED=false
+        if [ ! -f ".security-waivers.json" ]; then
+          echo '{
+          "waivers": []
+        }' > .security-waivers.json
+          echo "ℹ️  Created empty security waivers file"
+          WAIVERS_CREATED=true
+        fi
+        
+        # Process results with Python for better JSON handling
+        cat << 'EOF' > process_results.py
+        import json
+        import sys
+        import os
+        
+        # Load scan results
+        try:
+            with open('scan_results.json', 'r') as f:
+                scan_data = json.load(f)
+        except:
+            print("❌ No scan results found")
+            sys.exit(0)
+        
+        # Load waivers
+        try:
+            with open('.security-waivers.json', 'r') as f:
+                waivers_data = json.load(f)
+            waivers = waivers_data.get('waivers', [])
+        except:
+            waivers = []
+        
+        results = scan_data.get('results', [])
+        
+        # Filter for critical/high severity issues
+        critical_high = []
+        all_issues = []
+        
+        for result in results:
+            severity = result.get('extra', {}).get('severity', 'info').upper()
+            rule_id = result.get('check_id', '')
+            file_path = result.get('path', '')
+            line = result.get('start', {}).get('line', 0)
+            
+            # Check if this issue is waived
+            is_waived = False
+            for waiver in waivers:
+                if (waiver.get('rule_id') == rule_id and 
+                    waiver.get('file_path') == file_path and 
+                    waiver.get('line') == line):
+                    is_waived = True
+                    print(f"⚠️  Waived: {rule_id} in {file_path}:{line}")
+                    break
+            
+            if not is_waived:
+                all_issues.append(result)
+                if severity in ['ERROR', 'CRITICAL', 'HIGH']:
+                    critical_high.append(result)
+        
+        # Generate markdown report
+        with open('SECURITY_REPORT.md', 'w') as f:
+            f.write("# 🔒 Security Scan Report\n\n")
+            f.write(f"**Total Issues Found:** {len(all_issues)}\n")
+            f.write(f"**Critical/High Issues:** {len(critical_high)}\n")
+            f.write(f"**Waived Issues:** {len(results) - len(all_issues)}\n\n")
+            
+            if critical_high:
+                f.write("## 🔴 Critical/High Severity Issues\n\n")
+                for issue in critical_high:
+                    rule = issue.get('check_id', 'Unknown')
+                    path = issue.get('path', 'Unknown')
+                    line = issue.get('start', {}).get('line', '?')
+                    message = issue.get('extra', {}).get('message', 'No description')
+                    
+                    f.write(f"### `{rule}`\n")
+                    f.write(f"**File:** `{path}:{line}`\n")
+                    f.write(f"**Issue:** {message}\n\n")
+                    
+                    # Add waiver instructions
+                    f.write("**To waive this issue, add to `.security-waivers.json`:**\n")
+                    f.write("```json\n")
+                    f.write('{\n  "waivers": [\n')
+                    f.write('    {\n')
+                    f.write(f'      "rule_id": "{rule}",\n')
+                    f.write(f'      "file_path": "{path}",\n')
+                    f.write(f'      "line": {line},\n')
+                    f.write('      "reason": "<Brief justification for waiver>",\n')
+                    f.write('      "expires": "2025-12-31",\n')
+                    f.write('      "approved_by": "shashvat@zamp.ai"\n')
+                    f.write('    }\n  ]\n}\n')
+                    f.write("```\n\n")
+                    f.write("---\n\n")
+            else:
+                f.write("## ✅ No Critical/High Issues Found\n\n")
+                f.write("Great job! No critical or high severity security issues detected.\n\n")
+            
+            if len(all_issues) > len(critical_high):
+                f.write(f"## 📋 Other Issues ({len(all_issues) - len(critical_high)})\n\n")
+                f.write("Additional lower-severity issues were found. Review the full scan results for details.\n\n")
+        
+        # Output results for next steps
+        print(f"Total issues: {len(all_issues)}")
+        print(f"Critical/high issues: {len(critical_high)}")
+        print(f"Waived issues: {len(results) - len(all_issues)}")
+        
+        # Set GitHub outputs
+        with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+            f.write(f"critical_high_count={len(critical_high)}\n")
+            f.write(f"total_issues={len(all_issues)}\n")
+            f.write(f"has_blocking_issues={'true' if critical_high else 'false'}\n")
+        
+        EOF
+        
+        python3 process_results.py
+        
+        # Set the waivers created output
+        echo "waivers_created=$WAIVERS_CREATED" >> $GITHUB_OUTPUT
+
+    - name: Auto-Commit Security Waivers File
+      if: steps.process-results.outputs.waivers_created == 'true'
+      run: |
+        echo "📝 Committing new security waivers file..."
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add .security-waivers.json
+        
+        # Only commit if there are changes
+        if ! git diff --staged --quiet; then
+          git commit -m "Auto-create security waivers file [skip ci]"
+          
+          # Push to the appropriate branch
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git push origin HEAD:${{ github.head_ref }}
+          else
+            git push origin ${{ github.ref_name }}
+          fi
+          
+          echo "✅ Security waivers file committed and pushed"
+        else
+          echo "ℹ️  No changes to commit"
+        fi
+
+    - name: Comment on PR (Critical/High Issues Only)
+      if: github.event_name == 'pull_request' && steps.process-results.outputs.critical_high_count != '0'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          
+          if (!fs.existsSync('SECURITY_REPORT.md')) {
+            console.log('No security report found');
+            return;
+          }
+          
+          const report = fs.readFileSync('SECURITY_REPORT.md', 'utf8');
+          const criticalCount = '${{ steps.process-results.outputs.critical_high_count }}';
+          
+          let comment = '## 🔴 Security Scan: Critical/High Issues Found\n\n';
+          comment += `> **${criticalCount} critical/high severity security issue(s) must be resolved before merging.**\n\n`;
+          comment += '### 🚨 Blocking Issues\n\n';
+          comment += report.split('## 🔴 Critical/High Severity Issues')[1]?.split('## ')[0] || 'See artifact for details.';
+          comment += '\n\n---\n';
+          comment += '**📥 Full report available in workflow artifacts: `security-report`**\n';
+          comment += '**🛡️ To waive issues, follow the instructions in the security report**';
+          
+          await github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: comment
+          });
+
+    - name: Upload Security Report
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: security-report
+        path: |
+          SECURITY_REPORT.md
+          scan_results.json
+          .security-waivers.json
+        retention-days: 30
+
+    - name: Block on Critical/High Issues
+      if: steps.process-results.outputs.has_blocking_issues == 'true'
+      run: |
+        echo "🔴 BLOCKING: ${{ steps.process-results.outputs.critical_high_count }} critical/high severity security issues found"
+        echo ""
+        echo "❌ This PR cannot be merged until security issues are resolved or waived."
+        echo "📋 Review the security report artifact for detailed findings and waiver instructions."
+        echo ""
+        exit 1
+
+    - name: Success Summary
+      if: steps.process-results.outputs.has_blocking_issues == 'false'
+      run: |
+        echo "✅ Security scan passed!"
+        echo "📊 Total issues found: ${{ steps.process-results.outputs.total_issues }}"
+        echo "🔒 No critical/high severity issues detected"
+        if [ "${{ steps.process-results.outputs.total_issues }}" != "0" ]; then
+          echo "ℹ️  Lower severity issues found - review security report for details"
+        fi
