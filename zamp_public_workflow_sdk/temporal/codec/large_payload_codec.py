@@ -17,11 +17,11 @@ CODEC_SENSITIVE_METADATA_KEY = "codec"
 CODEC_SENSITIVE_METADATA_VALUE = "sensitive"
 
 class LargePayloadCodec(PayloadCodec):
-    def __init__(self, storage_client: StorageClient, encryption_key: Optional[bytes] = None):
+    def __init__(self, storage_client: StorageClient, encryption_key: Optional[str] = None):
         self.storage_client = storage_client
         self.encryption_key = encryption_key
         if encryption_key:
-            self.cipher = Fernet(encryption_key)
+            self.cipher = Fernet(encryption_key.encode())
 
     def _encrypt_data(self, data: bytes) -> bytes:
         """Encrypt the payload data using Fernet symmetric encryption."""
