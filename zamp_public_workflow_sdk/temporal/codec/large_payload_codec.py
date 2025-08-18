@@ -1,19 +1,39 @@
 from temporalio.converter import PayloadCodec
 from temporalio.api.common.v1 import Payload
-from typing import Iterable, List
+from typing import Iterable, List, Optional
 from uuid import uuid4
 import json
+import base64
+from cryptography.fernet import Fernet
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from zamp_public_workflow_sdk.temporal.codec.models import BucketData
 from zamp_public_workflow_sdk.temporal.codec.storage_client import StorageClient
 
 PAYLOAD_SIZE_THRESHOLD = 100 * 1024
 CODEC_BUCKET_ENCODING = "codec_bucket"
+CODEC_ENCRYPTED_ENCODING = "codec_encrypted"
 CODEC_SENSITIVE_METADATA_KEY = "codec"
 CODEC_SENSITIVE_METADATA_VALUE = "sensitive"
 
 class LargePayloadCodec(PayloadCodec):
-    def __init__(self, storage_client: StorageClient):
+    def __init__(self, storage_client: StorageClient, encryption_key: Optional[bytes] = None):
         self.storage_client = storage_client
+        self.encryption_key = encryption_key
+        if encryption_key:
+            self.cipher = Fernet(encryption_key)
+
+    def _encrypt_data(self, data: bytes) -> bytes:
+        """Encrypt the payload data using Fernet symmetric encryption."""
+        if not self.encryption_key:
+            return data
+        return self.cipher.encrypt(data)
+    
+    def _decrypt_data(self, encrypted_data: bytes) -> bytes:
+        """Decrypt the payload data using Fernet symmetric encryption."""
+        if not self.encryption_key:
+            return encrypted_data
+        return self.cipher.decrypt(encrypted_data)
 
     async def encode(self, payload: Iterable[Payload]) -> List[Payload]:
         encoded_payloads = []
@@ -26,7 +46,14 @@ class LargePayloadCodec(PayloadCodec):
                 metadata["encoding"] = CODEC_BUCKET_ENCODING.encode()
                 encoded_payloads.append(Payload(data=bucket_data.get_bytes(), metadata=metadata))
             else:
-                encoded_payloads.append(p)
+                # Encrypt the data for smaller payloads
+                encrypted_data = self._encrypt_data(p.data)
+                base64_encrypted_data = base64.b64encode(encrypted_data).decode()
+                original_encoding = p.metadata.get("encoding", "binary/plain").decode()
+                data_bytes = json.dumps({"data": base64_encrypted_data, "encoding": original_encoding}).encode()
+                metadata = p.metadata if p.metadata else {}
+                metadata["encoding"] = CODEC_ENCRYPTED_ENCODING.encode()
+                encoded_payloads.append(Payload(data=data_bytes, metadata=metadata))
 
         return encoded_payloads
 
@@ -39,6 +66,16 @@ class LargePayloadCodec(PayloadCodec):
                 blob_name = bucket_metadata["data"]
                 original_encoding = bucket_metadata["encoding"]
                 data = await self.storage_client.get_file(blob_name)
+                metadata = p.metadata if p.metadata else {}
+                metadata["encoding"] = original_encoding.encode()
+                decoded_payloads.append(Payload(data=data, metadata=metadata))
+            elif encoding == CODEC_ENCRYPTED_ENCODING:
+                # Decrypt the data
+                data_bytes = json.loads(p.data.decode())
+                base64_encrypted_data = data_bytes["data"]
+                encrypted_data_bytes = base64.b64decode(base64_encrypted_data)
+                data = self._decrypt_data(encrypted_data_bytes)
+                original_encoding = data_bytes["encoding"]
                 metadata = p.metadata if p.metadata else {}
                 metadata["encoding"] = original_encoding.encode()
                 decoded_payloads.append(Payload(data=data, metadata=metadata))
