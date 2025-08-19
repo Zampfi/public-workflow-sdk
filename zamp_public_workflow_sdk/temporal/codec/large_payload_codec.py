@@ -19,8 +19,24 @@ class LargePayloadCodec(PayloadCodec):
     def __init__(self, storage_client: StorageClient, encryption_key: Optional[str] = None):
         self.storage_client = storage_client
         self.encryption_key = encryption_key
-        if encryption_key:
+        if encryption_key is not None:
+            self._validate_encryption_key(encryption_key)
             self.cipher = Fernet(encryption_key.encode())
+
+    def _validate_encryption_key(self, encryption_key: str) -> None:
+        """
+        Validate that the encryption key is in the correct Fernet format.
+        Fernet keys are base64-encoded 32-byte keys (44 characters when encoded)
+        """        
+        try:
+            key_bytes = base64.urlsafe_b64decode(encryption_key + '==')
+            # Check if the decoded key is exactly 32 bytes
+            if len(key_bytes) != 32:
+                raise ValueError(f"Encryption key must decode to exactly 32 bytes, got {len(key_bytes)} bytes")
+        except Exception as e:
+            if isinstance(e, ValueError) and "32 bytes" in str(e):
+                raise e
+            raise ValueError(f"Invalid encryption key format: {str(e)}")
 
     def _encrypt_data(self, data: bytes) -> bytes:
         """Encrypt the payload data using Fernet symmetric encryption."""
