@@ -44,7 +44,7 @@ class LargePayloadCodec(PayloadCodec):
                 metadata = p.metadata if p.metadata else {}
                 metadata["encoding"] = CODEC_BUCKET_ENCODING.encode()
                 encoded_payloads.append(Payload(data=bucket_data.get_bytes(), metadata=metadata))
-            else:
+            elif self.encryption_key is not None:
                 # Encrypt the data for smaller payloads
                 encrypted_data = self._encrypt_data(p.data)
                 base64_encrypted_data = base64.b64encode(encrypted_data).decode()
@@ -53,6 +53,8 @@ class LargePayloadCodec(PayloadCodec):
                 metadata = p.metadata if p.metadata else {}
                 metadata["encoding"] = CODEC_ENCRYPTED_ENCODING.encode()
                 encoded_payloads.append(Payload(data=data_bytes, metadata=metadata))
+            else:
+                encoded_payloads.append(p)
 
         return encoded_payloads
 
