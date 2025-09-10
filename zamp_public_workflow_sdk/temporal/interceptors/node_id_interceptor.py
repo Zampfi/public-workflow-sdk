@@ -9,7 +9,7 @@ This interceptor handles node_id propagation from workflows to activities and ch
 All processing is done in the WorkflowOutboundInterceptor, eliminating the need for an ActivityInboundInterceptor.
 """
 
-from typing import Any, Callable, Type
+from typing import Any, Callable, Type, Optional
 
 from temporalio import workflow
 from temporalio.worker import (
@@ -17,6 +17,7 @@ from temporalio.worker import (
     StartActivityInput,
     StartChildWorkflowInput,
     WorkflowOutboundInterceptor,
+    WorkflowInboundInterceptor,
 )
 # Constants
 NODE_ID_HEADER_KEY = "node_id"
@@ -28,27 +29,22 @@ class NodeIdWorkflowOutboundInterceptor(WorkflowOutboundInterceptor):
     def __init__(
         self,
         next_interceptor: WorkflowOutboundInterceptor,
-        node_id_header_key: str,
     ):
         super().__init__(next_interceptor)
-        self.node_id_header_key = NODE_ID_HEADER_KEY
     
-    def _extract_node_id_from_args(self, args: tuple) -> str:
+    def _check_temporal_node_id_present(self, arg: Any) -> bool:
+        """Check if argument is a valid temporal node_id dict."""
+        return isinstance(arg, dict) and TEMPORAL_NODE_ID_KEY in arg and len(arg) == 1
+    
+    def _extract_node_id_from_args(self, args: tuple) -> Optional[str]:
         """Extract node_id from activity arguments."""
         for arg in args:
-            # Check if arg is the node_id dict: {"__temporal_node_id": "value"}
-            if isinstance(arg, dict) and TEMPORAL_NODE_ID_KEY in arg and len(arg) == 1:
+            if self._check_temporal_node_id_present(arg):
                 return arg[TEMPORAL_NODE_ID_KEY]
         return None
     
-    def _add_node_id_to_headers(self, input: Any, node_id: str) -> None:
-        """Add node_id to activity headers for ActivityInboundInterceptor to read."""
-        if node_id:
-            payload = workflow.payload_converter().to_payload(node_id)
-            input.headers[NODE_ID_HEADER_KEY] = payload
-
-    def _add_node_id_to_child_workflow_headers(self, input: StartChildWorkflowInput, node_id: str) -> None:
-        """Add node_id to child workflow headers for visibility in execution history."""
+    def _add_node_id_to_activity_headers(self, input: Any, node_id: str) -> None:
+        """Add node_id to headers for visibility in execution history."""
         if node_id:
             payload = workflow.payload_converter().to_payload(node_id)
             if not hasattr(input, 'headers') or input.headers is None:
@@ -70,8 +66,7 @@ class NodeIdWorkflowOutboundInterceptor(WorkflowOutboundInterceptor):
             
         filtered_args = []
         for arg in args:
-            # Skip the node_id dict: {"__temporal_node_id": "value"}
-            if isinstance(arg, dict) and TEMPORAL_NODE_ID_KEY in arg and len(arg) == 1:
+            if self._check_temporal_node_id_present(arg):
                 continue
             filtered_args.append(arg)
         return tuple(filtered_args)
@@ -80,7 +75,7 @@ class NodeIdWorkflowOutboundInterceptor(WorkflowOutboundInterceptor):
         """Extract node_id from args, add to headers, and remove from args for clean Temporal UI."""        
         node_id = self._extract_node_id_from_args(input.args)
         if node_id:
-            self._add_node_id_to_headers(input, node_id)
+            self._add_node_id_to_activity_headers(input, node_id)
             input.args = self._filter_node_id_from_args(input.args)
         
         return self.next.start_activity(input)
@@ -89,7 +84,7 @@ class NodeIdWorkflowOutboundInterceptor(WorkflowOutboundInterceptor):
         """Extract node_id from args, add to headers, and remove from args for clean Temporal UI."""
         node_id = self._extract_node_id_from_args(input.args)
         if node_id:
-            self._add_node_id_to_child_workflow_headers(input, node_id)
+            self._add_node_id_to_activity_headers(input, node_id)
             input.args = self._filter_node_id_from_args(input.args)
         
         return await self.next.start_child_workflow(input)
@@ -110,29 +105,23 @@ class NodeIdInterceptor(Interceptor):
     
     def __init__(
         self,
-        node_id_header_key: str = NODE_ID_HEADER_KEY,
         logger_module=None,
     ):
         """
         Initialize the node_id interceptor.
         
         Args:
-            node_id_header_key: Key to use for node_id in headers
             logger_module: Logger module (for compatibility with other interceptors)
         """
-        self.node_id_header_key = node_id_header_key
         self.logger_module = logger_module
 
     def workflow_interceptor_class(self, input: Any) -> Any:
-        """Create a minimal workflow interceptor that only sets up the outbound interceptor."""
-        node_id_header_key = self.node_id_header_key
+        """Create a workflow interceptor that only sets up the outbound interceptor."""
         
-        from temporalio.worker import WorkflowInboundInterceptor
-        
-        class MinimalInboundInterceptor(WorkflowInboundInterceptor):
-            """Minimal inbound interceptor that only wraps the outbound."""
+        class NodeIdWorkflowInboundInterceptor(WorkflowInboundInterceptor):
+            """Workflow inbound interceptor that wraps the outbound with node_id handling."""
             def init(self, outbound: WorkflowOutboundInterceptor) -> None:
-                super().init(NodeIdWorkflowOutboundInterceptor(outbound, node_id_header_key))
+                super().init(NodeIdWorkflowOutboundInterceptor(outbound))
         
-        return MinimalInboundInterceptor
+        return NodeIdWorkflowInboundInterceptor
 
