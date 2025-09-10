@@ -21,6 +21,7 @@ from temporalio.worker import (
 # Constants
 NODE_ID_HEADER_KEY = "node_id"
 TEMPORAL_NODE_ID_KEY = "__temporal_node_id"
+
 class NodeIdWorkflowOutboundInterceptor(WorkflowOutboundInterceptor):
     """Workflow outbound interceptor that handles node_id for activities and child workflows."""
     
