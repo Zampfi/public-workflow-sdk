@@ -20,6 +20,7 @@ from temporalio.worker import (
 )
 # Constants
 NODE_ID_HEADER_KEY = "node_id"
+TEMPORAL_NODE_ID_KEY = "__temporal_node_id"
 class NodeIdWorkflowOutboundInterceptor(WorkflowOutboundInterceptor):
     """Workflow outbound interceptor that handles node_id for activities and child workflows."""
     
@@ -35,8 +36,8 @@ class NodeIdWorkflowOutboundInterceptor(WorkflowOutboundInterceptor):
         """Extract node_id from activity arguments."""
         for arg in args:
             # Check if arg is the node_id dict: {"__temporal_node_id": "value"}
-            if isinstance(arg, dict) and '__temporal_node_id' in arg and len(arg) == 1:
-                return arg['__temporal_node_id']
+            if isinstance(arg, dict) and TEMPORAL_NODE_ID_KEY in arg and len(arg) == 1:
+                return arg[TEMPORAL_NODE_ID_KEY]
         return None
     
     def _add_node_id_to_headers(self, input: Any, node_id: str) -> None:
@@ -69,7 +70,7 @@ class NodeIdWorkflowOutboundInterceptor(WorkflowOutboundInterceptor):
         filtered_args = []
         for arg in args:
             # Skip the node_id dict: {"__temporal_node_id": "value"}
-            if isinstance(arg, dict) and '__temporal_node_id' in arg and len(arg) == 1:
+            if isinstance(arg, dict) and TEMPORAL_NODE_ID_KEY in arg and len(arg) == 1:
                 continue
             filtered_args.append(arg)
         return tuple(filtered_args)
