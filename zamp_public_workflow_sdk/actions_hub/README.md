@@ -21,8 +21,8 @@ pip install -r requirements.txt
 ### Executing Activities
 
 ```python
-from pantheon_v2.actions_hub import ActionsHub
-from pantheon_v2.actions_hub.models.core_models import RetryPolicy
+from zamp_public_workflow_sdk.actions_hub import ActionsHub
+from zamp_public_workflow_sdk.actions_hub.models.core_models import RetryPolicy
 from datetime import datetime, timedelta
 
 # Execute a simple activity

@@ -11,9 +11,9 @@ from datetime import timedelta
 # Add the parent directory to the path so we can import the modules
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from pantheon_v2.actions_hub.constants import ActionType
-from pantheon_v2.actions_hub.models.core_models import Action, RetryPolicy
-from pantheon_v2.actions_hub.action_hub_core import ActionsHub
+from zamp_public_workflow_sdk.actions_hub.constants import ActionType
+from zamp_public_workflow_sdk.actions_hub.models.core_models import Action, RetryPolicy
+from zamp_public_workflow_sdk.actions_hub.action_hub_core import ActionsHub
 
 
 class TestActionsHub:
@@ -23,10 +23,10 @@ class TestActionsHub:
         """Set up test fixtures."""
         # Mock the ActionsHub class to avoid complex dependencies
         with patch(
-            "pantheon_v2.actions_hub.action_hub_core.workflow.unsafe.imports_passed_through"
+            "zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.unsafe.imports_passed_through"
         ):
             # Import ActionsHub directly from the module
-            from pantheon_v2.actions_hub.action_hub_core import ActionsHub
+            from zamp_public_workflow_sdk.actions_hub.action_hub_core import ActionsHub
 
             self.ActionsHub = ActionsHub
 
@@ -128,7 +128,7 @@ class TestActionsHub:
             return x
 
         # Test with specific filter to get the activity
-        from pantheon_v2.actions_hub.models.core_models import ActionFilter
+        from zamp_public_workflow_sdk.actions_hub.models.core_models import ActionFilter
 
         filter_obj = ActionFilter(resticted_action_set={"test_activity_get_actions"})
         actions = self.ActionsHub.get_available_actions(filter_obj)
@@ -159,7 +159,7 @@ class TestActionsHub:
             return x
 
         # Test with filter
-        from pantheon_v2.actions_hub.models.core_models import ActionFilter
+        from zamp_public_workflow_sdk.actions_hub.models.core_models import ActionFilter
 
         filter_obj = ActionFilter(resticted_action_set={"test_activity_filter"})
         actions = self.ActionsHub.get_available_actions(filter_obj)
@@ -223,7 +223,7 @@ class TestActionsHub:
         """Test registering connection mappings."""
         hub = self.ActionsHub()
 
-        from pantheon_v2.actions_hub.models.credentials_models import (
+        from zamp_public_workflow_sdk.actions_hub.models.credentials_models import (
             ActionConnectionsMapping,
             Connection,
         )
@@ -251,7 +251,7 @@ class TestActionsHub:
         """Test getting connection mappings."""
         hub = self.ActionsHub()
 
-        from pantheon_v2.actions_hub.models.credentials_models import (
+        from zamp_public_workflow_sdk.actions_hub.models.credentials_models import (
             ActionConnectionsMapping,
             Connection,
         )
@@ -291,7 +291,7 @@ class TestActionsHub:
 
     def test_retry_policy_defaults(self):
         """Test retry policy defaults."""
-        from pantheon_v2.actions_hub.models.core_models import RetryPolicy
+        from zamp_public_workflow_sdk.actions_hub.models.core_models import RetryPolicy
 
         # Test that RetryPolicy class works
         retry_policy = RetryPolicy.default()
@@ -303,7 +303,7 @@ class TestActionsHub:
 
     def test_retry_policy_custom(self):
         """Test custom retry policies."""
-        from pantheon_v2.actions_hub.models.core_models import RetryPolicy
+        from zamp_public_workflow_sdk.actions_hub.models.core_models import RetryPolicy
 
         # Test creating custom retry policy
         custom_retry_policy = RetryPolicy(

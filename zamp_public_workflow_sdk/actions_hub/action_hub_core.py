@@ -268,14 +268,6 @@ class ActionsHub:
         activity_name, workflow_id, node_id = cls._generate_node_id_for_action(activity)
 
         # Note: retry_policy.initial_interval and maximum_interval are already timedelta objects
-
-        # Convert ISO string to timedelta
-        retry_policy.initial_interval = convert_iso_to_timedelta(
-            retry_policy.initial_interval
-        )
-        retry_policy.maximum_interval = convert_iso_to_timedelta(
-            retry_policy.maximum_interval
-        )
         # Check if execution_mode is set to "API" in context variables
         if execution_mode is None:
             execution_mode = get_execution_mode_from_context()
@@ -606,7 +598,7 @@ class ActionsHub:
     @classmethod
     def get_available_actions(cls, filters: ActionFilter) -> list[Action]:
         actions = []
-        workflow_list = cls.get_available_workflows(filters.labels)
+        workflow_list = cls.get_available_workflows(filters.labels or [])
         for wf in workflow_list:
             actions.append(Action.from_workflow(wf))
 
@@ -749,7 +741,7 @@ class ActionsHub:
                     timeout_seconds=30,
                 ),
                 ExecuteCodeParams(
-                    function=get_fqn(action.func),
+                    function=get_fqn(action.func) if action.func else None,
                     args=args,
                     kwargs=kwargs,
                 ),

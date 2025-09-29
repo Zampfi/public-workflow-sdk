@@ -7,7 +7,7 @@ from io import BytesIO
 from enum import Enum
 from pydantic import BaseModel, Field
 
-from pantheon_v2.actions_hub.utils.serializer import Serializer
+from zamp_public_workflow_sdk.actions_hub.utils.serializer import Serializer
 
 
 class SampleEnum(Enum):
