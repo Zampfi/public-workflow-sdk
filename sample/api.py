@@ -19,7 +19,6 @@ class API:
             TemporalClientConfig(
                 host="localhost:7233",
                 namespace="default",
-                is_cloud=True
             )
         )
 
