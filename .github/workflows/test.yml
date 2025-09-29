@@ -38,4 +38,4 @@ jobs:
         uses: ewjoachim/coverage-comment-action@v1
         with:
           COVERAGE_FILE: "coverage.xml"
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
