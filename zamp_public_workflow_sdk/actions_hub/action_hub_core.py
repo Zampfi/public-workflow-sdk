@@ -374,7 +374,7 @@ class ActionsHub:
         return wrapper
 
     @classmethod
-    def register_workflow_signal(cls, name: Optional[str] = None):
+    def register_workflow_signal(cls, name: str = None):
         def decorator(func: Callable) -> Callable:
             @workflow.signal(name=name)
             @wraps(func)
@@ -386,10 +386,10 @@ class ActionsHub:
         return decorator
 
     @classmethod
-    def register_workflow_query(cls, name: str):
+    def register_workflow_query(cls, name: str = None):
         """Register a workflow query method.
         Args:
-            name (str): Name for the query.
+            name (str, optional): Name for the query. Defaults to function name if None.
         Returns:
             Callable: Decorator that registers the function as a workflow query.
         """

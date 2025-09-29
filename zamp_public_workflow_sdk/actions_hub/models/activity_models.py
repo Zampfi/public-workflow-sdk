@@ -33,8 +33,6 @@ class Activity(BaseModel):
         parameters = inspect.signature(self.func).parameters
         params = []
         for param_name, param in parameters.items():
-            if param.name == "self":
-                continue
             if param.annotation == inspect.Signature.empty:
                 raise ValueError(f"Parameter {param_name} has no type annotation")
             params.append(param.annotation)

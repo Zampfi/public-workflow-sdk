@@ -41,7 +41,4 @@ class BusinessLogic(BaseModel):
         return tuple(params)
 
     def _get_returns(self) -> type:
-        return_type = inspect.signature(self.func).return_annotation
-        if return_type == inspect.Signature.empty:
-            raise ValueError("Return type is not specified")
-        return return_type
+        return inspect.signature(self.func).return_annotation
