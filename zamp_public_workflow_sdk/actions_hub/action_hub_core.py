@@ -181,10 +181,12 @@ class ActionsHub:
     def register_activity(
         cls,
         description: str,
+        labels: Optional[List[str]] = None,
         mcp_config: Optional[MCPConfig] = None,
     ):
         """
-        Register an activity decorator with optional description
+        Register an activity decorator with optional description, labels, and MCP access control
+
         Args:
             description: Human-readable description of the activity
             mcp_config: Optional MCPConfig DTO with service_name and accesses list
