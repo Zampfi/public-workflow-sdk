@@ -15,12 +15,8 @@ def get_variable_from_context(variable_name: str, default_value: Any = None) -> 
     Returns:
         The value of the variable
     """
-    try:
-        context_vars = structlog.contextvars.get_contextvars()
-        return context_vars.get(variable_name, default_value)
-    except Exception:
-        # Fallback if structlog context is not available
-        return default_value
+    context_vars = structlog.contextvars.get_contextvars()
+    return context_vars.get(variable_name, default_value)
 
 
 def get_execution_mode_from_context():
