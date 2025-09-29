@@ -384,10 +384,10 @@ class ActionsHub:
         return decorator
 
     @classmethod
-    def register_workflow_query(cls, name: Optional[str] = None):
+    def register_workflow_query(cls, name: str):
         """Register a workflow query method.
         Args:
-            name (str, optional): Custom name for the query. Defaults to function name if None.
+            name (str): Name for the query.
         Returns:
             Callable: Decorator that registers the function as a workflow query.
         """
