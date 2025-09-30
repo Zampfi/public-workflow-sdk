@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='zamp_public_workflow_sdk',
-    version='0.0.114',
+    version='0.0.115',
     description='Workflow Manager',
     url='https://github.com/zamp-engineering/workflow_manager',
     author='Zamp Engineering',
@@ -10,6 +10,9 @@ setup(
     license='MIT',
     packages=[
         'zamp_public_workflow_sdk',
+        'zamp_public_workflow_sdk.actions_hub',
+        'zamp_public_workflow_sdk.actions_hub.models',
+        'zamp_public_workflow_sdk.actions_hub.utils',
         'zamp_public_workflow_sdk.temporal',
         'zamp_public_workflow_sdk.temporal.models',
         'zamp_public_workflow_sdk.temporal.codec',
