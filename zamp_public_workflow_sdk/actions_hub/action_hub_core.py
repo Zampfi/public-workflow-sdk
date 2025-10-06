@@ -9,6 +9,7 @@ import asyncio
 import threading
 from collections import defaultdict
 from temporalio import workflow, activity
+from zamp_public_workflow_sdk.temporal.interceptors.node_id_interceptor import NODE_ID_HEADER_KEY
 from .models.mcp_models import MCPConfig
 
 from .constants import DEFAULT_MODE
@@ -101,12 +102,27 @@ class ActionsHub:
             Tuple of (action_name, workflow_id, node_id)
         """
         # Get action name for node_id generation
-        action_name = action if isinstance(action, str) else action.__name__
-
-        # Generate node_id for this action execution
+        if isinstance(action, str):
+            return action, cls._get_current_workflow_id(), cls._get_node_id(cls._get_current_workflow_id(), action)
+        
+        # Handle bound methods (e.g., instance.method)
+        if hasattr(action, '__self__') and hasattr(action, '__name__') and action.__self__ is not None:
+            class_name = action.__self__.__class__.__name__
+            workflow_id = cls._get_current_workflow_id()
+            node_id = cls._get_node_id(workflow_id, class_name)
+            return class_name, workflow_id, node_id
+        
+        # Handle unbound methods (e.g., Class.method)
+        if hasattr(action, '__qualname__') and '.' in action.__qualname__:
+            # For qualified names like "ClassName.method", use the class name
+            class_name = action.__qualname__.split('.')[0]
+            workflow_id = cls._get_current_workflow_id()
+            node_id = cls._get_node_id(workflow_id, class_name)
+            return class_name, workflow_id, node_id
+        
+        action_name = action.__name__
         workflow_id = cls._get_current_workflow_id()
         node_id = cls._get_node_id(workflow_id, action_name)
-
         return action_name, workflow_id, node_id
 
     @classmethod
@@ -114,22 +130,69 @@ class ActionsHub:
         """
         Generate a unique node_id for an action execution.
 
+        For actions within child workflows, the node_id will be hierarchical:
+        - Main workflow activity: Activity (or Activity#2 if called again)
+        - Child workflow: ChildWorkflow#1
+        - Activity within child workflow: ChildWorkflow#1.Activity
+        - Child workflow within child workflow: ChildWorkflow#1.NestedChildWorkflow#1
+
         Args:
             workflow_id: The workflow ID
             action_name: The name of the action (activity/workflow)
 
         Returns:
-            A unique node_id in format: {action_name}#{count}
+            A unique node_id in hierarchical format
         """
         with cls._node_id_lock:
             if workflow_id not in cls._node_id_tracker:
                 cls._node_id_tracker[workflow_id] = defaultdict(int)
 
-            cls._node_id_tracker[workflow_id][action_name] += 1
-            count = cls._node_id_tracker[workflow_id][action_name]
+            # Get parent context from workflow headers
+            context_segments = []
+            try:
+                info = workflow.info()
+                if info.headers and NODE_ID_HEADER_KEY in info.headers:
+                    node_id_payload = info.headers[NODE_ID_HEADER_KEY]
+                    parent_context = workflow.payload_converter().from_payload(
+                        node_id_payload, str
+                    )
+                    if parent_context:
+                        context_segments = parent_context.split(".")
+            except Exception:
+                # reset parent_context to empty string to avoid using the previous context
+                context_segments = []
 
-        # Use the full workflow_id for the node_id format
-        return f"{action_name}#{count}"
+            tracking_segments = [*context_segments, action_name]
+            tracking_key = ".".join(tracking_segments)
+
+            cls._node_id_tracker[workflow_id][tracking_key] += 1
+            count = cls._node_id_tracker[workflow_id][tracking_key]
+
+            node_id = f"{tracking_key}#{count}"
+
+        return node_id
+
+    @classmethod
+    def _get_current_node_id(cls) -> str | None:
+        """
+        Get the current workflow's node_id from headers.
+        
+        Returns:
+            The current node_id if available, None otherwise
+        """
+        try:
+            info = workflow.info()
+            if info.headers and "node_id" in info.headers:
+                node_id_payload = info.headers["node_id"]
+                current_node_id = workflow.payload_converter().from_payload(
+                    node_id_payload, str
+                )
+                return current_node_id
+        except Exception:
+            pass
+        
+        return None
+
 
     @classmethod
     def _get_current_workflow_id(cls) -> str:
