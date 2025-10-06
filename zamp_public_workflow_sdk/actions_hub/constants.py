@@ -39,3 +39,9 @@ class ExecutionMode(str, Enum):
 
     API = "API"
     TEMPORAL = "TEMPORAL"
+
+# Simulation constants
+SKIP_SIMULATION_WORKFLOWS = [
+    "SimulationWorkflow",
+    "FetchTemporalWorkflowHistoryWorkflow",
+]

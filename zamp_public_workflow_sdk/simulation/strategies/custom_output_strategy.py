@@ -1,0 +1,50 @@
+"""
+Custom Output simulation strategy implementation.
+"""
+
+import structlog
+from typing import Any, List, Optional
+
+from models.simulation_response import (
+    SimulationStrategyOutput,
+)
+from strategies.base_strategy import BaseStrategy
+from models.workflow_history import (
+    WorkflowHistory,
+)
+
+logger = structlog.get_logger(__name__)
+
+
+class CustomOutputStrategyHandler(BaseStrategy):
+    """
+    Strategy that returns predefined custom outputs.
+    """
+
+    def __init__(self, output_value: Any):
+        """
+        Initialize with custom output value.
+
+        Args:
+            output_value: The custom output value to return
+        """
+        self.output_value = output_value
+
+    async def execute(
+        self,
+        node_ids: List[str],
+        temporal_history: Optional[WorkflowHistory] = None,
+    ) -> SimulationStrategyOutput:
+        """
+        Execute Custom Output strategy.
+
+        Args:
+            node_ids: List of node execution IDs
+            temporal_history: Optional workflow history (not used in this strategy)
+
+        Returns:
+            SimulationStrategyOutput with should_execute=False for mocking
+        """
+        # Return the same custom output for all nodes
+        node_outputs = {node_id: self.output_value for node_id in node_ids}
+        return SimulationStrategyOutput(should_execute=False, node_outputs=node_outputs)
