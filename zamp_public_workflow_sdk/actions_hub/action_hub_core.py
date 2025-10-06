@@ -173,28 +173,6 @@ class ActionsHub:
         return node_id
 
     @classmethod
-    def _get_current_node_id(cls) -> str | None:
-        """
-        Get the current workflow's node_id from headers.
-        
-        Returns:
-            The current node_id if available, None otherwise
-        """
-        try:
-            info = workflow.info()
-            if info.headers and "node_id" in info.headers:
-                node_id_payload = info.headers["node_id"]
-                current_node_id = workflow.payload_converter().from_payload(
-                    node_id_payload, str
-                )
-                return current_node_id
-        except Exception:
-            pass
-        
-        return None
-
-
-    @classmethod
     def _get_current_workflow_id(cls) -> str:
         """
         Get current workflow ID.
