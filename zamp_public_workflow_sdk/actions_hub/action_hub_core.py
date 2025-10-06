@@ -8,7 +8,6 @@ independent of the Pantheon platform.
 import asyncio
 import threading
 from collections import defaultdict
-from typing import TYPE_CHECKING
 from temporalio import workflow, activity
 from .models.mcp_models import MCPConfig
 
@@ -31,16 +30,13 @@ with workflow.unsafe.imports_passed_through():
         PLATFORM_WORKFLOW_LABEL,
     )
 
-    if TYPE_CHECKING:
-        from simulation.workflow_simulation_service import (
-        WorkflowSimulationService,
-    )
     from simulation.models import (
         ExecutionType,
         SimulationConfig,
         SimulationResponse,
     )
-    
+    from zamp_public_workflow_sdk.simulation.workflow_simulation_service import WorkflowSimulationService
+
     from .models.business_logic_models import BusinessLogic
     from .models.core_models import (
         Action,
@@ -181,14 +177,13 @@ class ActionsHub:
         node_id: str,
     ) -> Optional[Any]:
         """Get simulation response for a workflow execution."""
-        # Return EXECUTE if not simulation
-        if workflow_id not in cls._workflow_id_to_simulation_map:
-            return SimulationResponse(
-                execution_type=ExecutionType.EXECUTE, execution_response=None
-            )
-
         simulation = cls._workflow_id_to_simulation_map[workflow_id]
-        return simulation.get_simulation_response(node_id)
+        if simulation:
+            return simulation.get_simulation_response(node_id)
+
+        return SimulationResponse(
+            execution_type=ExecutionType.EXECUTE, execution_response=None
+        )
 
     @classmethod
     def _get_action_return_type(cls, action_name: str | Callable) -> type | None:
@@ -196,11 +191,7 @@ class ActionsHub:
         if isinstance(action_name, str):
             name = action_name
         else:
-            name = action_name.__name__
-        if name in cls._activities:
-            return cls._activities[name].returns
-        if name in cls._workflows:
-            return cls._workflows[name].returns
+            name = action_name.__name__     
         try:
             actions = cls.get_available_actions(ActionFilter(name=name))
             if actions:
@@ -230,7 +221,7 @@ class ActionsHub:
         return result
 
     @classmethod
-    async def init_simulation(
+    async def set_simulation_for_workflow(
         cls, simulation_config: SimulationConfig, workflow_id: str
     ) -> None:
         """
@@ -251,11 +242,11 @@ class ActionsHub:
     @classmethod
     def get_simulation_from_workflow_id(
         cls, workflow_id: str
-    ) -> "WorkflowSimulationService":
+    ) -> Any:
         return cls._workflow_id_to_simulation_map.get(workflow_id)
 
     @classmethod
-    async def _initialize_simulation(self, simulation_config: SimulationConfig) -> None:
+    async def _initialize_simulation(cls, simulation_config: SimulationConfig) -> None:
         """
         Initialize simulation if configuration is provided.
 
@@ -263,12 +254,12 @@ class ActionsHub:
             simulation_config: Simulation configuration
         """
 
-        workflow_id = self._get_current_workflow_id()
+        workflow_id = cls._get_current_workflow_id()
         if workflow_id:
-            await self.init_simulation(
+            await cls.set_simulation_for_workflow(
                 simulation_config=simulation_config, workflow_id=workflow_id
             )
-            simulation_service = self.get_simulation_from_workflow_id(
+            simulation_service = cls.get_simulation_from_workflow_id(
                 workflow_id=workflow_id
             )
 
@@ -646,9 +637,8 @@ class ActionsHub:
         )
 
         # Get return type from workflow registry, but preserve the passed result_type if it exists
-        registry_result_type = cls._get_action_return_type(workflow_name)
         if result_type is None:
-            result_type = registry_result_type
+            result_type = cls._get_action_return_type(workflow_name)
 
         # Check for simulation result
         simulation_result = cls._get_simulation_result(
@@ -728,9 +718,8 @@ class ActionsHub:
         )
         
         # Get return type from workflow registry, but preserve the passed result_type if it exists
-        registry_result_type = cls._get_action_return_type(workflow_name)
         if result_type is None:
-            result_type = registry_result_type
+            result_type = cls._get_action_return_type(workflow_name)
 
         # Check for simulation result
         simulation_result = cls._get_simulation_result(
@@ -958,3 +947,4 @@ class ActionsHub:
             )
         else:
             raise ValueError(f"Unknown action type: {action.action_type}")
+            

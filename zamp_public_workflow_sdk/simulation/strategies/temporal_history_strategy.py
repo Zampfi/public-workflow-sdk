@@ -10,11 +10,11 @@ from models.simulation_response import (
     SimulationStrategyOutput,
 )
 from strategies.base_strategy import BaseStrategy
-from models.workflow_history import (
+from zamp_public_workflow_sdk.temporal.workflow_history.models import (
     WorkflowHistory,
 )
 from zamp_public_workflow_sdk.actions_hub import ActionsHub
-from zamp_public_workflow_sdk.simulation.models.fetch_temporal_workflow_history import FetchTemporalWorkflowHistoryInput, FetchTemporalWorkflowHistoryOutput
+from zamp_public_workflow_sdk.temporal.workflow_history.models.fetch_temporal_workflow_history import FetchTemporalWorkflowHistoryInput, FetchTemporalWorkflowHistoryOutput
 
 
 logger = structlog.get_logger(__name__)

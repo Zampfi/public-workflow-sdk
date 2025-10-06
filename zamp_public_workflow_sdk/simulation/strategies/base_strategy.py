@@ -10,7 +10,7 @@ import structlog
 from models.simulation_response import (
     SimulationStrategyOutput,
 )
-from models.workflow_history import (
+from zamp_public_workflow_sdk.temporal.workflow_history.models import (
     WorkflowHistory,
 )
 

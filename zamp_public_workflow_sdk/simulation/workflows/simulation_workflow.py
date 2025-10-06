@@ -55,6 +55,5 @@ class SimulationWorkflow:
                     error=str(e),
                     error_type=type(e).__name__,
                 )
-                sentry.capture_exception(e)
 
         return SimulationWorkflowOutput(node_id_to_response_map=node_id_to_response_map)
