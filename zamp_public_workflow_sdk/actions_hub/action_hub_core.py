@@ -11,7 +11,7 @@ from collections import defaultdict
 from temporalio import workflow, activity
 from zamp_public_workflow_sdk.temporal.interceptors.node_id_interceptor import NODE_ID_HEADER_KEY
 from .models.mcp_models import MCPConfig
-
+import sentry_sdk 
 from .constants import DEFAULT_MODE
 
 with workflow.unsafe.imports_passed_through():
@@ -101,29 +101,35 @@ class ActionsHub:
         Returns:
             Tuple of (action_name, workflow_id, node_id)
         """
-        # Get action name for node_id generation
-        if isinstance(action, str):
-            return action, cls._get_current_workflow_id(), cls._get_node_id(cls._get_current_workflow_id(), action)
-        
-        # Handle bound methods (e.g., instance.method)
-        if hasattr(action, '__self__') and hasattr(action, '__name__') and action.__self__ is not None:
-            class_name = action.__self__.__class__.__name__
+        try:
+            # Get action name for node_id generation
+            if isinstance(action, str):
+                return action, cls._get_current_workflow_id(), cls._get_node_id(cls._get_current_workflow_id(), action)
+            
+            # Handle bound methods (e.g., instance.method)
+            if hasattr(action, '__self__') and hasattr(action, '__name__') and action.__self__ is not None:
+                class_name = action.__self__.__class__.__name__
+                workflow_id = cls._get_current_workflow_id()
+                node_id = cls._get_node_id(workflow_id, class_name)
+                return class_name, workflow_id, node_id
+            
+            # Handle unbound methods (e.g., Class.method)
+            if hasattr(action, '__qualname__') and '.' in action.__qualname__:
+                # For qualified names like "ClassName.method", use the class name
+                class_name = action.__qualname__.split('.')[0]
+                workflow_id = cls._get_current_workflow_id()
+                node_id = cls._get_node_id(workflow_id, class_name)
+                return class_name, workflow_id, node_id
+            
+            action_name = action.__name__
             workflow_id = cls._get_current_workflow_id()
-            node_id = cls._get_node_id(workflow_id, class_name)
-            return class_name, workflow_id, node_id
-        
-        # Handle unbound methods (e.g., Class.method)
-        if hasattr(action, '__qualname__') and '.' in action.__qualname__:
-            # For qualified names like "ClassName.method", use the class name
-            class_name = action.__qualname__.split('.')[0]
-            workflow_id = cls._get_current_workflow_id()
-            node_id = cls._get_node_id(workflow_id, class_name)
-            return class_name, workflow_id, node_id
-        
-        action_name = action.__name__
-        workflow_id = cls._get_current_workflow_id()
-        node_id = cls._get_node_id(workflow_id, action_name)
-        return action_name, workflow_id, node_id
+            node_id = cls._get_node_id(workflow_id, action_name)
+            return action_name, workflow_id, node_id
+            
+        except Exception as e:
+            logger.error("Failed to generate node_id for action", action=str(action), error=str(e))
+            sentry_sdk.capture_exception(e)
+            raise e
 
     @classmethod
     def _get_node_id(cls, workflow_id: str, action_name: str) -> str:
