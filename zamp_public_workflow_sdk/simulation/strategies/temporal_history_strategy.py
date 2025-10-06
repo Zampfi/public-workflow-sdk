@@ -14,7 +14,7 @@ from models.workflow_history import (
     WorkflowHistory,
 )
 from zamp_public_workflow_sdk.actions_hub import ActionsHub
-from zamp_public_workflow_sdk.simulation.models.fetch_temporal_workflow_history import FetchTemporalWorkflowHistoryInput
+from zamp_public_workflow_sdk.simulation.models.fetch_temporal_workflow_history import FetchTemporalWorkflowHistoryInput, FetchTemporalWorkflowHistoryOutput
 
 
 logger = structlog.get_logger(__name__)
@@ -90,6 +90,7 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
                     run_id=self.reference_workflow_run_id,
                     node_ids=node_ids,
                 ),
+                result_type=FetchTemporalWorkflowHistoryOutput
             )
             return workflow_history
 
