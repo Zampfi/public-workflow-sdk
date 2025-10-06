@@ -307,6 +307,7 @@ class ActionsHub:
         activity: str | Callable,
         *args,
         execution_mode: ExecutionMode | None = None,
+        return_type: type | None = None,
         start_to_close_timeout: timedelta = timedelta(minutes=10),
         retry_policy: RetryPolicy = RetryPolicy.default(),
         task_queue: str | None = None,
@@ -365,6 +366,7 @@ class ActionsHub:
         return await workflow.execute_activity(
             activity,
             args=args,
+            result_type=return_type,
             start_to_close_timeout=start_to_close_timeout,
             retry_policy=retry_policy.to_temporal_retry_policy(),
             task_queue=task_queue,
@@ -521,6 +523,7 @@ class ActionsHub:
         cls,
         workflow_name: Union[str, Callable],
         *args,
+        result_type: type | None = None,
         **kwargs,
     ):
         # Generate node_id for this child workflow execution
@@ -572,6 +575,7 @@ class ActionsHub:
 
         return await workflow.execute_child_workflow(
             workflow_name,
+            result_type=result_type,
             args=args,
             **kwargs,
         )
@@ -581,6 +585,7 @@ class ActionsHub:
         cls,
         workflow_name: Union[str, Callable],
         *args,
+        result_type: type | None = None,
         **kwargs,
     ):
         # Generate node_id for this child workflow execution
@@ -600,6 +605,7 @@ class ActionsHub:
 
         return await workflow.start_child_workflow(
             workflow_name,
+            result_type=result_type,
             args=args,
             **kwargs,
         )
