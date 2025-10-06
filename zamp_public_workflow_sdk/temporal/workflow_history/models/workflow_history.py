@@ -1,10 +1,10 @@
 from typing import List, Optional, Dict
 from pydantic import BaseModel, Field
 
-from zamp_public_workflow_sdk.workflow_history.models.node_payload_data import (
+from zamp_public_workflow_sdk.temporal.workflow_history.models.node_payload_data import (
     NodePayloadData,
 )
-from zamp_public_workflow_sdk.workflow_history.helpers import (
+from zamp_public_workflow_sdk.temporal.workflow_history.helpers import (
     get_input_from_node_id,
     get_output_from_node_id,
     get_node_data_from_node_id,

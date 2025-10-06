@@ -1,6 +1,6 @@
 from unittest.mock import patch
 
-from zamp_public_workflow_sdk.workflow_history.helpers import (
+from zamp_public_workflow_sdk.temporal.workflow_history.helpers import (
     _get_node_id_from_header,
     extract_node_id_from_event,
     _extract_payload_data,

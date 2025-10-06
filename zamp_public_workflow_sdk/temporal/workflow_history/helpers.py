@@ -6,14 +6,14 @@ import base64
 import structlog
 from typing import List, Optional, Dict
 
-from zamp_public_workflow_sdk.workflow_history.constants import (
+from zamp_public_workflow_sdk.temporal.workflow_history.constants import (
     EventType,
     PayloadField,
     EventTypeToAttributesKey,
     EventField,
 )
 
-from zamp_public_workflow_sdk.workflow_history.models.node_payload_data import (
+from zamp_public_workflow_sdk.temporal.workflow_history.models.node_payload_data import (
     NodePayloadData,
 )
 

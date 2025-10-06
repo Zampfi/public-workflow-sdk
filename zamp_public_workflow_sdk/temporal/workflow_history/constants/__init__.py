@@ -1,4 +1,4 @@
-from zamp_public_workflow_sdk.workflow_history.constants.constants import (
+from zamp_public_workflow_sdk.temporal.workflow_history.constants.constants import (
     EventType,
     PayloadField,
     EventTypeToAttributesKey,
