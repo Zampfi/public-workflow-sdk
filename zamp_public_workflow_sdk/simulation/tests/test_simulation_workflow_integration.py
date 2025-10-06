@@ -5,10 +5,10 @@ Integration tests for simulation workflows and services.
 import pytest
 from unittest.mock import Mock, patch, AsyncMock
 
-from pantheon_v2.platform.simulation.workflows.simulation_workflow import (
+from zamp_public_workflow_sdk.simulation.workflows.simulation_workflow import (
     SimulationWorkflow,
 )
-from pantheon_v2.platform.simulation.models import (
+from zamp_public_workflow_sdk.simulation.models import (
     SimulationConfig,
     NodeMockConfig,
     NodeStrategy,
@@ -19,10 +19,10 @@ from pantheon_v2.platform.simulation.models import (
     SimulationWorkflowInput,
     SimulationWorkflowOutput,
 )
-from pantheon_v2.platform.simulation.models.simulation_response import (
+from zamp_public_workflow_sdk.simulation.models.simulation_response import (
     SimulationStrategyOutput,
 )
-from pantheon_v2.platform.simulation.workflow_simulation_service import (
+from zamp_public_workflow_sdk.simulation.workflow_simulation_service import (
     WorkflowSimulationService,
 )
 
@@ -136,7 +136,7 @@ class TestSimulationWorkflowIntegration:
 
         # Mock the temporal history strategy at the point where it's created
         with patch(
-            "pantheon_v2.platform.simulation.workflow_simulation_service.TemporalHistoryStrategyHandler"
+            "zamp_public_workflow_sdk.simulation.workflow_simulation_service.TemporalHistoryStrategyHandler"
         ) as mock_handler_class:
             mock_strategy = Mock()
             mock_strategy.execute = AsyncMock(
@@ -189,7 +189,7 @@ class TestSimulationWorkflowIntegration:
 
         # Mock the temporal history strategy at the point where it's created
         with patch(
-            "pantheon_v2.platform.simulation.workflow_simulation_service.TemporalHistoryStrategyHandler"
+            "zamp_public_workflow_sdk.simulation.workflow_simulation_service.TemporalHistoryStrategyHandler"
         ) as mock_handler_class:
             mock_strategy = Mock()
             mock_strategy.execute = AsyncMock(
@@ -228,7 +228,7 @@ class TestSimulationWorkflowIntegration:
 
         # Mock strategy to raise exception at the point where it's created
         with patch(
-            "pantheon_v2.platform.simulation.workflow_simulation_service.CustomOutputStrategyHandler"
+            "zamp_public_workflow_sdk.simulation.workflow_simulation_service.CustomOutputStrategyHandler"
         ) as mock_handler_class:
             mock_strategy = Mock()
             mock_strategy.execute = AsyncMock(side_effect=Exception("Strategy failed"))
@@ -261,7 +261,7 @@ class TestSimulationWorkflowIntegration:
 
         # Mock strategy to return should_execute=True at the point where it's created
         with patch(
-            "pantheon_v2.platform.simulation.workflow_simulation_service.CustomOutputStrategyHandler"
+            "zamp_public_workflow_sdk.simulation.workflow_simulation_service.CustomOutputStrategyHandler"
         ) as mock_handler_class:
             mock_strategy = Mock()
             mock_strategy.execute = AsyncMock(
@@ -298,7 +298,7 @@ class TestSimulationWorkflowIntegration:
 
         # Mock strategy to return None output at the point where it's created
         with patch(
-            "pantheon_v2.platform.simulation.workflow_simulation_service.CustomOutputStrategyHandler"
+            "zamp_public_workflow_sdk.simulation.workflow_simulation_service.CustomOutputStrategyHandler"
         ) as mock_handler_class:
             mock_strategy = Mock()
             mock_strategy.execute = AsyncMock(
@@ -320,7 +320,7 @@ class TestSimulationServiceIntegration:
     @pytest.mark.asyncio
     async def test_initialize_simulation_data_integration(self):
         """Test full integration of simulation data initialization."""
-        from pantheon_v2.platform.simulation.workflow_simulation_service import (
+        from zamp_public_workflow_sdk.simulation.workflow_simulation_service import (
             WorkflowSimulationService,
         )
 
@@ -348,7 +348,7 @@ class TestSimulationServiceIntegration:
         }
 
         with patch(
-            "pantheon_v2.platform.orchestrator.actions.actions_hub.ActionsHub"
+            "zamp_public_workflow_sdk.actions_hub.ActionsHub"
         ) as mock_actions_hub:
             mock_actions_hub.execute_child_workflow = AsyncMock(
                 return_value=mock_workflow_result

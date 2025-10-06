@@ -6,7 +6,7 @@ import pytest
 from unittest.mock import Mock, patch, AsyncMock
 
 from zamp_public_workflow_sdk.actions_hub import ActionsHub
-from pantheon_v2.platform.simulation.models import (
+from zamp_public_workflow_sdk.simulation.models import (
     SimulationResponse,
     ExecutionType,
 )
@@ -29,7 +29,7 @@ class TestActionsHubSimulationIntegration:
 
         # Mock the workflow execution
         with patch(
-            "pantheon_v2.platform.orchestrator.actions.actions_hub.workflow"
+            "zamp_public_workflow_sdk.actions_hub.workflow"
         ) as mock_workflow:
             mock_workflow.execute_child_workflow = AsyncMock(
                 return_value="workflow_result"
@@ -37,12 +37,12 @@ class TestActionsHubSimulationIntegration:
 
             # Mock context
             with patch(
-                "pantheon_v2.platform.orchestrator.actions.actions_hub.get_execution_mode_from_context"
+                "zamp_public_workflow_sdk.actions_hub.get_execution_mode_from_context"
             ) as mock_mode:
                 mock_mode.return_value = "TEMPORAL"
 
                 with patch(
-                    "pantheon_v2.platform.orchestrator.actions.actions_hub.get_variable_from_context"
+                    "zamp_public_workflow_sdk.actions_hub.get_variable_from_context"
                 ) as mock_var:
                     mock_var.return_value = "test-workflow-id"
 
@@ -71,12 +71,12 @@ class TestActionsHubSimulationIntegration:
 
         # Mock context and workflow
         with patch(
-            "pantheon_v2.platform.orchestrator.actions.actions_hub.get_variable_from_context"
+            "zamp_public_workflow_sdk.actions_hub.get_variable_from_context"
         ) as mock_var:
             mock_var.return_value = workflow_id
 
             with patch(
-                "pantheon_v2.platform.orchestrator.actions.actions_hub.workflow"
+                "zamp_public_workflow_sdk.actions_hub.workflow"
             ) as mock_workflow:
                 # Mock the workflow context to avoid NotInWorkflowEventLoopError
                 mock_workflow.info.return_value = Mock(workflow_id=workflow_id)
@@ -106,7 +106,7 @@ class TestActionsHubSimulationIntegration:
 
         # Mock the workflow execution
         with patch(
-            "pantheon_v2.platform.orchestrator.actions.actions_hub.workflow"
+            "zamp_public_workflow_sdk.actions_hub.workflow"
         ) as mock_workflow:
             mock_workflow.execute_child_workflow = AsyncMock(
                 return_value="workflow_result"
@@ -114,12 +114,12 @@ class TestActionsHubSimulationIntegration:
 
             # Mock context
             with patch(
-                "pantheon_v2.platform.orchestrator.actions.actions_hub.get_execution_mode_from_context"
+                "zamp_public_workflow_sdk.actions_hub.get_execution_mode_from_context"
             ) as mock_mode:
                 mock_mode.return_value = "TEMPORAL"
 
                 with patch(
-                    "pantheon_v2.platform.orchestrator.actions.actions_hub.get_variable_from_context"
+                    "zamp_public_workflow_sdk.actions_hub.get_variable_from_context"
                 ) as mock_var:
                     mock_var.return_value = workflow_id
 
@@ -147,7 +147,7 @@ class TestActionsHubSimulationIntegration:
 
         # Mock the workflow execution
         with patch(
-            "pantheon_v2.platform.orchestrator.actions.actions_hub.workflow"
+            "zamp_public_workflow_sdk.actions_hub.workflow"
         ) as mock_workflow:
             mock_workflow.execute_child_workflow = AsyncMock(
                 return_value={"value": "test"}
@@ -155,12 +155,12 @@ class TestActionsHubSimulationIntegration:
 
             # Mock context
             with patch(
-                "pantheon_v2.platform.orchestrator.actions.actions_hub.get_execution_mode_from_context"
+                "zamp_public_workflow_sdk.actions_hub.get_execution_mode_from_context"
             ) as mock_mode:
                 mock_mode.return_value = "TEMPORAL"
 
                 with patch(
-                    "pantheon_v2.platform.orchestrator.actions.actions_hub.get_variable_from_context"
+                    "zamp_public_workflow_sdk.actions_hub.get_variable_from_context"
                 ) as mock_var:
                     mock_var.return_value = "test-workflow-id"
 
@@ -181,7 +181,7 @@ class TestActionsHubSimulationIntegration:
 
         # Mock the workflow execution
         with patch(
-            "pantheon_v2.platform.orchestrator.actions.actions_hub.workflow"
+            "zamp_public_workflow_sdk.actions_hub.workflow"
         ) as mock_workflow:
             mock_workflow.start_child_workflow = AsyncMock(
                 return_value="workflow_result"
@@ -189,7 +189,7 @@ class TestActionsHubSimulationIntegration:
 
             # Mock context
             with patch(
-                "pantheon_v2.platform.orchestrator.actions.actions_hub.get_variable_from_context"
+                "zamp_public_workflow_sdk.actions_hub.get_variable_from_context"
             ) as mock_var:
                 mock_var.return_value = "test-workflow-id"
 
@@ -218,12 +218,12 @@ class TestActionsHubSimulationIntegration:
 
         # Mock context and workflow
         with patch(
-            "pantheon_v2.platform.orchestrator.actions.actions_hub.get_variable_from_context"
+            "zamp_public_workflow_sdk.actions_hub.get_variable_from_context"
         ) as mock_var:
             mock_var.return_value = workflow_id
 
             with patch(
-                "pantheon_v2.platform.orchestrator.actions.actions_hub.workflow"
+                "zamp_public_workflow_sdk.actions_hub.workflow"
             ) as mock_workflow:
                 # Mock the workflow context to avoid NotInWorkflowEventLoopError
                 mock_workflow.info.return_value = Mock(workflow_id=workflow_id)
@@ -247,12 +247,12 @@ class TestActionsHubSimulationIntegration:
 
         # Mock context
         with patch(
-            "pantheon_v2.platform.orchestrator.actions.actions_hub.get_execution_mode_from_context"
+            "zamp_public_workflow_sdk.actions_hub.get_execution_mode_from_context"
         ) as mock_mode:
             mock_mode.return_value = "API"
 
             with patch(
-                "pantheon_v2.platform.orchestrator.actions.actions_hub.get_variable_from_context"
+                "zamp_public_workflow_sdk.actions_hub.get_variable_from_context"
             ) as mock_var:
                 mock_var.return_value = "test-workflow-id"
 
@@ -276,12 +276,12 @@ class TestActionsHubSimulationIntegration:
 
         # Mock context
         with patch(
-            "pantheon_v2.platform.orchestrator.actions.actions_hub.get_execution_mode_from_context"
+            "zamp_public_workflow_sdk.actions_hub.get_execution_mode_from_context"
         ) as mock_mode:
             mock_mode.return_value = "API"
 
             with patch(
-                "pantheon_v2.platform.orchestrator.actions.actions_hub.get_variable_from_context"
+                "zamp_public_workflow_sdk.actions_hub.get_variable_from_context"
             ) as mock_var:
                 mock_var.return_value = "test-workflow-id"
 
@@ -297,12 +297,12 @@ class TestActionsHubSimulationIntegration:
         """Test execute_child_workflow when workflow is not found."""
         # Mock context
         with patch(
-            "pantheon_v2.platform.orchestrator.actions.actions_hub.get_execution_mode_from_context"
+            "zamp_public_workflow_sdk.actions_hub.get_execution_mode_from_context"
         ) as mock_mode:
             mock_mode.return_value = "API"
 
             with patch(
-                "pantheon_v2.platform.orchestrator.actions.actions_hub.get_variable_from_context"
+                "zamp_public_workflow_sdk.actions_hub.get_variable_from_context"
             ) as mock_var:
                 mock_var.return_value = "test-workflow-id"
 
@@ -324,12 +324,12 @@ class TestActionsHubSimulationIntegration:
 
         # Mock context
         with patch(
-            "pantheon_v2.platform.orchestrator.actions.actions_hub.get_execution_mode_from_context"
+            "zamp_public_workflow_sdk.actions_hub.get_execution_mode_from_context"
         ) as mock_mode:
             mock_mode.return_value = "API"
 
             with patch(
-                "pantheon_v2.platform.orchestrator.actions.actions_hub.get_variable_from_context"
+                "zamp_public_workflow_sdk.actions_hub.get_variable_from_context"
             ) as mock_var:
                 mock_var.return_value = "test-workflow-id"
 
@@ -342,7 +342,7 @@ class TestActionsHubSimulationIntegration:
 
     def test_skip_simulation_workflows_constant(self):
         """Test that SKIP_SIMULATION_WORKFLOWS constant is properly defined."""
-        from pantheon_v2.platform.orchestrator.actions.constants import (
+        from zamp_public_workflow_sdk.actions_hub.constants import (
             SKIP_SIMULATION_WORKFLOWS,
         )
 

@@ -5,7 +5,7 @@ Unit tests for simulation models.
 import pytest
 from pydantic import ValidationError
 
-from pantheon_v2.platform.simulation.models import (
+from zamp_public_workflow_sdk.simulation.models import (
     StrategyType,
     ExecutionType,
     SimulationResponse,

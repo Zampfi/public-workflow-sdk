@@ -5,10 +5,10 @@ Unit tests for WorkflowSimulationService.
 import pytest
 from unittest.mock import Mock, patch, AsyncMock
 
-from pantheon_v2.platform.simulation.workflow_simulation_service import (
+from zamp_public_workflow_sdk.simulation.workflow_simulation_service import (
     WorkflowSimulationService,
 )
-from pantheon_v2.platform.simulation.models import (
+from zamp_public_workflow_sdk.simulation.models import (
     SimulationConfig,
     NodeMockConfig,
     NodeStrategy,
@@ -168,7 +168,7 @@ class TestWorkflowSimulationService:
         mock_workflow_result.node_id_to_response_map = {"node1#1": "test_output"}
 
         with patch(
-            "pantheon_v2.platform.orchestrator.actions.actions_hub.ActionsHub"
+            "zamp_public_workflow_sdk.actions_hub.ActionsHub"
         ) as mock_actions_hub:
             mock_actions_hub.execute_child_workflow = AsyncMock(
                 return_value=mock_workflow_result
@@ -199,7 +199,7 @@ class TestWorkflowSimulationService:
         service = WorkflowSimulationService(sim_config)
 
         with patch(
-            "pantheon_v2.platform.orchestrator.actions.actions_hub.ActionsHub"
+            "zamp_public_workflow_sdk.actions_hub.ActionsHub"
         ) as mock_actions_hub:
             mock_actions_hub.execute_child_workflow = AsyncMock(
                 side_effect=Exception("Workflow failed")
@@ -226,7 +226,7 @@ class TestWorkflowSimulationService:
         service = WorkflowSimulationService(sim_config)
 
         with patch(
-            "pantheon_v2.platform.orchestrator.actions.actions_hub.ActionsHub"
+            "zamp_public_workflow_sdk.actions_hub.ActionsHub"
         ) as mock_actions_hub:
             mock_actions_hub.execute_child_workflow = AsyncMock(return_value=None)
 
