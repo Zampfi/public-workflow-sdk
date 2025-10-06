@@ -242,7 +242,7 @@ class ActionsHub:
     @classmethod
     def get_simulation_from_workflow_id(
         cls, workflow_id: str
-    ) -> Any:
+    ) -> "WorkflowSimulationService":
         return cls._workflow_id_to_simulation_map.get(workflow_id)
 
     @classmethod
