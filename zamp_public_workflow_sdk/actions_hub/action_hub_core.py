@@ -166,7 +166,7 @@ class ActionsHub:
             return SimulationResponse(
                 execution_type=ExecutionType.EXECUTE, execution_response=None
             )
-        # Get simulation response
+            
         simulation_response = cls._get_simulation_response(workflow_id, node_id)
         return simulation_response
 

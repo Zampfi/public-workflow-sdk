@@ -72,20 +72,4 @@ class NodeStrategy(BaseModel):
     nodes: List[str] = Field(
         ..., description="List of node IDs this strategy applies to", min_length=1
     )
-
-    @field_validator("nodes")
-    @classmethod
-    def validate_node_ids(cls, v):
-        """Validate each node ID follows the format 'Str#number'."""
-        node_id_pattern = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_.-]*#[1-9]\d*$")
-
-        for i, node_id in enumerate(v):
-            if not node_id or not node_id.strip():
-                raise ValueError(f"Node ID at index {i} cannot be empty or whitespace")
-
-            trimmed = node_id.strip()
-            if not node_id_pattern.match(trimmed):
-                raise ValueError(
-                    f"Node ID at index {i} must be in format 'Str#number' (e.g., 'activity#1'), got: {trimmed}"
-                )
-        return v
+    
