@@ -104,7 +104,7 @@ class ActionsHub:
         ]
 
     @classmethod
-    def _get_action_name(cls, action: Union[str, Callable, None]) -> str:
+    def _get_action_name(cls, action: Union[str, Callable]) -> str:
         """
         Resolve the action name from various action types.
 
