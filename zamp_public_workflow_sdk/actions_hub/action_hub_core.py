@@ -171,19 +171,18 @@ class ActionsHub:
             if workflow_id not in cls._node_id_tracker:
                 cls._node_id_tracker[workflow_id] = defaultdict(int)
 
-            tracking_key = action_name
-            try:
-                info = workflow.info()
-                if info.headers and NODE_ID_HEADER_KEY in info.headers:
-                    node_id_payload = info.headers[NODE_ID_HEADER_KEY]
-                    parent_node_id = workflow.payload_converter().from_payload(
-                        node_id_payload, str
-                    )
-                    if parent_node_id:
-                        tracking_key = f"{parent_node_id}.{action_name}"
-            except Exception:
-                # Not in workflow context or headers not available
-                pass
+            info = workflow.info()
+            if info.headers and NODE_ID_HEADER_KEY in info.headers:
+                node_id_payload = info.headers[NODE_ID_HEADER_KEY]
+                parent_node_id = workflow.payload_converter().from_payload(
+                    node_id_payload, str
+                )
+                if parent_node_id:
+                    tracking_key = f"{parent_node_id}.{action_name}"
+                else:
+                    tracking_key = action_name
+            else:
+                tracking_key = action_name
 
             cls._node_id_tracker[workflow_id][tracking_key] += 1
             count = cls._node_id_tracker[workflow_id][tracking_key]
@@ -270,9 +269,8 @@ class ActionsHub:
         """
         simulation_service = WorkflowSimulationService(simulation_config)
         cls._workflow_id_to_simulation_map[workflow_id] = simulation_service
-        logger.info("Simulation initialized for workflow", workflow_id=workflow_id)
-
         await simulation_service._initialize_simulation_data()
+        logger.info("Simulation initialized for workflow", workflow_id=workflow_id)
 
     @classmethod
     def get_simulation_from_workflow_id(
