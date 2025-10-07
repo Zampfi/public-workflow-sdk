@@ -11,7 +11,6 @@ from collections import defaultdict
 from temporalio import workflow, activity
 from zamp_public_workflow_sdk.temporal.interceptors.node_id_interceptor import NODE_ID_HEADER_KEY
 from .models.mcp_models import MCPConfig
-import sentry_sdk 
 from .constants import DEFAULT_MODE
 
 with workflow.unsafe.imports_passed_through():
