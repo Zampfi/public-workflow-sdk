@@ -102,7 +102,7 @@ class ActionsHub:
             return action
         
         # Handle bound methods (e.g., instance.method)
-        if hasattr(action, '__self__') and hasattr(action, '__name__'):
+        if hasattr(action, '__self__'):
             return action.__self__.__class__.__name__
         
         # Handle unbound methods (e.g., Class.method)
