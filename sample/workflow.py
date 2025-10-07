@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from datetime import timedelta
 
 from temporalio import workflow
@@ -8,6 +10,7 @@ with workflow.unsafe.imports_passed_through():
     from sample.params import (FinalActivityInput, HumanApprovalActivityInput,
                                JokeActivityInput, WorkflowInput)
 
+
 @workflow.defn
 class JokeWorkflow:
     def __init__(self):
@@ -15,10 +18,7 @@ class JokeWorkflow:
 
     @workflow.query(name="get_state")
     def get_state(self, query: str):
-        return {
-            "query": query,
-            "state": self.state
-        }
+        return {"query": query, "state": self.state}
 
     @workflow.signal(name="change_state")
     async def change_state(self, input: str) -> None:
@@ -32,19 +32,21 @@ class JokeWorkflow:
         joke = await workflow.execute_activity(
             generate_joke,
             JokeActivityInput(context=params.context),
-            start_to_close_timeout=timedelta(seconds=5)
+            start_to_close_timeout=timedelta(seconds=5),
         )
 
         human_approved = await workflow.execute_activity(
             human_approval,
             HumanApprovalActivityInput(joke=joke.joke),
-            start_to_close_timeout=timedelta(seconds=5)
+            start_to_close_timeout=timedelta(seconds=5),
         )
 
         final_output = await workflow.execute_activity(
             final_activity,
-            FinalActivityInput(joke=joke.joke, human_approved=human_approved.human_approved),
-            start_to_close_timeout=timedelta(seconds=10)
+            FinalActivityInput(
+                joke=joke.joke, human_approved=human_approved.human_approved
+            ),
+            start_to_close_timeout=timedelta(seconds=10),
         )
 
         return final_output
@@ -57,11 +59,7 @@ class TestWorkflow:
 
     @workflow.query
     def query_handler(self, query: str):
-        return {
-            "query": query,
-            "state": self.state
-        }
-
+        return {"query": query, "state": self.state}
 
     @workflow.run
     async def run(self, params: WorkflowInput) -> str:
@@ -70,19 +68,21 @@ class TestWorkflow:
         joke = await workflow.execute_activity(
             generate_joke,
             JokeActivityInput(context=params.context),
-            start_to_close_timeout=timedelta(seconds=5)
+            start_to_close_timeout=timedelta(seconds=5),
         )
 
         human_approved = await workflow.execute_activity(
             human_approval,
             HumanApprovalActivityInput(joke=joke.joke),
-            start_to_close_timeout=timedelta(seconds=5)
+            start_to_close_timeout=timedelta(seconds=5),
         )
 
         final_output = await workflow.execute_activity(
             final_activity,
-            FinalActivityInput(joke=joke.joke, human_approved=human_approved.human_approved),
-            start_to_close_timeout=timedelta(seconds=5)
+            FinalActivityInput(
+                joke=joke.joke, human_approved=human_approved.human_approved
+            ),
+            start_to_close_timeout=timedelta(seconds=5),
         )
 
         return final_output

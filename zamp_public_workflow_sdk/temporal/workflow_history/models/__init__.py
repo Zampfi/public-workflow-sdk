@@ -1,27 +1,15 @@
-from .node_payload_data import (
-    NodePayloadData,
-)
+from __future__ import annotations
+
 from .fetch_temporal_workflow_history import (
-    FetchTemporalWorkflowHistoryInput,
-    FetchTemporalWorkflowHistoryOutput,
-)
-from .parse_json_workflow_history import (
-    ParseJsonWorkflowHistoryInput,
-)
-from .workflow_history import (
-    WorkflowHistory,
-)
-from .parse_workflow import (
-    ParseWorkflowHistoryProtoInput,
-    ParseWorkflowHistoryProtoOutput,
-)
-from .file import (
-    File,
-    FileProvider,
-    FileMetadata,
-    S3FileMetadata,
-    GCPFileMetadata,
-)
+    FetchTemporalWorkflowHistoryInput, FetchTemporalWorkflowHistoryOutput)
+from .file import (File, FileMetadata, FileProvider, GCPFileMetadata,
+                   S3FileMetadata)
+from .node_payload_data import NodePayloadData
+from .parse_json_workflow_history import ParseJsonWorkflowHistoryInput
+from .parse_workflow import (ParseWorkflowHistoryProtoInput,
+                             ParseWorkflowHistoryProtoOutput)
+from .workflow_history import WorkflowHistory
+
 __all__ = [
     "File",
     "FileProvider",

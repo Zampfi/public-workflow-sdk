@@ -2,9 +2,12 @@
 Workflow models for ActionsHub - independent of Pantheon platform.
 """
 
-from pydantic import BaseModel
-from typing import Callable, Any
+from __future__ import annotations
+
 import inspect
+from typing import Any, Callable
+
+from pydantic import BaseModel
 
 
 class Workflow(BaseModel):

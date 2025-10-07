@@ -2,11 +2,13 @@
 Helper functions for ActionsHub - independent of Pantheon platform.
 """
 
-from typing import Any, List, Dict
+from __future__ import annotations
+
 from copy import deepcopy
+from typing import Any, Dict, List
 
 
-def remove_connection_id(schema: List[Any]) -> List[Any]:
+def remove_connection_id(schema: list[Any]) -> list[Any]:
     """Remove connection_id from schema by removing items with title 'ConnectionIdentifier' and type 'object'"""
     if not schema:
         return schema
@@ -38,7 +40,7 @@ def remove_connection_id(schema: List[Any]) -> List[Any]:
     return result
 
 
-def find_connection_id_path(schema: List[Any]) -> List[str]:
+def find_connection_id_path(schema: list[Any]) -> list[str]:
     """Find the path to connection_id by finding object with title 'ConnectionIdentifier' and type 'object'"""
     if not schema:
         return ["connection_id"]
@@ -67,8 +69,8 @@ def find_connection_id_path(schema: List[Any]) -> List[str]:
 
 
 def inject_connection_id(
-    params: Dict[str, Any], connection_id: str, path: List[str]
-) -> List[Dict[str, Any]]:
+    params: dict[str, Any], connection_id: str, path: list[str]
+) -> list[dict[str, Any]]:
     """
     Insert connection_id at the specified path in params.
     Returns a list with connection_id as the first element and params as the second.

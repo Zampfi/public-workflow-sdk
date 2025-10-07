@@ -1,10 +1,14 @@
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 from typing import Sequence
 
 from temporalio.client import Client
+from temporalio.runtime import PrometheusConfig, Runtime, TelemetryConfig
 from temporalio.service import TLSConfig
 
-from zamp_public_workflow_sdk.temporal.data_converters.base import BaseDataConverter
+from zamp_public_workflow_sdk.temporal.data_converters.base import \
+    BaseDataConverter
 from zamp_public_workflow_sdk.temporal.models.temporal_models import (
     CancelWorkflowParams, CancelWorkflowResponse, GetWorkflowDetailsParams,
     ListWorkflowParams, QueryWorkflowParams, QueryWorkflowResponse,
@@ -12,21 +16,16 @@ from zamp_public_workflow_sdk.temporal.models.temporal_models import (
     SignalWorkflowResponse, TerminateWorkflowParams, TerminateWorkflowResponse,
     WorkflowDetailsResponse, WorkflowResponse)
 from zamp_public_workflow_sdk.temporal.temporal_client import TemporalClient
-from zamp_public_workflow_sdk.temporal.temporal_worker import (TemporalWorker,
-                                                       TemporalWorkerConfig)
-
-from typing import Sequence
-from dataclasses import field
-from temporalio.runtime import PrometheusConfig, Runtime, TelemetryConfig
+from zamp_public_workflow_sdk.temporal.temporal_worker import (
+    TemporalWorker, TemporalWorkerConfig)
 
 
 async def init_runtime_with_prometheus(address: str) -> Runtime:
     # Create runtime for use with Prometheus metrics
     return Runtime(
-        telemetry=TelemetryConfig(
-            metrics=PrometheusConfig(bind_address=address)
-        )
+        telemetry=TelemetryConfig(metrics=PrometheusConfig(bind_address=address))
     )
+
 
 @dataclass
 class TemporalClientConfig:
@@ -40,14 +39,13 @@ class TemporalClientConfig:
     interceptors: Sequence[object] = field(default_factory=list)
     prometheus_address: str | None = ""
 
+
 class TemporalService:
     def __init__(self, client: TemporalClient):
         self.workflow_manager = client
 
     @staticmethod
-    async def connect(
-        config: TemporalClientConfig
-    ):
+    async def connect(config: TemporalClientConfig):
         """Build Temporal client and create service instance"""
 
         if not config.is_cloud:
@@ -55,16 +53,20 @@ class TemporalService:
                 config.host,
                 namespace=config.namespace,
                 data_converter=config.data_converter.get_converter(),
-                interceptors=config.interceptors
+                interceptors=config.interceptors,
             )
         else:
             if not all([config.client_cert, config.client_key]):
-                raise ValueError("client_cert and client_key are required for cloud connection")
+                raise ValueError(
+                    "client_cert and client_key are required for cloud connection"
+                )
 
             tls_config = TLSConfig(
-                client_cert=config.client_cert.encode('utf-8'),
-                client_private_key=config.client_key.encode('utf-8'),
-                server_root_ca_cert=config.server_root_ca_cert.encode('utf-8') if config.server_root_ca_cert else None,
+                client_cert=config.client_cert.encode("utf-8"),
+                client_private_key=config.client_key.encode("utf-8"),
+                server_root_ca_cert=config.server_root_ca_cert.encode("utf-8")
+                if config.server_root_ca_cert
+                else None,
             )
 
             # Create runtime with prometheus if address is provided
@@ -78,7 +80,7 @@ class TemporalService:
                 tls=tls_config,
                 data_converter=config.data_converter.get_converter(),
                 interceptors=config.interceptors,
-                runtime=runtime
+                runtime=runtime,
             )
 
         temporal_client = TemporalClient(client)
@@ -88,26 +90,42 @@ class TemporalService:
     async def worker(self, config: TemporalWorkerConfig):
         return TemporalWorker(self.workflow_manager, config)
 
-    async def start_async_workflow(self, params: RunWorkflowParams) -> RunWorkflowResponse:
+    async def start_async_workflow(
+        self, params: RunWorkflowParams
+    ) -> RunWorkflowResponse:
         return await self.workflow_manager.start_async_workflow(params)
 
-    async def start_sync_workflow(self, params: RunWorkflowParams) -> RunWorkflowResponse:
+    async def start_sync_workflow(
+        self, params: RunWorkflowParams
+    ) -> RunWorkflowResponse:
         return await self.workflow_manager.start_sync_workflow(params)
 
-    async def list_workflows(self, params: ListWorkflowParams) -> list[WorkflowResponse]:
+    async def list_workflows(
+        self, params: ListWorkflowParams
+    ) -> list[WorkflowResponse]:
         return await self.workflow_manager.list_workflows(params)
 
-    async def get_workflow_details(self, params: GetWorkflowDetailsParams) -> WorkflowDetailsResponse:
+    async def get_workflow_details(
+        self, params: GetWorkflowDetailsParams
+    ) -> WorkflowDetailsResponse:
         return await self.workflow_manager.get_workflow_details(params)
 
-    async def query_workflow(self, params: QueryWorkflowParams) -> QueryWorkflowResponse:
+    async def query_workflow(
+        self, params: QueryWorkflowParams
+    ) -> QueryWorkflowResponse:
         return await self.workflow_manager.query_workflow(params)
 
-    async def signal_workflow(self, params: SignalWorkflowParams) -> SignalWorkflowResponse:
+    async def signal_workflow(
+        self, params: SignalWorkflowParams
+    ) -> SignalWorkflowResponse:
         return await self.workflow_manager.signal_workflow(params)
 
-    async def cancel_workflow(self, params: CancelWorkflowParams) -> CancelWorkflowResponse:
+    async def cancel_workflow(
+        self, params: CancelWorkflowParams
+    ) -> CancelWorkflowResponse:
         return await self.workflow_manager.cancel_workflow(params)
 
-    async def terminate_workflow(self, params: TerminateWorkflowParams) -> TerminateWorkflowResponse:
+    async def terminate_workflow(
+        self, params: TerminateWorkflowParams
+    ) -> TerminateWorkflowResponse:
         return await self.workflow_manager.terminate_workflow(params)

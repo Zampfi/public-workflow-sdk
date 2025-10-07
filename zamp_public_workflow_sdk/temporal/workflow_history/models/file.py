@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from enum import Enum
 from typing import Literal, Union
 
@@ -25,7 +27,7 @@ class GCPFileMetadata(FileMetadata):
 class File(BaseModel):
     id: str = Field(description="The unique identifier for the file")
     provider: FileProvider = Field(description="The provider of the file")
-    metadata: Union[S3FileMetadata, GCPFileMetadata] = Field(
+    metadata: S3FileMetadata | GCPFileMetadata = Field(
         description="The metadata for the file", discriminator="provider"
     )
 

@@ -5,55 +5,46 @@ A central hub for registering and executing actions (activities, workflows, busi
 independent of the Pantheon platform.
 """
 
+from __future__ import annotations
+
 import asyncio
 import threading
 from collections import defaultdict
-from temporalio import workflow, activity
-from zamp_public_workflow_sdk.temporal.interceptors.node_id_interceptor import NODE_ID_HEADER_KEY
-from .models.mcp_models import MCPConfig
+
+from temporalio import activity, workflow
+
+from zamp_public_workflow_sdk.temporal.interceptors.node_id_interceptor import \
+    NODE_ID_HEADER_KEY
+
 from .constants import DEFAULT_MODE
+from .models.mcp_models import MCPConfig
 
 with workflow.unsafe.imports_passed_through():
-    from .constants import ExecutionMode
-    from .utils.context_utils import (
-        get_execution_mode_from_context,
-        get_variable_from_context,
-    )
-    from pathlib import Path
-    from functools import wraps
-    from typing import Callable, Dict, List, Any, Union, Optional
     from datetime import timedelta
-
-    from .models.workflow_models import (
-        Workflow,
-        WorkflowCoordinates,
-        PLATFORM_WORKFLOW_LABEL,
-    )
-    from .models.business_logic_models import BusinessLogic
-    from .models.core_models import (
-        Action,
-        ActionFilter,
-        RetryPolicy,
-        CodeExecutorConfig,
-        ExecuteCodeParams,
-    )
-    from .constants import ActionType
-    from .models.activity_models import Activity
-    from .helper import (
-        remove_connection_id,
-        find_connection_id_path,
-        inject_connection_id,
-    )
-    from zamp_public_workflow_sdk.temporal.data_converters.type_utils import get_fqn
+    from functools import wraps
+    from pathlib import Path
+    from typing import Any, Callable, Dict, List, Optional, Union
 
     import structlog
 
+    from zamp_public_workflow_sdk.temporal.data_converters.type_utils import \
+        get_fqn
+    from zamp_public_workflow_sdk.temporal.interceptors.node_id_interceptor import \
+        TEMPORAL_NODE_ID_KEY
+
+    from .constants import ActionType, ExecutionMode
+    from .helper import (find_connection_id_path, inject_connection_id,
+                         remove_connection_id)
+    from .models.activity_models import Activity
+    from .models.business_logic_models import BusinessLogic
+    from .models.core_models import (Action, ActionFilter, CodeExecutorConfig,
+                                     ExecuteCodeParams, RetryPolicy)
     from .models.credentials_models import ActionConnectionsMapping
     from .models.decorators import external
-
-    from zamp_public_workflow_sdk.temporal.interceptors.node_id_interceptor import (
-        TEMPORAL_NODE_ID_KEY,
-    )
+    from .models.workflow_models import (PLATFORM_WORKFLOW_LABEL, Workflow,
+                                         WorkflowCoordinates)
+    from .utils.context_utils import (get_execution_mode_from_context,
+                                      get_variable_from_context)
     from .utils.datetime_utils import convert_iso_to_timedelta
 
     logger = structlog.get_logger(__name__)
@@ -66,18 +57,18 @@ class ActionsHub:
     """
     Activities
     """
-    _activities: Dict[str, Activity] = {}
-    _action_list: List[ActionConnectionsMapping] = []
+    _activities: dict[str, Activity] = {}
+    _action_list: list[ActionConnectionsMapping] = []
 
     # Node ID tracking for unique identification of activities/workflows execution
     # Structure: {workflow_id: {action_name: count}}
-    _node_id_tracker: Dict[str, Dict[str, int]] = {}
+    _node_id_tracker: dict[str, dict[str, int]] = {}
 
     # Thread lock for thread-safe access to _node_id_tracker
     _node_id_lock = threading.Lock()
 
     @classmethod
-    def register_action_list(cls, action_list: List[ActionConnectionsMapping]):
+    def register_action_list(cls, action_list: list[ActionConnectionsMapping]):
         cls._action_list = [
             (
                 ActionConnectionsMapping(**action)
@@ -88,33 +79,33 @@ class ActionsHub:
         ]
 
     @classmethod
-    def _get_action_name(cls, action: Union[str, Callable]) -> str:
+    def _get_action_name(cls, action: str | Callable) -> str:
         """
         Resolve the action name from various action types.
-        
+
         Args:
             action: The action (activity/workflow) name or callable
-            
+
         Returns:
             The resolved action name
         """
         if isinstance(action, str):
             return action
-        
+
         # Handle bound methods (e.g., instance.method)
-        if hasattr(action, '__self__'):
+        if hasattr(action, "__self__"):
             return action.__self__.__class__.__name__
-        
+
         # Handle unbound methods (e.g., Class.method)
-        if hasattr(action, '__qualname__') and '.' in action.__qualname__:
+        if hasattr(action, "__qualname__") and "." in action.__qualname__:
             # For qualified names like "ClassName.method", use the class name
-            return action.__qualname__.split('.')[0]
-        
+            return action.__qualname__.split(".")[0]
+
         return action.__name__
 
     @classmethod
     def _generate_node_id_for_action(
-        cls, action: Union[str, Callable]
+        cls, action: str | Callable
     ) -> tuple[str, str, str]:
         """
         Generate node_id for an action (activity or workflow) execution.
@@ -197,7 +188,7 @@ class ActionsHub:
             return DEFAULT_MODE
 
     @classmethod
-    def get_node_id_tracker_state(cls) -> Dict[str, Dict[str, int]]:
+    def get_node_id_tracker_state(cls) -> dict[str, dict[str, int]]:
         """
         Get the current state of the node_id tracker for debugging and testing.
 
@@ -222,8 +213,8 @@ class ActionsHub:
     def register_activity(
         cls,
         description: str,
-        labels: Optional[List[str]] = None,
-        mcp_config: Optional[MCPConfig] = None,
+        labels: list[str] | None = None,
+        mcp_config: MCPConfig | None = None,
     ):
         """
         Register an activity decorator with optional description, labels, and MCP access control
@@ -281,7 +272,7 @@ class ActionsHub:
         return cls._activities[activity_name]
 
     @classmethod
-    def get_activity_by_name(cls, name: str) -> Optional[Activity]:
+    def get_activity_by_name(cls, name: str) -> Activity | None:
         """
         Get activity by name for internal use.
         Args:
@@ -370,7 +361,7 @@ class ActionsHub:
     """
     Workflows
     """
-    _workflows: Dict[str, Workflow] = {}
+    _workflows: dict[str, Workflow] = {}
 
     @classmethod
     def register_workflow_defn(cls, description: str, labels: list[str]):
@@ -515,7 +506,7 @@ class ActionsHub:
     @classmethod
     async def execute_child_workflow(
         cls,
-        workflow_name: Union[str, Callable],
+        workflow_name: str | Callable,
         *args,
         result_type: type | None = None,
         **kwargs,
@@ -577,7 +568,7 @@ class ActionsHub:
     @classmethod
     async def start_child_workflow(
         cls,
-        workflow_name: Union[str, Callable],
+        workflow_name: str | Callable,
         *args,
         result_type: type | None = None,
         **kwargs,
@@ -611,7 +602,7 @@ class ActionsHub:
     """
     Business Logic
     """
-    _business_logic_methods: Dict[str, BusinessLogic] = {}
+    _business_logic_methods: dict[str, BusinessLogic] = {}
 
     @classmethod
     def register_business_logic(cls, description: str, labels: list[str]) -> Callable:
@@ -663,7 +654,7 @@ class ActionsHub:
         return filters.filter_actions(actions)
 
     @classmethod
-    def get_action_schemas(cls) -> List[Dict[str, Any]]:
+    def get_action_schemas(cls) -> list[dict[str, Any]]:
         """
         Process action schemas to handle credential selection appropriately.
 
@@ -697,7 +688,7 @@ class ActionsHub:
         return schemas
 
     @classmethod
-    def _get_base_schema(cls, action: Action) -> Dict[str, Any]:
+    def _get_base_schema(cls, action: Action) -> dict[str, Any]:
         """
         Get the base schema for an action from its registered action.
 
@@ -715,8 +706,8 @@ class ActionsHub:
     async def execute_action(
         cls,
         action_name: str,
-        params: Dict[str, Any],
-        summary: Optional[str] = None,
+        params: dict[str, Any],
+        summary: str | None = None,
         activity_retry_policy: RetryPolicy = RetryPolicy.default(),
     ) -> Any:
         actions = cls.get_available_actions(ActionFilter(name=action_name))

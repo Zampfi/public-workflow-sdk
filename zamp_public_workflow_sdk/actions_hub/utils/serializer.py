@@ -2,10 +2,13 @@
 Serializer for ActionsHub - independent of Pantheon platform.
 """
 
-from pydantic import BaseModel
-from enum import Enum
+from __future__ import annotations
+
 from datetime import datetime
-from typing import Dict, Any
+from enum import Enum
+from typing import Any, Dict
+
+from pydantic import BaseModel
 
 from .utils import get_fqn
 
@@ -120,7 +123,7 @@ class Serializer:
         return {"type": type_name, "description": f"A {type_name} value"}
 
     @classmethod
-    def get_schema_from_dict(cls, model: Dict[str, Any]):
+    def get_schema_from_dict(cls, model: dict[str, Any]):
         """
         Get schema from a dictionary.
 

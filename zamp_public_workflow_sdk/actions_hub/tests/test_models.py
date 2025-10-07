@@ -2,37 +2,32 @@
 Tests for models modules
 """
 
-import pytest
-from unittest.mock import Mock, patch
-import sys
-import os
+from __future__ import annotations
+
 import inspect
+import os
+import sys
+from unittest.mock import Mock, patch
+
+import pytest
 
 # Add the parent directory to the path so we can import the modules
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from zamp_public_workflow_sdk.actions_hub.models.activity_models import Activity
-from zamp_public_workflow_sdk.actions_hub.models.workflow_models import (
-    Workflow,
-    WorkflowParams,
-    WorkflowCoordinates,
-    PLATFORM_WORKFLOW_LABEL,
-)
-from zamp_public_workflow_sdk.actions_hub.models.business_logic_models import BusinessLogic
-from zamp_public_workflow_sdk.actions_hub.models.decorators import external
-from zamp_public_workflow_sdk.actions_hub.models.credentials_models import (
-    ConnectionIdentifier,
-    Connection,
-    ActionConnectionsMapping,
-)
-from zamp_public_workflow_sdk.actions_hub.utils.context_utils import (
-    get_variable_from_context,
-    get_execution_mode_from_context,
-)
 from zamp_public_workflow_sdk.actions_hub.constants import ExecutionMode
-from zamp_public_workflow_sdk.actions_hub.utils.datetime_utils import (
-    convert_iso_to_timedelta,
-)
+from zamp_public_workflow_sdk.actions_hub.models.activity_models import \
+    Activity
+from zamp_public_workflow_sdk.actions_hub.models.business_logic_models import \
+    BusinessLogic
+from zamp_public_workflow_sdk.actions_hub.models.credentials_models import (
+    ActionConnectionsMapping, Connection, ConnectionIdentifier)
+from zamp_public_workflow_sdk.actions_hub.models.decorators import external
+from zamp_public_workflow_sdk.actions_hub.models.workflow_models import (
+    PLATFORM_WORKFLOW_LABEL, Workflow, WorkflowCoordinates, WorkflowParams)
+from zamp_public_workflow_sdk.actions_hub.utils.context_utils import (
+    get_execution_mode_from_context, get_variable_from_context)
+from zamp_public_workflow_sdk.actions_hub.utils.datetime_utils import \
+    convert_iso_to_timedelta
 
 
 class TestActivity:

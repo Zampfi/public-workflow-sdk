@@ -1,11 +1,10 @@
+from __future__ import annotations
+
 from unittest.mock import patch
 
 from zamp_public_workflow_sdk.temporal.workflow_history.helpers import (
-    _get_node_id_from_header,
-    extract_node_id_from_event,
-    _extract_payload_data,
-    extract_node_payloads,
-)
+    _extract_payload_data, _get_node_id_from_header,
+    extract_node_id_from_event, extract_node_payloads)
 
 
 class TestHelpers:

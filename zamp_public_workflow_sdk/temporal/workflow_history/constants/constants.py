@@ -2,6 +2,8 @@
 Constants and enums for temporal workflow operations.
 """
 
+from __future__ import annotations
+
 from enum import Enum
 
 
@@ -62,6 +64,7 @@ class EventTypeToAttributesKey(Enum):
     CHILD_WORKFLOW_EXECUTION_COMPLETED = (
         "childWorkflowExecutionCompletedEventAttributes"
     )
+
 
 def get_workflow_history_file_name(workflow_id: str, run_id: str) -> str:
     """

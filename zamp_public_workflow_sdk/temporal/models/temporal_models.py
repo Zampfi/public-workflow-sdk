@@ -1,8 +1,9 @@
-from collections import defaultdict
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Mapping, Optional, Sequence, Type, Union
+from typing import Any, Mapping, Sequence
 
 from temporalio.api.common.v1 import Payload
 from temporalio.client import (ListWorkflowsInput, StartWorkflowInput,
@@ -18,6 +19,7 @@ class ErrorResponse:
     code: str | None = None
     internal_error: Mapping[str, Any] = field(default_factory=dict)
     external_error: Mapping[str, Any] = field(default_factory=dict)
+
 
 class WorkflowExecutionStatus(Enum):
     RUNNING = "RUNNING"
@@ -82,11 +84,13 @@ class RunWorkflowParams:
             request_eager_start=self.request_eager_start,
         )
 
+
 @dataclass
 class RunWorkflowResponse:
     error: ErrorResponse | None = None
     result: Any | None = None
     run_id: str | None = None
+
 
 @dataclass
 class ListWorkflowParams(ListWorkflowsInput):
@@ -94,6 +98,7 @@ class ListWorkflowParams(ListWorkflowsInput):
     rpc_metadata: Mapping[str, str] = field(default_factory=dict)
     rpc_timeout: timedelta | None = None
     limit: int | None = None
+
 
 @dataclass
 class WorkflowResponse:
@@ -116,7 +121,9 @@ class WorkflowResponse:
             run_id=workflow.run_id,
             workflow_type=workflow.workflow_type,
             task_queue=workflow.task_queue,
-            status=WorkflowExecutionStatus(workflow.status.name) if workflow.status else None,
+            status=WorkflowExecutionStatus(workflow.status.name)
+            if workflow.status
+            else None,
             start_time=workflow.start_time,
             close_time=workflow.close_time,
             execution_time=workflow.execution_time,
@@ -129,6 +136,7 @@ class WorkflowResponse:
 class GetWorkflowDetailsParams:
     workflow_id: str
     run_id: str | None = None
+
 
 @dataclass
 class WorkflowDetailsResponse:
@@ -144,6 +152,7 @@ class QueryWorkflowParams:
     args: Any | None = None
     run_id: str | None = None
 
+
 @dataclass
 class QueryWorkflowResponse:
     response: Any = None
@@ -158,24 +167,29 @@ class SignalWorkflowParams:
     run_id: str | None = None
     args: Any | None = None
 
+
 @dataclass
 class SignalWorkflowResponse:
     error: ErrorResponse | None = None
+
 
 @dataclass
 class CancelWorkflowParams:
     workflow_id: str
     run_id: str | None = None
 
+
 @dataclass
 class CancelWorkflowResponse:
     error: ErrorResponse | None = None
+
 
 @dataclass
 class TerminateWorkflowParams:
     workflow_id: str
     run_id: str | None = None
     reason: str | None = None
+
 
 @dataclass
 class TerminateWorkflowResponse:

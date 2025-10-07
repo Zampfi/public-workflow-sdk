@@ -2,25 +2,21 @@
 Helper functions for temporal workflow history operations.
 """
 
-import base64
+from __future__ import annotations
+
+from typing import Dict, List, Optional
+
 import structlog
-from typing import List, Optional, Dict
 
 from zamp_public_workflow_sdk.temporal.workflow_history.constants import (
-    EventType,
-    PayloadField,
-    EventTypeToAttributesKey,
-    EventField,
-)
-
-from zamp_public_workflow_sdk.temporal.workflow_history.models.node_payload_data import (
-    NodePayloadData,
-)
+    EventField, EventType, EventTypeToAttributesKey, PayloadField)
+from zamp_public_workflow_sdk.temporal.workflow_history.models.node_payload_data import \
+    NodePayloadData
 
 logger = structlog.get_logger(__name__)
 
 
-def _get_attributes_key_for_event_type(event_type: str) -> Optional[str]:
+def _get_attributes_key_for_event_type(event_type: str) -> str | None:
     """Get the attributes key for a given event type."""
     logger.info("Getting attributes key for event type", event_type=event_type)
     try:
@@ -40,7 +36,7 @@ def _get_attributes_key_for_event_type(event_type: str) -> Optional[str]:
         return None
 
 
-def _get_node_id_from_header(header_fields: dict) -> Optional[str]:
+def _get_node_id_from_header(header_fields: dict) -> str | None:
     """Extract node_id from header fields."""
     logger.info("Extracting node_id from header fields", header_fields=header_fields)
     if EventField.NODE_ID.value not in header_fields:
@@ -55,7 +51,7 @@ def _get_node_id_from_header(header_fields: dict) -> Optional[str]:
     return None
 
 
-def extract_node_id_from_event(event: dict) -> Optional[str]:
+def extract_node_id_from_event(event: dict) -> str | None:
     """Extract node_id from a workflow event."""
     logger.info(
         "Extracting node_id from event",
@@ -104,7 +100,7 @@ def extract_node_id_from_event(event: dict) -> Optional[str]:
 
 def _extract_payload_data(
     event: dict, event_type: str, payload_field: str
-) -> Optional[dict]:
+) -> dict | None:
     """Extract payload data from event attributes."""
     logger.info(
         "Extracting payload data", event_type=event_type, payload_field=payload_field
@@ -129,7 +125,7 @@ def _extract_payload_data(
         return None
 
 
-def _should_include_node_id(node_id: str, target_node_ids: Optional[List[str]]) -> bool:
+def _should_include_node_id(node_id: str, target_node_ids: list[str] | None) -> bool:
     """Check if node_id should be included based on target_node_ids filter."""
     result = not target_node_ids or node_id in target_node_ids
     logger.info(
@@ -143,7 +139,7 @@ def _should_include_node_id(node_id: str, target_node_ids: Optional[List[str]]) 
 
 def _process_event_with_input_payload(
     event: dict, event_type: EventType
-) -> Optional[tuple[str, str]]:
+) -> tuple[str, str] | None:
     """Process event that has input payload and return (node_id, payload_field) or None."""
     logger.info("Processing event", event_type=event_type.value)
     node_id = extract_node_id_from_event(event)
@@ -163,8 +159,8 @@ def _process_event_with_input_payload(
 
 def _process_workflow_execution_completed(
     event: dict,
-    workflow_node_id: Optional[str],
-) -> Optional[tuple[str, str]]:
+    workflow_node_id: str | None,
+) -> tuple[str, str] | None:
     """Process WORKFLOW_EXECUTION_COMPLETED event and return (node_id, payload_field) or None."""
     logger.info(
         "Processing WORKFLOW_EXECUTION_COMPLETED event",
@@ -185,8 +181,8 @@ def _process_event_with_result_payload(
     event: dict,
     event_type: EventType,
     event_id_field: EventField,
-    tracking_events: Dict[int, str],
-) -> Optional[tuple[str, str]]:
+    tracking_events: dict[int, str],
+) -> tuple[str, str] | None:
     """Process event that has result payload and return (node_id, payload_field) or None."""
     logger.info("Processing event", event_type=event_type.value)
     attrs_key = _get_attributes_key_for_event_type(event_type.value)
@@ -215,7 +211,7 @@ def _process_event_with_result_payload(
 def _track_event_with_node_id(
     event: dict,
     node_id: str,
-    tracking_events: Dict[int, str],
+    tracking_events: dict[int, str],
 ) -> None:
     """Track an event with its node_id for later reference."""
     event_id = event.get(EventField.EVENT_ID.value)
@@ -232,7 +228,7 @@ def _add_event_and_payload(
     node_id: str,
     event: dict,
     payload_field: str,
-    node_payloads: Dict[str, "NodePayloadData"],
+    node_payloads: dict[str, NodePayloadData],
 ) -> None:
     """Add event to node data and save input/output payload based on payload_field."""
     logger.info(
@@ -269,7 +265,7 @@ def _add_event_and_payload(
         logger.info("Set output payload for node", node_id=node_id)
 
 
-def get_input_from_node_id(events: List[dict], node_id: str) -> Optional[dict]:
+def get_input_from_node_id(events: list[dict], node_id: str) -> dict | None:
     """Get input payload for a specific node ID from events."""
     logger.info(
         "Getting input payload for node", node_id=node_id, event_count=len(events)
@@ -282,7 +278,7 @@ def get_input_from_node_id(events: List[dict], node_id: str) -> Optional[dict]:
     return result
 
 
-def get_output_from_node_id(events: List[dict], node_id: str) -> Optional[dict]:
+def get_output_from_node_id(events: list[dict], node_id: str) -> dict | None:
     """Get output payload for a specific node ID from events."""
     logger.info(
         "Getting output payload for node", node_id=node_id, event_count=len(events)
@@ -296,8 +292,8 @@ def get_output_from_node_id(events: List[dict], node_id: str) -> Optional[dict]:
 
 
 def get_node_data_from_node_id(
-    events: List[dict], node_id: str
-) -> Dict[str, "NodePayloadData"]:
+    events: list[dict], node_id: str
+) -> dict[str, NodePayloadData]:
     """Get all node data (including input/output payloads and all events) for a specific node ID from events."""
     logger.info(
         "Getting all node data for node", node_id=node_id, event_count=len(events)
@@ -308,18 +304,18 @@ def get_node_data_from_node_id(
 
 
 def extract_node_payloads(
-    events: List[dict], node_ids: Optional[List[str]] = None
-) -> Dict[str, "NodePayloadData"]:
+    events: list[dict], node_ids: list[str] | None = None
+) -> dict[str, NodePayloadData]:
     """Extract all node data including input/output payloads and all events for each node_id from workflow events."""
     logger.info(
         "Starting extraction of all node payloads",
         event_count=len(events),
         target_node_ids=node_ids,
     )
-    node_payloads: Dict[str, "NodePayloadData"] = {}
-    activity_scheduled_events: Dict[int, str] = {}
-    child_workflow_initiated_events: Dict[int, str] = {}
-    workflow_node_id: Optional[str] = None
+    node_payloads: dict[str, NodePayloadData] = {}
+    activity_scheduled_events: dict[int, str] = {}
+    child_workflow_initiated_events: dict[int, str] = {}
+    workflow_node_id: str | None = None
 
     for event_index, event in enumerate(events):
         event_type = event.get(EventField.EVENT_TYPE.value)

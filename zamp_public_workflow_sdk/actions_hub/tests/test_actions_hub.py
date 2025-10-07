@@ -2,18 +2,22 @@
 Tests for actions_hub.py
 """
 
-import pytest
-import sys
+from __future__ import annotations
+
 import os
-from unittest.mock import Mock, patch
+import sys
 from datetime import timedelta
+from unittest.mock import Mock, patch
+
+import pytest
 
 # Add the parent directory to the path so we can import the modules
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from zamp_public_workflow_sdk.actions_hub.constants import ActionType
-from zamp_public_workflow_sdk.actions_hub.models.core_models import Action, RetryPolicy
 from zamp_public_workflow_sdk.actions_hub.action_hub_core import ActionsHub
+from zamp_public_workflow_sdk.actions_hub.constants import ActionType
+from zamp_public_workflow_sdk.actions_hub.models.core_models import (
+    Action, RetryPolicy)
 
 
 class TestActionsHub:
@@ -26,7 +30,8 @@ class TestActionsHub:
             "zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.unsafe.imports_passed_through"
         ):
             # Import ActionsHub directly from the module
-            from zamp_public_workflow_sdk.actions_hub.action_hub_core import ActionsHub
+            from zamp_public_workflow_sdk.actions_hub.action_hub_core import \
+                ActionsHub
 
             self.ActionsHub = ActionsHub
 
@@ -128,7 +133,8 @@ class TestActionsHub:
             return x
 
         # Test with specific filter to get the activity
-        from zamp_public_workflow_sdk.actions_hub.models.core_models import ActionFilter
+        from zamp_public_workflow_sdk.actions_hub.models.core_models import \
+            ActionFilter
 
         filter_obj = ActionFilter(resticted_action_set={"test_activity_get_actions"})
         actions = self.ActionsHub.get_available_actions(filter_obj)
@@ -159,7 +165,8 @@ class TestActionsHub:
             return x
 
         # Test with filter
-        from zamp_public_workflow_sdk.actions_hub.models.core_models import ActionFilter
+        from zamp_public_workflow_sdk.actions_hub.models.core_models import \
+            ActionFilter
 
         filter_obj = ActionFilter(resticted_action_set={"test_activity_filter"})
         actions = self.ActionsHub.get_available_actions(filter_obj)
@@ -224,9 +231,7 @@ class TestActionsHub:
         hub = self.ActionsHub()
 
         from zamp_public_workflow_sdk.actions_hub.models.credentials_models import (
-            ActionConnectionsMapping,
-            Connection,
-        )
+            ActionConnectionsMapping, Connection)
 
         # Create proper Connection objects
         conn1 = Connection(connection_id="conn1", summary="Connection 1")
@@ -252,9 +257,7 @@ class TestActionsHub:
         hub = self.ActionsHub()
 
         from zamp_public_workflow_sdk.actions_hub.models.credentials_models import (
-            ActionConnectionsMapping,
-            Connection,
-        )
+            ActionConnectionsMapping, Connection)
 
         # Create proper Connection objects
         conn1 = Connection(connection_id="conn1", summary="Connection 1")
@@ -291,7 +294,8 @@ class TestActionsHub:
 
     def test_retry_policy_defaults(self):
         """Test retry policy defaults."""
-        from zamp_public_workflow_sdk.actions_hub.models.core_models import RetryPolicy
+        from zamp_public_workflow_sdk.actions_hub.models.core_models import \
+            RetryPolicy
 
         # Test that RetryPolicy class works
         retry_policy = RetryPolicy.default()
@@ -303,7 +307,8 @@ class TestActionsHub:
 
     def test_retry_policy_custom(self):
         """Test custom retry policies."""
-        from zamp_public_workflow_sdk.actions_hub.models.core_models import RetryPolicy
+        from zamp_public_workflow_sdk.actions_hub.models.core_models import \
+            RetryPolicy
 
         # Test creating custom retry policy
         custom_retry_policy = RetryPolicy(

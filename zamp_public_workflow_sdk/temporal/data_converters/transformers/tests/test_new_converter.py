@@ -1,22 +1,28 @@
-from pydantic import BaseModel
-from zamp_public_workflow_sdk.temporal.data_converters.type_utils import is_serialize_by_default_serializer
+from __future__ import annotations
+
 import io
 import typing
+from typing import Generic, TypeVar
+
+from pydantic import BaseModel
+
+# Define TypeVar for generic types
+T = TypeVar('T', bound=BaseModel)
+
+from zamp_public_workflow_sdk.temporal.data_converters.type_utils import \
+    is_serialize_by_default_serializer
+
 
 def test_simple_pydantic_model():
     class SimplePydanticModel(BaseModel):
         string: str
         integer: int
         boolean: bool
-        
-        
-    test = SimplePydanticModel(
-        string="a",
-        integer=1,
-        boolean=False
-    )
+
+    test = SimplePydanticModel(string="a", integer=1, boolean=False)
 
     assert is_serialize_by_default_serializer(test) is True
+
 
 def test_pydantic_model_with_bytesio():
     class PydanticModelWithBytesIO(BaseModel):
@@ -25,18 +31,16 @@ def test_pydantic_model_with_bytesio():
         class Config:
             arbitrary_types_allowed = True
 
-
-    test = PydanticModelWithBytesIO(
-        base_io=io.BytesIO(b"test")
-    )
+    test = PydanticModelWithBytesIO(base_io=io.BytesIO(b"test"))
 
     assert is_serialize_by_default_serializer(test) is False
 
+
 def test_pydantic_model_with_type_property():
     from typing import Type
-    
+
     class PydanticModelWithTypeProperty(BaseModel):
-        type_prop: Type[BaseModel]
+        type_prop: type[BaseModel]
 
     test = PydanticModelWithTypeProperty(
         type_prop=PydanticModelWithTypeProperty,
@@ -44,10 +48,10 @@ def test_pydantic_model_with_type_property():
 
     assert is_serialize_by_default_serializer(test) is False
 
+
 def test_pydantic_model_with_pydantic_object():
-    
     class PydanticModelWithTypeProperty(BaseModel):
-        optional_base_model: typing.Optional[BaseModel]
+        optional_base_model: BaseModel | None
 
     test = PydanticModelWithTypeProperty(
         optional_base_model=PydanticModelWithTypeProperty(
@@ -55,7 +59,8 @@ def test_pydantic_model_with_pydantic_object():
         ),
     )
 
-    assert is_serialize_by_default_serializer(test) is False 
+    assert is_serialize_by_default_serializer(test) is False
+
 
 def test_pydantic_model_with_pydantic_object2():
     class PydanticModelWithTypeProperty(BaseModel):
@@ -67,16 +72,16 @@ def test_pydantic_model_with_pydantic_object2():
                 optional_type_base_model=None
             )
         ),
-        optional_type_base_model=None
+        optional_type_base_model=None,
     )
 
-    assert is_serialize_by_default_serializer(test) is False 
+    assert is_serialize_by_default_serializer(test) is False
+
 
 def test_nested_base_model():
     class BasicPydanticObject(BaseModel):
         string: str
         integer: int
-
 
     class PydanticModelWithNonSerializable(BaseModel):
         bytes_io: io.BytesIO
@@ -93,61 +98,54 @@ def test_nested_base_model():
             string="test",
             integer=123,
         ),
-        non_serializable=PydanticModelWithNonSerializable(
-            bytes_io=io.BytesIO(b"test")
-        )
+        non_serializable=PydanticModelWithNonSerializable(bytes_io=io.BytesIO(b"test")),
     )
 
     assert is_serialize_by_default_serializer(nested_model) is False
     nested_model_dumped = {
-        "basic": {
-            "string": "test"
-        },
-        "non_serializable": io.BytesIO(b"test")
+        "basic": {"string": "test"},
+        "non_serializable": io.BytesIO(b"test"),
     }
     assert is_serialize_by_default_serializer(nested_model_dumped) is False
 
     nested_model.non_serializable = None
     assert is_serialize_by_default_serializer(nested_model) is True
     nested_model_dumped = nested_model_dumped = {
-        "basic": {
-            "string": "test"
-        },
-        "non_serializable": None
+        "basic": {"string": "test"},
+        "non_serializable": None,
     }
     assert is_serialize_by_default_serializer(nested_model_dumped) is True
+
 
 def test_tuple_case():
     class PydanticModelWithTuple(BaseModel):
         tuple: tuple
 
-    test = PydanticModelWithTuple(
-        tuple=(1, 2, 3)
-    )
+    test = PydanticModelWithTuple(tuple=(1, 2, 3))
 
     assert is_serialize_by_default_serializer(test) is False
+
 
 def test_list_case():
     class PydanticModelWithList(BaseModel):
         list: list[int]
 
-    class PydanticModelWithListT[T: BaseModel](BaseModel):
+    class PydanticModelWithListT(BaseModel, Generic[T]):
         list: list[T]
 
     class PydanticModelWithListT2(BaseModel):
         list: list
 
-    test1= PydanticModelWithList(list=[1,2,3])
+    test1 = PydanticModelWithList(list=[1, 2, 3])
 
-    test = PydanticModelWithListT[PydanticModelWithList](
-        list=[test1, test1]
-    )
+    test = PydanticModelWithListT[PydanticModelWithList](list=[test1, test1])
 
-    test2= PydanticModelWithListT2(list=[1,"a", 3])
+    test2 = PydanticModelWithListT2(list=[1, "a", 3])
 
     assert is_serialize_by_default_serializer(test1) is True
     assert is_serialize_by_default_serializer(test) is False
     assert is_serialize_by_default_serializer(test2) is False
+
 
 if __name__ == "__main__":
     test_simple_pydantic_model()

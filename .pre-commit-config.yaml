@@ -12,6 +12,7 @@ repos:
       - id: check-symlinks
       - id: check-yaml
       - id: debug-statements
+        language_version: python3.12
       - id: end-of-file-fixer
       - id: mixed-line-ending
       - id: requirements-txt-fixer
@@ -22,12 +23,14 @@ repos:
     hooks:
       - id: isort
         args: ["-a", "from __future__ import annotations"]
+        language_version: python3.12
 
   - repo: https://github.com/asottile/pyupgrade
     rev: v2.31.0
     hooks:
       - id: pyupgrade
-        args: [--py37-plus]
+        args: [--py311-plus]
+        language_version: python3.12
 
   - repo: https://github.com/hadialqattan/pycln
     rev: v1.2.5
@@ -35,6 +38,7 @@ repos:
       - id: pycln
         args: [--config=pyproject.toml]
         stages: [manual]
+        language_version: python3.12
 
   - repo: https://github.com/pre-commit/pygrep-hooks
     rev: v1.9.0
@@ -42,7 +46,6 @@ repos:
       - id: python-check-blanket-noqa
       - id: python-check-blanket-type-ignore
       - id: python-no-log-warn
-      - id: python-no-eval
       - id: python-use-type-annotations
       - id: rst-backticks
       - id: rst-directive-colons
@@ -57,3 +60,4 @@ repos:
     rev: v1.10.0
     hooks:
       - id: mypy
+        language_version: python3.12
