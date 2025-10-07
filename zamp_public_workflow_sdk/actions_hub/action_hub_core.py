@@ -138,7 +138,7 @@ class ActionsHub:
         Generate a unique node_id for an action execution.
 
         For actions within child workflows, the node_id will be hierarchical:
-        - Main workflow activity: Activity (or Activity#2 if called again)
+        - Main workflow activity: Activity#1 (or Activity#2 if called again)
         - Child workflow: ChildWorkflow#1
         - Activity within child workflow: ChildWorkflow#1.Activity#1
         - Child workflow within child workflow: ChildWorkflow#1.NestedChildWorkflow#1
