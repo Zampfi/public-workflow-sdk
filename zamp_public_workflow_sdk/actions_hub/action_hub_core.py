@@ -85,7 +85,7 @@ class ActionsHub:
     _node_id_lock = threading.Lock()
 
     # Simulation
-    _workflow_id_to_simulation_map: Dict[str, "WorkflowSimulationService"] = {}
+    _workflow_id_to_simulation_map: Dict[str, WorkflowSimulationService] = {}
 
     @classmethod
     def register_action_list(cls, action_list: List[ActionConnectionsMapping]):
@@ -153,37 +153,38 @@ class ActionsHub:
         return workflow_class_name in SKIP_SIMULATION_WORKFLOWS
 
     @classmethod
-    def _get_simulation_result(
-        cls,
-        workflow_id: str,
-        node_id: str,
-        action: Union[str, Callable],
-    ) -> SimulationResponse:
-        """Get simulation result for an action."""
-
-        # Check if this specific action should skip simulation
-        if cls._should_skip_simulation(action):
-            return SimulationResponse(
-                execution_type=ExecutionType.EXECUTE, execution_response=None
-            )
-            
-        simulation_response = cls._get_simulation_response(workflow_id, node_id)
-        return simulation_response
-
-    @classmethod
     def _get_simulation_response(
         cls,
         workflow_id: str,
         node_id: str,
-    ) -> Optional[Any]:
-        """Get simulation response for a workflow execution."""
-        simulation = cls._workflow_id_to_simulation_map[workflow_id]
+        action: Union[str, Callable] = None,
+        return_type: type | None = None,
+    ) -> SimulationResponse:
+        """Get simulation response for a workflow execution and handle return type conversion."""
+        
+        # Check if this specific action should skip simulation
+        if action and cls._should_skip_simulation(action):
+            return SimulationResponse(
+                execution_type=ExecutionType.EXECUTE, execution_response=None
+            )
+            
+        simulation = cls._workflow_id_to_simulation_map.get(workflow_id)
         if simulation:
-            return simulation.get_simulation_response(node_id)
-
-        return SimulationResponse(
-            execution_type=ExecutionType.EXECUTE, execution_response=None
-        )
+            simulation_response = simulation.get_simulation_response(node_id)
+        else:
+            simulation_response = SimulationResponse(
+                execution_type=ExecutionType.EXECUTE, execution_response=None
+            )
+        
+        if simulation_response.execution_type == ExecutionType.MOCK:
+            if return_type is None and action:
+                return_type = cls._get_action_return_type(action)
+            
+            simulation_response.execution_response = cls._convert_result_to_model(
+                result=simulation_response.execution_response, return_type=return_type
+            )
+        
+        return simulation_response
 
     @classmethod
     def _get_action_return_type(cls, action_name: str | Callable) -> type | None:
@@ -192,12 +193,9 @@ class ActionsHub:
             name = action_name
         else:
             name = action_name.__name__     
-        try:
-            actions = cls.get_available_actions(ActionFilter(name=name))
-            if actions:
-                return actions[0].returns
-        except Exception:
-            pass
+        actions = cls.get_available_actions(ActionFilter(name=name))
+        if actions:
+            return actions[0].returns
 
         return None
 
@@ -221,50 +219,35 @@ class ActionsHub:
         return result
 
     @classmethod
-    async def set_simulation_for_workflow(
-        cls, simulation_config: SimulationConfig, workflow_id: str
+    async def init_simulation_for_workflow(
+        cls, simulation_config: SimulationConfig, workflow_id: str = None
     ) -> None:
         """
-        Add simulation configuration for a specific workflow.
+        Initialize simulation for a workflow.
 
         Args:
             simulation_config: Simulation configuration
-            workflow_id: Workflow ID to associate with simulation
+            workflow_id: Workflow ID to associate with simulation. If None, uses current workflow ID.
         """
         from simulation.workflow_simulation_service import (
             WorkflowSimulationService,
         )
 
-        simulation_service = WorkflowSimulationService(simulation_config)
-        cls._workflow_id_to_simulation_map[workflow_id] = simulation_service
-        logger.info("Simulation initialized for workflow", workflow_id=workflow_id)
+        if workflow_id is None:
+            workflow_id = cls._get_current_workflow_id()
+        
+        if workflow_id:
+            simulation_service = WorkflowSimulationService(simulation_config)
+            cls._workflow_id_to_simulation_map[workflow_id] = simulation_service
+            logger.info("Simulation initialized for workflow", workflow_id=workflow_id)
+            
+            await simulation_service._initialize_simulation_data()
 
     @classmethod
     def get_simulation_from_workflow_id(
         cls, workflow_id: str
     ) -> "WorkflowSimulationService":
         return cls._workflow_id_to_simulation_map.get(workflow_id)
-
-    @classmethod
-    async def _initialize_simulation(cls, simulation_config: SimulationConfig) -> None:
-        """
-        Initialize simulation if configuration is provided.
-
-        Args:
-            simulation_config: Simulation configuration
-        """
-
-        workflow_id = cls._get_current_workflow_id()
-        if workflow_id:
-            await cls.set_simulation_for_workflow(
-                simulation_config=simulation_config, workflow_id=workflow_id
-            )
-            simulation_service = cls.get_simulation_from_workflow_id(
-                workflow_id=workflow_id
-            )
-
-            if simulation_service:
-                await simulation_service._initialize_simulation_data()
 
     @classmethod
     def _get_current_workflow_id(cls) -> str:
@@ -404,13 +387,9 @@ class ActionsHub:
         # Generate node_id for this activity execution
         activity_name, workflow_id, node_id = cls._generate_node_id_for_action(activity)
 
-        registry_return_type = cls._get_action_return_type(activity)
-        if return_type is None:
-            return_type = registry_return_type
-
         # Check for simulation result
-        simulation_result = cls._get_simulation_result(
-            workflow_id=workflow_id, node_id=node_id, action=activity
+        simulation_result = cls._get_simulation_response(
+            workflow_id=workflow_id, node_id=node_id, action=activity, return_type=return_type
         )
         if simulation_result.execution_type == ExecutionType.MOCK:
             logger.info(
@@ -418,9 +397,7 @@ class ActionsHub:
                 activity_name=activity_name,
                 node_id=node_id,
             )
-            return cls._convert_result_to_model(
-                result=simulation_result.execution_response, return_type=return_type
-            )
+            return simulation_result.execution_response
         # Note: retry_policy.initial_interval and maximum_interval are already timedelta objects
 
         # Convert ISO string to timedelta
@@ -636,13 +613,9 @@ class ActionsHub:
             workflow_name
         )
 
-        # Get return type from workflow registry, but preserve the passed result_type if it exists
-        if result_type is None:
-            result_type = cls._get_action_return_type(workflow_name)
-
         # Check for simulation result
-        simulation_result = cls._get_simulation_result(
-            workflow_id=workflow_id, node_id=node_id, action=workflow_name
+        simulation_result = cls._get_simulation_response(
+            workflow_id=workflow_id, node_id=node_id, action=workflow_name, return_type=result_type
         )
         if simulation_result.execution_type == ExecutionType.MOCK:
             logger.info(
@@ -650,9 +623,7 @@ class ActionsHub:
                 activity_name=workflow_name,
                 node_id=node_id,
             )
-            return cls._convert_result_to_model(
-                result=simulation_result.execution_response, return_type=result_type
-            )
+            return simulation_result.execution_response
 
 
         execution_mode = get_execution_mode_from_context()
@@ -717,13 +688,9 @@ class ActionsHub:
             workflow_name
         )
         
-        # Get return type from workflow registry, but preserve the passed result_type if it exists
-        if result_type is None:
-            result_type = cls._get_action_return_type(workflow_name)
-
         # Check for simulation result
-        simulation_result = cls._get_simulation_result(
-            workflow_id=workflow_id, node_id=node_id, action=workflow_name
+        simulation_result = cls._get_simulation_response(
+            workflow_id=workflow_id, node_id=node_id, action=workflow_name, return_type=result_type
         )
         if simulation_result.execution_type == ExecutionType.MOCK:
             logger.info(
@@ -731,9 +698,7 @@ class ActionsHub:
                 activity_name=workflow_name,
                 node_id=node_id,
             )
-            return cls._convert_result_to_model(
-                result=simulation_result.execution_response, return_type=result_type
-            )
+            return simulation_result.execution_response
 
         logger.info(
             "Starting child workflow",
