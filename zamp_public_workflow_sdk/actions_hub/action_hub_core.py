@@ -6,6 +6,7 @@ independent of the Pantheon platform.
 """
 
 import asyncio
+from platform import node
 import threading
 from collections import defaultdict
 from temporalio import workflow, activity
@@ -104,13 +105,13 @@ class ActionsHub:
         try:
             # Get action name for node_id generation
             if isinstance(action, str):
-                return action, cls._get_current_workflow_id(), cls._get_node_id(cls._get_current_workflow_id(), action)
+                return action, cls._get_current_workflow_id(), cls._get_node_id(workflow_id=cls._get_current_workflow_id(), action_name=action)
             
             # Handle bound methods (e.g., instance.method)
             if hasattr(action, '__self__') and hasattr(action, '__name__') and action.__self__ is not None:
                 class_name = action.__self__.__class__.__name__
                 workflow_id = cls._get_current_workflow_id()
-                node_id = cls._get_node_id(workflow_id, class_name)
+                node_id = cls._get_node_id(workflow_id=workflow_id, action_name=class_name)
                 return class_name, workflow_id, node_id
             
             # Handle unbound methods (e.g., Class.method)
@@ -118,12 +119,12 @@ class ActionsHub:
                 # For qualified names like "ClassName.method", use the class name
                 class_name = action.__qualname__.split('.')[0]
                 workflow_id = cls._get_current_workflow_id()
-                node_id = cls._get_node_id(workflow_id, class_name)
+                node_id = cls._get_node_id(workflow_id=workflow_id, action_name=class_name)
                 return class_name, workflow_id, node_id
             
             action_name = action.__name__
             workflow_id = cls._get_current_workflow_id()
-            node_id = cls._get_node_id(workflow_id, action_name)
+            node_id = cls._get_node_id(workflow_id=workflow_id, action_name=action_name)
             return action_name, workflow_id, node_id
             
         except Exception as e:
@@ -139,7 +140,7 @@ class ActionsHub:
         For actions within child workflows, the node_id will be hierarchical:
         - Main workflow activity: Activity (or Activity#2 if called again)
         - Child workflow: ChildWorkflow#1
-        - Activity within child workflow: ChildWorkflow#1.Activity
+        - Activity within child workflow: ChildWorkflow#1.Activity#1
         - Child workflow within child workflow: ChildWorkflow#1.NestedChildWorkflow#1
 
         Args:
@@ -153,23 +154,16 @@ class ActionsHub:
             if workflow_id not in cls._node_id_tracker:
                 cls._node_id_tracker[workflow_id] = defaultdict(int)
 
-            # Get parent context from workflow headers
-            context_segments = []
-            try:
-                info = workflow.info()
-                if info.headers and NODE_ID_HEADER_KEY in info.headers:
-                    node_id_payload = info.headers[NODE_ID_HEADER_KEY]
-                    parent_context = workflow.payload_converter().from_payload(
-                        node_id_payload, str
-                    )
-                    if parent_context:
-                        context_segments = parent_context.split(".")
-            except Exception:
-                # reset parent_context to empty string to avoid using the previous context
-                context_segments = []
-
-            tracking_segments = [*context_segments, action_name]
-            tracking_key = ".".join(tracking_segments)
+            info = workflow.info()
+            if info.headers and NODE_ID_HEADER_KEY in info.headers:
+                node_id_payload = info.headers[NODE_ID_HEADER_KEY]
+                node_id_parent = workflow.payload_converter().from_payload(
+                    node_id_payload, str
+                )
+                if node_id_parent:
+                    tracking_key = f"{node_id_parent}.{action_name}"
+            else:
+                tracking_key = action_name
 
             cls._node_id_tracker[workflow_id][tracking_key] += 1
             count = cls._node_id_tracker[workflow_id][tracking_key]
