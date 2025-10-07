@@ -103,7 +103,7 @@ class ActionsHub:
             return action
         
         # Handle bound methods (e.g., instance.method)
-        if hasattr(action, '__self__') and hasattr(action, '__name__') and action.__self__ is not None:
+        if hasattr(action, '__self__') and hasattr(action, '__name__'):
             return action.__self__.__class__.__name__
         
         # Handle unbound methods (e.g., Class.method)
@@ -166,7 +166,9 @@ class ActionsHub:
                     node_id_payload, str
                 )
                 if parent_node_id:
-                    tracking_key = f"{node_id_parent}.{action_name}"
+                    tracking_key = f"{parent_node_id}.{action_name}"
+                else:
+                    tracking_key = action_name
             else:
                 tracking_key = action_name
 
