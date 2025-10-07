@@ -9,9 +9,9 @@ import asyncio
 import threading
 from collections import defaultdict
 from temporalio import workflow, activity
+from zamp_public_workflow_sdk.temporal.interceptors.node_id_interceptor import NODE_ID_HEADER_KEY
 
 from .models.mcp_models import MCPConfig
-
 from .constants import DEFAULT_MODE, SKIP_SIMULATION_WORKFLOWS
 
 with workflow.unsafe.imports_passed_through():
@@ -100,6 +100,31 @@ class ActionsHub:
         ]
 
     @classmethod
+    def _get_action_name(cls, action: Union[str, Callable]) -> str:
+        """
+        Resolve the action name from various action types.
+        
+        Args:
+            action: The action (activity/workflow) name or callable
+            
+        Returns:
+            The resolved action name
+        """
+        if isinstance(action, str):
+            return action
+        
+        # Handle bound methods (e.g., instance.method)
+        if hasattr(action, '__self__'):
+            return action.__self__.__class__.__name__
+        
+        # Handle unbound methods (e.g., Class.method)
+        if hasattr(action, '__qualname__') and '.' in action.__qualname__:
+            # For qualified names like "ClassName.method", use the class name
+            return action.__qualname__.split('.')[0]
+        
+        return action.__name__
+
+    @classmethod
     def _generate_node_id_for_action(
         cls, action: Union[str, Callable]
     ) -> tuple[str, str, str]:
@@ -112,13 +137,9 @@ class ActionsHub:
         Returns:
             Tuple of (action_name, workflow_id, node_id)
         """
-        # Get action name for node_id generation
-        action_name = action if isinstance(action, str) else action.__name__
-
-        # Generate node_id for this action execution
+        action_name = cls._get_action_name(action)
         workflow_id = cls._get_current_workflow_id()
-        node_id = cls._get_node_id(workflow_id, action_name)
-
+        node_id = cls._get_node_id(workflow_id=workflow_id, action_name=action_name)
         return action_name, workflow_id, node_id
 
     @classmethod
@@ -126,22 +147,42 @@ class ActionsHub:
         """
         Generate a unique node_id for an action execution.
 
+        For actions within child workflows, the node_id will be hierarchical:
+        - Main workflow activity: Activity#1 (or Activity#2 if called again)
+        - Child workflow: ChildWorkflow#1
+        - Activity within child workflow: ChildWorkflow#1.Activity#1
+        - Child workflow within child workflow: ChildWorkflow#1.NestedChildWorkflow#1
+
         Args:
             workflow_id: The workflow ID
             action_name: The name of the action (activity/workflow)
 
         Returns:
-            A unique node_id in format: {action_name}#{count}
+            A unique node_id in hierarchical format
         """
         with cls._node_id_lock:
             if workflow_id not in cls._node_id_tracker:
                 cls._node_id_tracker[workflow_id] = defaultdict(int)
 
-            cls._node_id_tracker[workflow_id][action_name] += 1
-            count = cls._node_id_tracker[workflow_id][action_name]
+            info = workflow.info()
+            if info.headers and NODE_ID_HEADER_KEY in info.headers:
+                node_id_payload = info.headers[NODE_ID_HEADER_KEY]
+                parent_node_id = workflow.payload_converter().from_payload(
+                    node_id_payload, str
+                )
+                if parent_node_id:
+                    tracking_key = f"{parent_node_id}.{action_name}"
+                else:
+                    tracking_key = action_name
+            else:
+                tracking_key = action_name
 
-        # Use the full workflow_id for the node_id format
-        return f"{action_name}#{count}"
+            cls._node_id_tracker[workflow_id][tracking_key] += 1
+            count = cls._node_id_tracker[workflow_id][tracking_key]
+
+            node_id = f"{tracking_key}#{count}"
+
+        return node_id
 
     @classmethod
     def _should_skip_simulation(cls, workflow_name: Union[str, Callable]) -> bool:
