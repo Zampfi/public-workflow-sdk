@@ -30,9 +30,6 @@ class SimulationResponse(BaseModel):
 class SimulationStrategyOutput(BaseModel):
     """Output from a simulation strategy execution."""
 
-    execution_type: ExecutionType = Field(
-        ..., description="Type of execution (EXECUTE or MOCK)"
-    )
     node_outputs: Dict[str, Optional[Any]] = Field(
         default_factory=dict,
         description="Dictionary mapping node IDs to their mocked outputs, or empty dict if no mocking",

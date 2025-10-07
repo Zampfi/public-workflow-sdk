@@ -8,7 +8,6 @@ from typing import Any, Optional
 
 from zamp_public_workflow_sdk.simulation.models.simulation_response import (
     SimulationStrategyOutput,
-    ExecutionType,
 )
 from zamp_public_workflow_sdk.simulation.strategies.base_strategy import BaseStrategy
 from zamp_public_workflow_sdk.temporal.workflow_history.models import (
@@ -52,7 +51,7 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
             temporal_history: Optional workflow history (if already fetched)
 
         Returns:
-            SimulationStrategyOutput with execution_type=MOCK for mocking when history is found
+            SimulationStrategyOutput with node_outputs for mocking when history is found
         """
         try:
             if temporal_history is None:
@@ -61,13 +60,9 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
             if temporal_history is not None:
                 output = await self._extract_node_output(temporal_history, node_ids)
                 if output is not None:
-                    return SimulationStrategyOutput(
-                        execution_type=ExecutionType.MOCK, node_outputs=output
-                    )
+                    return SimulationStrategyOutput(node_outputs=output)
 
-            return SimulationStrategyOutput(
-                execution_type=ExecutionType.EXECUTE, node_outputs={}
-            )
+            return SimulationStrategyOutput()
 
         except Exception as e:
             logger.error(
@@ -76,9 +71,7 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
                 error=str(e),
                 error_type=type(e).__name__,
             )
-            return SimulationStrategyOutput(
-                execution_type=ExecutionType.EXECUTE, node_outputs={}
-            )
+            return SimulationStrategyOutput()
 
     async def _fetch_temporal_history(
         self, node_ids: List[str]

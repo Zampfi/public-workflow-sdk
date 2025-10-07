@@ -7,7 +7,6 @@ from typing import Any, List, Optional
 
 from zamp_public_workflow_sdk.simulation.models.simulation_response import (
     SimulationStrategyOutput,
-    ExecutionType,
 )
 from zamp_public_workflow_sdk.simulation.strategies.base_strategy import BaseStrategy
 from zamp_public_workflow_sdk.temporal.workflow_history.models import (
@@ -44,10 +43,8 @@ class CustomOutputStrategyHandler(BaseStrategy):
             temporal_history: Optional workflow history (not used in this strategy)
 
         Returns:
-            SimulationStrategyOutput with execution_type=MOCK for mocking
+            SimulationStrategyOutput with node_outputs for mocking
         """
         # Return the same custom output for all nodes
         node_outputs = {node_id: self.output_value for node_id in node_ids}
-        return SimulationStrategyOutput(
-            execution_type=ExecutionType.MOCK, node_outputs=node_outputs
-        )
+        return SimulationStrategyOutput(node_outputs=node_outputs)

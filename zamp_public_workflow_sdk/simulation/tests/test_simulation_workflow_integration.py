@@ -21,7 +21,6 @@ from zamp_public_workflow_sdk.simulation.models import (
 )
 from zamp_public_workflow_sdk.simulation.models.simulation_response import (
     SimulationStrategyOutput,
-    ExecutionType,
 )
 from zamp_public_workflow_sdk.simulation.workflow_simulation_service import (
     WorkflowSimulationService,
@@ -142,11 +141,10 @@ class TestSimulationWorkflowIntegration:
             mock_strategy = Mock()
             mock_strategy.execute = AsyncMock(
                 return_value=SimulationStrategyOutput(
-                    execution_type=ExecutionType.MOCK,
                     node_outputs={
                         "node1#1": "history_output",
                         "node2#1": "history_output",
-                    },
+                    }
                 )
             )
             mock_handler_class.return_value = mock_strategy
@@ -195,8 +193,7 @@ class TestSimulationWorkflowIntegration:
             mock_strategy = Mock()
             mock_strategy.execute = AsyncMock(
                 return_value=SimulationStrategyOutput(
-                    execution_type=ExecutionType.MOCK,
-                    node_outputs={"node2#1": "history_output"},
+                    node_outputs={"node2#1": "history_output"}
                 )
             )
             mock_handler_class.return_value = mock_strategy
@@ -242,8 +239,8 @@ class TestSimulationWorkflowIntegration:
             assert len(result.node_id_to_response_map) == 0  # No successful executions
 
     @pytest.mark.asyncio
-    async def test_execute_strategy_returns_execute(self):
-        """Test execute method when strategy returns execution_type=EXECUTE."""
+    async def test_execute_strategy_returns_empty_outputs(self):
+        """Test execute method when strategy returns empty node_outputs."""
         workflow = SimulationWorkflow()
 
         mock_config = NodeMockConfig(
@@ -261,15 +258,13 @@ class TestSimulationWorkflowIntegration:
         sim_config = SimulationConfig(mock_config=mock_config)
         input_data = SimulationWorkflowInput(simulation_config=sim_config)
 
-        # Mock strategy to return execution_type=EXECUTE at the point where it's created
+        # Mock strategy to return empty node_outputs at the point where it's created
         with patch(
             "zamp_public_workflow_sdk.simulation.workflow_simulation_service.CustomOutputStrategyHandler"
         ) as mock_handler_class:
             mock_strategy = Mock()
             mock_strategy.execute = AsyncMock(
-                return_value=SimulationStrategyOutput(
-                    execution_type=ExecutionType.EXECUTE, node_outputs={}
-                )
+                return_value=SimulationStrategyOutput(node_outputs={})
             )
             mock_handler_class.return_value = mock_strategy
 
@@ -304,9 +299,7 @@ class TestSimulationWorkflowIntegration:
         ) as mock_handler_class:
             mock_strategy = Mock()
             mock_strategy.execute = AsyncMock(
-                return_value=SimulationStrategyOutput(
-                    execution_type=ExecutionType.MOCK, node_outputs={}
-                )
+                return_value=SimulationStrategyOutput(node_outputs={})
             )
             mock_handler_class.return_value = mock_strategy
 

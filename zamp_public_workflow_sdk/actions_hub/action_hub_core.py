@@ -189,16 +189,6 @@ class ActionsHub:
         return node_id
 
     @classmethod
-    def _should_skip_simulation(cls, workflow_name: Union[str, Callable]) -> bool:
-        """Check if a workflow should skip simulation."""
-        workflow_class_name = (
-            workflow_name.__name__
-            if hasattr(workflow_name, "__name__")
-            else str(workflow_name)
-        )
-        return workflow_class_name in SKIP_SIMULATION_WORKFLOWS
-
-    @classmethod
     def _get_simulation_response(
         cls,
         workflow_id: str,
@@ -209,18 +199,20 @@ class ActionsHub:
         """Get simulation response for a workflow execution and handle return type conversion."""
 
         # Check if this specific action should skip simulation
-        if action and cls._should_skip_simulation(action):
+        if action:
+            action_name = cls._get_action_name(action)
+            if action_name in SKIP_SIMULATION_WORKFLOWS:
+                return SimulationResponse(
+                    execution_type=ExecutionType.EXECUTE, execution_response=None
+                )
+
+        simulation = cls.get_simulation_from_workflow_id(workflow_id)
+        if not simulation:
             return SimulationResponse(
                 execution_type=ExecutionType.EXECUTE, execution_response=None
             )
 
-        simulation = cls.get_simulation_from_workflow_id(workflow_id)
-        if simulation:
-            simulation_response = simulation.get_simulation_response(node_id)
-        else:
-            simulation_response = SimulationResponse(
-                execution_type=ExecutionType.EXECUTE, execution_response=None
-            )
+        simulation_response = simulation.get_simulation_response(node_id)
 
         if simulation_response.execution_type == ExecutionType.MOCK:
             if return_type is None and action:
@@ -266,24 +258,20 @@ class ActionsHub:
 
     @classmethod
     async def init_simulation_for_workflow(
-        cls, simulation_config: SimulationConfig, workflow_id: str = None
+        cls, simulation_config: SimulationConfig, workflow_id: str
     ) -> None:
         """
         Initialize simulation for a workflow.
 
         Args:
             simulation_config: Simulation configuration
-            workflow_id: Workflow ID to associate with simulation. If None, uses current workflow ID.
+            workflow_id: Workflow ID to associate with simulation
         """
-        if workflow_id is None:
-            workflow_id = cls._get_current_workflow_id()
+        simulation_service = WorkflowSimulationService(simulation_config)
+        cls._workflow_id_to_simulation_map[workflow_id] = simulation_service
+        logger.info("Simulation initialized for workflow", workflow_id=workflow_id)
 
-        if workflow_id:
-            simulation_service = WorkflowSimulationService(simulation_config)
-            cls._workflow_id_to_simulation_map[workflow_id] = simulation_service
-            logger.info("Simulation initialized for workflow", workflow_id=workflow_id)
-
-            await simulation_service._initialize_simulation_data()
+        await simulation_service._initialize_simulation_data()
 
     @classmethod
     def get_simulation_from_workflow_id(

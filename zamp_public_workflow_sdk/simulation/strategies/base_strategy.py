@@ -38,7 +38,6 @@ class BaseStrategy(ABC):
 
         Returns:
             SimulationStrategyOutput containing:
-            - execution_type: Type of execution (EXECUTE or MOCK)
             - node_outputs: Dictionary mapping node IDs to their mocked outputs, or empty dict if no mocking
         """
         pass

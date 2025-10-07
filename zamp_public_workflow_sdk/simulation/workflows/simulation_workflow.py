@@ -6,9 +6,6 @@ with workflow.unsafe.imports_passed_through():
         SimulationWorkflowInput,
         SimulationWorkflowOutput,
     )
-    from zamp_public_workflow_sdk.simulation.models.simulation_response import (
-        ExecutionType,
-    )
     import structlog
 
 
@@ -48,8 +45,8 @@ class SimulationWorkflow:
                 result = await strategy.execute(
                     node_ids=node_strategy.nodes,
                 )
-                if result.execution_type == ExecutionType.MOCK:
-                    for node_id in node_strategy.nodes:
+                for node_id in node_strategy.nodes:
+                    if node_id in result.node_outputs:
                         node_id_to_response_map[node_id] = result.node_outputs[node_id]
             except Exception as e:
                 logger.error(
