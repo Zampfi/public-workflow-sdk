@@ -12,4 +12,4 @@ repos:
     -   id: ruff
         args: [ --fix ]
     -   id: ruff-format
-exclude: 'python-api/.*|frontend/.*'
+exclude: 'python-api/.*|frontend/.*|setup.py'
