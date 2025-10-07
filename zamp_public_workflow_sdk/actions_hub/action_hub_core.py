@@ -112,11 +112,8 @@ class ActionsHub:
             action: The action (activity/workflow) name or callable
 
         Returns:
-            The resolved action name, or None if action is None
+            The resolved action name
         """
-        if action is None:
-            return None
-
         if isinstance(action, str):
             return action
 
