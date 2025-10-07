@@ -7,9 +7,6 @@ with workflow.unsafe.imports_passed_through():
         SimulationWorkflowOutput,
     )
     from zamp_public_workflow_sdk.simulation.models.simulation_response import ExecutionType
-    from zamp_public_workflow_sdk.simulation.workflow_simulation_service import (
-        WorkflowSimulationService,
-    )
     import structlog
 
 
@@ -35,6 +32,10 @@ class SimulationWorkflow:
         Returns:
             Mapping of node IDs to their response data
         """
+        from zamp_public_workflow_sdk.simulation.workflow_simulation_service import (
+            WorkflowSimulationService,
+        )
+
         node_id_to_response_map = {}
 
         for node_strategy in input.simulation_config.mock_config.node_strategies:

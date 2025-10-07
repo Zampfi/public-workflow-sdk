@@ -14,7 +14,6 @@ from zamp_public_workflow_sdk.simulation.strategies.base_strategy import BaseStr
 from zamp_public_workflow_sdk.temporal.workflow_history.models import (
     WorkflowHistory,
 )
-from zamp_public_workflow_sdk.actions_hub import ActionsHub
 from zamp_public_workflow_sdk.temporal.workflow_history.models.fetch_temporal_workflow_history import FetchTemporalWorkflowHistoryInput, FetchTemporalWorkflowHistoryOutput
 
 
@@ -83,6 +82,8 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
         Returns:
             WorkflowHistory object or None if fetch fails
         """
+        from zamp_public_workflow_sdk.actions_hub import ActionsHub
+
         try:
             workflow_history = await ActionsHub.execute_child_workflow(
                 "FetchTemporalWorkflowHistoryWorkflow",
