@@ -198,13 +198,11 @@ class ActionsHub:
     ) -> SimulationResponse:
         """Get simulation response for a workflow execution and handle return type conversion."""
 
-        # Check if this specific action should skip simulation
-        if action:
-            action_name = cls._get_action_name(action)
-            if action_name in SKIP_SIMULATION_WORKFLOWS:
-                return SimulationResponse(
-                    execution_type=ExecutionType.EXECUTE, execution_response=None
-                )
+        action_name = cls._get_action_name(action)
+        if action_name in SKIP_SIMULATION_WORKFLOWS:
+            return SimulationResponse(
+                execution_type=ExecutionType.EXECUTE, execution_response=None
+            )
 
         simulation = cls.get_simulation_from_workflow_id(workflow_id)
         if not simulation:
@@ -213,7 +211,6 @@ class ActionsHub:
             )
 
         simulation_response = simulation.get_simulation_response(node_id)
-
         if simulation_response.execution_type == ExecutionType.MOCK:
             if return_type is None and action:
                 return_type = cls._get_action_return_type(action)

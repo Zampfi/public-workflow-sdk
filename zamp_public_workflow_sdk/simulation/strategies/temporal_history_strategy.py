@@ -59,8 +59,7 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
 
             if temporal_history is not None:
                 output = await self._extract_node_output(temporal_history, node_ids)
-                if output is not None:
-                    return SimulationStrategyOutput(node_outputs=output)
+                return SimulationStrategyOutput(node_outputs=output)
 
             return SimulationStrategyOutput()
 
