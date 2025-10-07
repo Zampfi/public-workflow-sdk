@@ -7,7 +7,7 @@ from typing import List, Optional
 
 import structlog
 
-from models.simulation_response import (
+from zamp_public_workflow_sdk.simulation.models.simulation_response import (
     SimulationStrategyOutput,
 )
 from zamp_public_workflow_sdk.temporal.workflow_history.models import (
@@ -38,7 +38,7 @@ class BaseStrategy(ABC):
 
         Returns:
             SimulationStrategyOutput containing:
-            - should_execute: Whether the original execution should proceed
+            - execution_type: Type of execution (EXECUTE or MOCK)
             - node_outputs: Dictionary mapping node IDs to their mocked outputs, or empty dict if no mocking
         """
         pass

@@ -6,10 +6,11 @@ from typing import Dict, List
 import structlog
 from typing import Any, Optional
 
-from models.simulation_response import (
+from zamp_public_workflow_sdk.simulation.models.simulation_response import (
     SimulationStrategyOutput,
+    ExecutionType,
 )
-from strategies.base_strategy import BaseStrategy
+from zamp_public_workflow_sdk.simulation.strategies.base_strategy import BaseStrategy
 from zamp_public_workflow_sdk.temporal.workflow_history.models import (
     WorkflowHistory,
 )
@@ -49,7 +50,7 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
             temporal_history: Optional workflow history (if already fetched)
 
         Returns:
-            SimulationStrategyOutput with should_execute=False for mocking when history is found
+            SimulationStrategyOutput with execution_type=MOCK for mocking when history is found
         """
         try:
             if temporal_history is None:
@@ -59,10 +60,10 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
                 output = await self._extract_node_output(temporal_history, node_ids)
                 if output is not None:
                     return SimulationStrategyOutput(
-                        should_execute=False, node_outputs=output
+                        execution_type=ExecutionType.MOCK, node_outputs=output
                     )
 
-            return SimulationStrategyOutput(should_execute=True, node_outputs={})
+            return SimulationStrategyOutput(execution_type=ExecutionType.EXECUTE, node_outputs={})
 
         except Exception as e:
             logger.error(
@@ -71,7 +72,7 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
                 error=str(e),
                 error_type=type(e).__name__,
             )
-            return SimulationStrategyOutput(should_execute=True, node_outputs={})
+            return SimulationStrategyOutput(execution_type=ExecutionType.EXECUTE, node_outputs={})
 
     async def _fetch_temporal_history(
         self, node_ids: List[str]

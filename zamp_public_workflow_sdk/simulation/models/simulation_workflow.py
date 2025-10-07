@@ -1,7 +1,7 @@
 from typing import Any, Dict
 from pydantic import BaseModel, Field
 
-from models.config import SimulationConfig
+from zamp_public_workflow_sdk.simulation.models.config import SimulationConfig
 
 
 class SimulationWorkflowInput(BaseModel):

@@ -9,6 +9,7 @@ import asyncio
 import threading
 from collections import defaultdict
 from temporalio import workflow, activity
+
 from .models.mcp_models import MCPConfig
 
 from .constants import DEFAULT_MODE, SKIP_SIMULATION_WORKFLOWS
@@ -30,12 +31,11 @@ with workflow.unsafe.imports_passed_through():
         PLATFORM_WORKFLOW_LABEL,
     )
 
-    from simulation.models import (
+    from zamp_public_workflow_sdk.simulation.models import (
         ExecutionType,
         SimulationConfig,
         SimulationResponse,
     )
-    from zamp_public_workflow_sdk.simulation.workflow_simulation_service import WorkflowSimulationService
 
     from .models.business_logic_models import BusinessLogic
     from .models.core_models import (
@@ -62,6 +62,7 @@ with workflow.unsafe.imports_passed_through():
     from zamp_public_workflow_sdk.temporal.interceptors.node_id_interceptor import (
         TEMPORAL_NODE_ID_KEY,
     )
+    from zamp_public_workflow_sdk.simulation.workflow_simulation_service import WorkflowSimulationService
     from .utils.datetime_utils import convert_iso_to_timedelta
 
     logger = structlog.get_logger(__name__)
@@ -229,10 +230,6 @@ class ActionsHub:
             simulation_config: Simulation configuration
             workflow_id: Workflow ID to associate with simulation. If None, uses current workflow ID.
         """
-        from simulation.workflow_simulation_service import (
-            WorkflowSimulationService,
-        )
-
         if workflow_id is None:
             workflow_id = cls._get_current_workflow_id()
         
@@ -246,7 +243,7 @@ class ActionsHub:
     @classmethod
     def get_simulation_from_workflow_id(
         cls, workflow_id: str
-    ) -> "WorkflowSimulationService":
+    ) -> WorkflowSimulationService:
         return cls._workflow_id_to_simulation_map.get(workflow_id)
 
     @classmethod

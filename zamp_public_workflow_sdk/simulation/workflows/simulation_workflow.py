@@ -2,11 +2,12 @@ from temporalio import workflow
 
 with workflow.unsafe.imports_passed_through():
     from zamp_public_workflow_sdk.actions_hub import ActionsHub
-    from models.simulation_workflow import (
+    from zamp_public_workflow_sdk.simulation.models.simulation_workflow import (
         SimulationWorkflowInput,
         SimulationWorkflowOutput,
     )
-    from workflow_simulation_service import (
+    from zamp_public_workflow_sdk.simulation.models.simulation_response import ExecutionType
+    from zamp_public_workflow_sdk.simulation.workflow_simulation_service import (
         WorkflowSimulationService,
     )
     import structlog
@@ -44,7 +45,7 @@ class SimulationWorkflow:
                 result = await strategy.execute(
                     node_ids=node_strategy.nodes,
                 )
-                if not result.should_execute:
+                if result.execution_type == ExecutionType.MOCK:
                     for node_id in node_strategy.nodes:
                         node_id_to_response_map[node_id] = result.node_outputs[node_id]
             except Exception as e:

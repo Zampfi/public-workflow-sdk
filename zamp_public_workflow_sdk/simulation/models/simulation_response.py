@@ -30,8 +30,8 @@ class SimulationResponse(BaseModel):
 class SimulationStrategyOutput(BaseModel):
     """Output from a simulation strategy execution."""
 
-    should_execute: bool = Field(
-        ..., description="Whether the original execution should proceed"
+    execution_type: ExecutionType = Field(
+        ..., description="Type of execution (EXECUTE or MOCK)"
     )
     node_outputs: Dict[str, Optional[Any]] = Field(
         default_factory=dict,

@@ -6,18 +6,20 @@ import structlog
 from typing import Any, Dict, Optional
 
 
-from simulation.models import SimulationResponse, ExecutionType
-from models.config import SimulationConfig
-from models.simulation_strategy import (
+from zamp_public_workflow_sdk.simulation.models import SimulationResponse, ExecutionType
+from zamp_public_workflow_sdk.simulation.models.config import SimulationConfig
+from zamp_public_workflow_sdk.simulation.models.simulation_strategy import (
     NodeStrategy,
     StrategyType,
 )
-
-from strategies.base_strategy import BaseStrategy
-from strategies.custom_output_strategy import (
+from zamp_public_workflow_sdk.simulation.models.simulation_workflow import (
+    SimulationWorkflowInput,
+)
+from zamp_public_workflow_sdk.simulation.strategies.base_strategy import BaseStrategy
+from zamp_public_workflow_sdk.simulation.strategies.custom_output_strategy import (
     CustomOutputStrategyHandler,
 )
-from strategies.temporal_history_strategy import (
+from zamp_public_workflow_sdk.simulation.strategies.temporal_history_strategy import (
     TemporalHistoryStrategyHandler,
 )
 
@@ -56,13 +58,9 @@ class WorkflowSimulationService:
         )
 
         from zamp_public_workflow_sdk.actions_hub import ActionsHub
-        from models.simulation_workflow import (
-            SimulationWorkflowInput,
-        )
-        from workflows.simulation_workflow import (
+        from zamp_public_workflow_sdk.simulation.workflows.simulation_workflow import (
             SimulationWorkflow,
         )
-
         try:
             workflow_result = await ActionsHub.execute_child_workflow(
                 SimulationWorkflow,

@@ -5,10 +5,11 @@ Custom Output simulation strategy implementation.
 import structlog
 from typing import Any, List, Optional
 
-from models.simulation_response import (
+from zamp_public_workflow_sdk.simulation.models.simulation_response import (
     SimulationStrategyOutput,
+    ExecutionType,
 )
-from strategies.base_strategy import BaseStrategy
+from zamp_public_workflow_sdk.simulation.strategies.base_strategy import BaseStrategy
 from zamp_public_workflow_sdk.temporal.workflow_history.models import (
     WorkflowHistory,
 )
@@ -43,8 +44,8 @@ class CustomOutputStrategyHandler(BaseStrategy):
             temporal_history: Optional workflow history (not used in this strategy)
 
         Returns:
-            SimulationStrategyOutput with should_execute=False for mocking
+            SimulationStrategyOutput with execution_type=MOCK for mocking
         """
         # Return the same custom output for all nodes
         node_outputs = {node_id: self.output_value for node_id in node_ids}
-        return SimulationStrategyOutput(should_execute=False, node_outputs=node_outputs)
+        return SimulationStrategyOutput(execution_type=ExecutionType.MOCK, node_outputs=node_outputs)
