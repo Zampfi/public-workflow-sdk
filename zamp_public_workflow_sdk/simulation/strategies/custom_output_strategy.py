@@ -48,4 +48,6 @@ class CustomOutputStrategyHandler(BaseStrategy):
         """
         # Return the same custom output for all nodes
         node_outputs = {node_id: self.output_value for node_id in node_ids}
-        return SimulationStrategyOutput(execution_type=ExecutionType.MOCK, node_outputs=node_outputs)
+        return SimulationStrategyOutput(
+            execution_type=ExecutionType.MOCK, node_outputs=node_outputs
+        )

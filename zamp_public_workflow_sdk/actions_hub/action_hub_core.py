@@ -9,7 +9,9 @@ import asyncio
 import threading
 from collections import defaultdict
 from temporalio import workflow, activity
-from zamp_public_workflow_sdk.temporal.interceptors.node_id_interceptor import NODE_ID_HEADER_KEY
+from zamp_public_workflow_sdk.temporal.interceptors.node_id_interceptor import (
+    NODE_ID_HEADER_KEY,
+)
 
 from .models.mcp_models import MCPConfig
 from .constants import DEFAULT_MODE, SKIP_SIMULATION_WORKFLOWS
@@ -62,7 +64,9 @@ with workflow.unsafe.imports_passed_through():
     from zamp_public_workflow_sdk.temporal.interceptors.node_id_interceptor import (
         TEMPORAL_NODE_ID_KEY,
     )
-    from zamp_public_workflow_sdk.simulation.workflow_simulation_service import WorkflowSimulationService
+    from zamp_public_workflow_sdk.simulation.workflow_simulation_service import (
+        WorkflowSimulationService,
+    )
     from .utils.datetime_utils import convert_iso_to_timedelta
 
     logger = structlog.get_logger(__name__)
@@ -103,25 +107,25 @@ class ActionsHub:
     def _get_action_name(cls, action: Union[str, Callable]) -> str:
         """
         Resolve the action name from various action types.
-        
+
         Args:
             action: The action (activity/workflow) name or callable
-            
+
         Returns:
             The resolved action name
         """
         if isinstance(action, str):
             return action
-        
+
         # Handle bound methods (e.g., instance.method)
-        if hasattr(action, '__self__'):
+        if hasattr(action, "__self__"):
             return action.__self__.__class__.__name__
-        
+
         # Handle unbound methods (e.g., Class.method)
-        if hasattr(action, '__qualname__') and '.' in action.__qualname__:
+        if hasattr(action, "__qualname__") and "." in action.__qualname__:
             # For qualified names like "ClassName.method", use the class name
-            return action.__qualname__.split('.')[0]
-        
+            return action.__qualname__.split(".")[0]
+
         return action.__name__
 
     @classmethod
@@ -203,13 +207,13 @@ class ActionsHub:
         return_type: type | None = None,
     ) -> SimulationResponse:
         """Get simulation response for a workflow execution and handle return type conversion."""
-        
+
         # Check if this specific action should skip simulation
         if action and cls._should_skip_simulation(action):
             return SimulationResponse(
                 execution_type=ExecutionType.EXECUTE, execution_response=None
             )
-            
+
         simulation = cls.get_simulation_from_workflow_id(workflow_id)
         if simulation:
             simulation_response = simulation.get_simulation_response(node_id)
@@ -217,15 +221,15 @@ class ActionsHub:
             simulation_response = SimulationResponse(
                 execution_type=ExecutionType.EXECUTE, execution_response=None
             )
-        
+
         if simulation_response.execution_type == ExecutionType.MOCK:
             if return_type is None and action:
                 return_type = cls._get_action_return_type(action)
-            
+
             simulation_response.execution_response = cls._convert_result_to_model(
                 result=simulation_response.execution_response, return_type=return_type
             )
-        
+
         return simulation_response
 
     @classmethod
@@ -234,7 +238,7 @@ class ActionsHub:
         if isinstance(action_name, str):
             name = action_name
         else:
-            name = action_name.__name__     
+            name = action_name.__name__
         actions = cls.get_available_actions(ActionFilter(name=name))
         if actions:
             return actions[0].returns
@@ -273,12 +277,12 @@ class ActionsHub:
         """
         if workflow_id is None:
             workflow_id = cls._get_current_workflow_id()
-        
+
         if workflow_id:
             simulation_service = WorkflowSimulationService(simulation_config)
             cls._workflow_id_to_simulation_map[workflow_id] = simulation_service
             logger.info("Simulation initialized for workflow", workflow_id=workflow_id)
-            
+
             await simulation_service._initialize_simulation_data()
 
     @classmethod
@@ -427,7 +431,10 @@ class ActionsHub:
 
         # Check for simulation result
         simulation_result = cls._get_simulation_response(
-            workflow_id=workflow_id, node_id=node_id, action=activity, return_type=return_type
+            workflow_id=workflow_id,
+            node_id=node_id,
+            action=activity,
+            return_type=return_type,
         )
         if simulation_result.execution_type == ExecutionType.MOCK:
             logger.info(
@@ -653,7 +660,10 @@ class ActionsHub:
 
         # Check for simulation result
         simulation_result = cls._get_simulation_response(
-            workflow_id=workflow_id, node_id=node_id, action=workflow_name, return_type=result_type
+            workflow_id=workflow_id,
+            node_id=node_id,
+            action=workflow_name,
+            return_type=result_type,
         )
         if simulation_result.execution_type == ExecutionType.MOCK:
             logger.info(
@@ -662,7 +672,6 @@ class ActionsHub:
                 node_id=node_id,
             )
             return simulation_result.execution_response
-
 
         execution_mode = get_execution_mode_from_context()
         logger.info(
@@ -725,10 +734,13 @@ class ActionsHub:
         child_workflow_name, workflow_id, node_id = cls._generate_node_id_for_action(
             workflow_name
         )
-        
+
         # Check for simulation result
         simulation_result = cls._get_simulation_response(
-            workflow_id=workflow_id, node_id=node_id, action=workflow_name, return_type=result_type
+            workflow_id=workflow_id,
+            node_id=node_id,
+            action=workflow_name,
+            return_type=result_type,
         )
         if simulation_result.execution_type == ExecutionType.MOCK:
             logger.info(
@@ -950,4 +962,3 @@ class ActionsHub:
             )
         else:
             raise ValueError(f"Unknown action type: {action.action_type}")
-            

@@ -33,4 +33,3 @@ class SimulationConfig(BaseModel):
         """Pydantic config."""
 
         use_enum_values = True
-

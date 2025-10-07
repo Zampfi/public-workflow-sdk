@@ -7,7 +7,6 @@ from unittest.mock import Mock, AsyncMock, patch
 from pydantic import BaseModel
 
 from zamp_public_workflow_sdk.actions_hub.action_hub_core import ActionsHub
-from zamp_public_workflow_sdk.actions_hub.models.core_models import ActionFilter
 from zamp_public_workflow_sdk.simulation.models import (
     SimulationConfig,
     SimulationResponse,
@@ -174,7 +173,7 @@ class TestActionsHubSimulation:
             return "test"
 
         return_type = ActionsHub._get_action_return_type("test_activity_return")
-        assert return_type == str
+        assert return_type is str
 
     def test_get_action_return_type_with_callable_action(self):
         """Test _get_action_return_type with callable action."""
@@ -185,7 +184,7 @@ class TestActionsHubSimulation:
             return 42
 
         return_type = ActionsHub._get_action_return_type(test_activity_callable)
-        assert return_type == int
+        assert return_type is int
 
     def test_get_action_return_type_action_not_found(self):
         """Test _get_action_return_type when action is not found."""
@@ -304,9 +303,7 @@ class TestActionsHubSimulation:
         )
 
         # Mock _get_current_workflow_id to return None
-        with patch.object(
-            ActionsHub, "_get_current_workflow_id", return_value=None
-        ):
+        with patch.object(ActionsHub, "_get_current_workflow_id", return_value=None):
             await ActionsHub.init_simulation_for_workflow(simulation_config)
 
             # Check that no simulation was registered (workflow_id was None)
@@ -342,7 +339,7 @@ class TestActionsHubSimulation:
             workflow_id="test_wf",
             node_id="test_node",
             action="test_activity",
-            return_type=None
+            return_type=None,
         )
 
         assert result.execution_type == ExecutionType.MOCK
@@ -362,7 +359,7 @@ class TestActionsHubSimulation:
             workflow_id="test_wf",
             node_id="test_node",
             action="TestWorkflow",
-            return_type=None
+            return_type=None,
         )
 
         assert result.execution_type == ExecutionType.MOCK
@@ -382,7 +379,7 @@ class TestActionsHubSimulation:
             workflow_id="test_wf",
             node_id="test_node",
             action="TestWorkflow",
-            return_type=None
+            return_type=None,
         )
 
         assert result.execution_type == ExecutionType.MOCK
@@ -410,7 +407,7 @@ class TestActionsHubSimulation:
         with patch.object(
             ActionsHub, "_get_action_return_type", return_value=str
         ) as mock_get_return_type:
-            result = ActionsHub._get_simulation_response(
+            ActionsHub._get_simulation_response(
                 workflow_id="test_wf",
                 node_id="node_1",
                 action=test_activity_type,

@@ -14,7 +14,10 @@ from zamp_public_workflow_sdk.simulation.strategies.base_strategy import BaseStr
 from zamp_public_workflow_sdk.temporal.workflow_history.models import (
     WorkflowHistory,
 )
-from zamp_public_workflow_sdk.temporal.workflow_history.models.fetch_temporal_workflow_history import FetchTemporalWorkflowHistoryInput, FetchTemporalWorkflowHistoryOutput
+from zamp_public_workflow_sdk.temporal.workflow_history.models.fetch_temporal_workflow_history import (
+    FetchTemporalWorkflowHistoryInput,
+    FetchTemporalWorkflowHistoryOutput,
+)
 
 
 logger = structlog.get_logger(__name__)
@@ -62,7 +65,9 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
                         execution_type=ExecutionType.MOCK, node_outputs=output
                     )
 
-            return SimulationStrategyOutput(execution_type=ExecutionType.EXECUTE, node_outputs={})
+            return SimulationStrategyOutput(
+                execution_type=ExecutionType.EXECUTE, node_outputs={}
+            )
 
         except Exception as e:
             logger.error(
@@ -71,7 +76,9 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
                 error=str(e),
                 error_type=type(e).__name__,
             )
-            return SimulationStrategyOutput(execution_type=ExecutionType.EXECUTE, node_outputs={})
+            return SimulationStrategyOutput(
+                execution_type=ExecutionType.EXECUTE, node_outputs={}
+            )
 
     async def _fetch_temporal_history(
         self, node_ids: List[str]
@@ -92,7 +99,7 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
                     run_id=self.reference_workflow_run_id,
                     node_ids=node_ids,
                 ),
-                result_type=FetchTemporalWorkflowHistoryOutput
+                result_type=FetchTemporalWorkflowHistoryOutput,
             )
             return workflow_history
 

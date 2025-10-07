@@ -195,7 +195,8 @@ class TestSimulationWorkflowIntegration:
             mock_strategy = Mock()
             mock_strategy.execute = AsyncMock(
                 return_value=SimulationStrategyOutput(
-                    execution_type=ExecutionType.MOCK, node_outputs={"node2#1": "history_output"}
+                    execution_type=ExecutionType.MOCK,
+                    node_outputs={"node2#1": "history_output"},
                 )
             )
             mock_handler_class.return_value = mock_strategy

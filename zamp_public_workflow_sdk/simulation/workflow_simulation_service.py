@@ -61,6 +61,7 @@ class WorkflowSimulationService:
         from zamp_public_workflow_sdk.simulation.workflows.simulation_workflow import (
             SimulationWorkflow,
         )
+
         try:
             workflow_result = await ActionsHub.execute_child_workflow(
                 SimulationWorkflow,

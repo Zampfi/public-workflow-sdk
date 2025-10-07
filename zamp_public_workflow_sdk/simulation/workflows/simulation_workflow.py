@@ -6,7 +6,9 @@ with workflow.unsafe.imports_passed_through():
         SimulationWorkflowInput,
         SimulationWorkflowOutput,
     )
-    from zamp_public_workflow_sdk.simulation.models.simulation_response import ExecutionType
+    from zamp_public_workflow_sdk.simulation.models.simulation_response import (
+        ExecutionType,
+    )
     import structlog
 
 
