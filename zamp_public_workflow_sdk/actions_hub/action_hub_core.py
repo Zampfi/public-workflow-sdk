@@ -104,7 +104,7 @@ class ActionsHub:
         ]
 
     @classmethod
-    def _get_action_name(cls, action: Union[str, Callable]) -> str:
+    def _get_action_name(cls, action: Union[str, Callable, None]) -> str:
         """
         Resolve the action name from various action types.
 
@@ -112,8 +112,11 @@ class ActionsHub:
             action: The action (activity/workflow) name or callable
 
         Returns:
-            The resolved action name
+            The resolved action name, or None if action is None
         """
+        if action is None:
+            return None
+
         if isinstance(action, str):
             return action
 
@@ -168,18 +171,19 @@ class ActionsHub:
             if workflow_id not in cls._node_id_tracker:
                 cls._node_id_tracker[workflow_id] = defaultdict(int)
 
-            info = workflow.info()
-            if info.headers and NODE_ID_HEADER_KEY in info.headers:
-                node_id_payload = info.headers[NODE_ID_HEADER_KEY]
-                parent_node_id = workflow.payload_converter().from_payload(
-                    node_id_payload, str
-                )
-                if parent_node_id:
-                    tracking_key = f"{parent_node_id}.{action_name}"
-                else:
-                    tracking_key = action_name
-            else:
-                tracking_key = action_name
+            tracking_key = action_name
+            try:
+                info = workflow.info()
+                if info.headers and NODE_ID_HEADER_KEY in info.headers:
+                    node_id_payload = info.headers[NODE_ID_HEADER_KEY]
+                    parent_node_id = workflow.payload_converter().from_payload(
+                        node_id_payload, str
+                    )
+                    if parent_node_id:
+                        tracking_key = f"{parent_node_id}.{action_name}"
+            except Exception:
+                # Not in workflow context or headers not available
+                pass
 
             cls._node_id_tracker[workflow_id][tracking_key] += 1
             count = cls._node_id_tracker[workflow_id][tracking_key]
@@ -199,7 +203,7 @@ class ActionsHub:
         """Get simulation response for a workflow execution and handle return type conversion."""
 
         action_name = cls._get_action_name(action)
-        if action_name in SKIP_SIMULATION_WORKFLOWS:
+        if action_name and action_name in SKIP_SIMULATION_WORKFLOWS:
             return SimulationResponse(
                 execution_type=ExecutionType.EXECUTE, execution_response=None
             )

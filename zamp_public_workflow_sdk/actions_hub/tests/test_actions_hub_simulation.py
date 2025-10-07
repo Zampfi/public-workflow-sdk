@@ -34,45 +34,6 @@ class TestActionsHubSimulation:
         ActionsHub._activities.clear()
         ActionsHub._workflows.clear()
 
-    def test_should_skip_simulation_with_callable_in_skip_list(self):
-        """Test _should_skip_simulation with callable in skip list."""
-
-        class SimulationWorkflow:
-            pass
-
-        result = ActionsHub._should_skip_simulation(SimulationWorkflow)
-        assert result is True
-
-    def test_should_skip_simulation_with_callable_not_in_skip_list(self):
-        """Test _should_skip_simulation with callable not in skip list."""
-
-        class RegularWorkflow:
-            pass
-
-        result = ActionsHub._should_skip_simulation(RegularWorkflow)
-        assert result is False
-
-    def test_should_skip_simulation_with_string_in_skip_list(self):
-        """Test _should_skip_simulation with string in skip list."""
-        result = ActionsHub._should_skip_simulation("SimulationWorkflow")
-        assert result is True
-
-    def test_should_skip_simulation_with_string_not_in_skip_list(self):
-        """Test _should_skip_simulation with string not in skip list."""
-        result = ActionsHub._should_skip_simulation("RegularWorkflow")
-        assert result is False
-
-    def test_should_skip_simulation_with_fetch_temporal_workflow(self):
-        """Test _should_skip_simulation with FetchTemporalWorkflowHistoryWorkflow."""
-
-        class FetchTemporalWorkflowHistoryWorkflow:
-            pass
-
-        result = ActionsHub._should_skip_simulation(
-            FetchTemporalWorkflowHistoryWorkflow
-        )
-        assert result is True
-
     def test_get_simulation_response_action_should_skip(self):
         """Test _get_simulation_response when action should skip simulation."""
 
@@ -273,41 +234,26 @@ class TestActionsHubSimulation:
             assert simulation.simulation_config == simulation_config
 
     @pytest.mark.asyncio
-    async def test_init_simulation_for_workflow_without_workflow_id(self):
-        """Test init_simulation_for_workflow without workflow_id (uses current)."""
+    async def test_init_simulation_for_workflow_with_explicit_workflow_id(self):
+        """Test init_simulation_for_workflow with explicit workflow_id."""
         simulation_config = SimulationConfig(
             mock_config=NodeMockConfig(node_strategies=[]),
         )
 
-        # Mock _get_current_workflow_id and _initialize_simulation_data
+        # Mock _initialize_simulation_data
         with patch.object(
-            ActionsHub, "_get_current_workflow_id", return_value="current_wf"
+            WorkflowSimulationService,
+            "_initialize_simulation_data",
+            new_callable=AsyncMock,
         ):
-            with patch.object(
-                WorkflowSimulationService,
-                "_initialize_simulation_data",
-                new_callable=AsyncMock,
-            ):
-                await ActionsHub.init_simulation_for_workflow(simulation_config)
+            await ActionsHub.init_simulation_for_workflow(
+                simulation_config, workflow_id="explicit_wf"
+            )
 
-                # Check that simulation was registered with current workflow id
-                assert "current_wf" in ActionsHub._workflow_id_to_simulation_map
-                simulation = ActionsHub._workflow_id_to_simulation_map["current_wf"]
-                assert isinstance(simulation, WorkflowSimulationService)
-
-    @pytest.mark.asyncio
-    async def test_init_simulation_for_workflow_with_none_workflow_id(self):
-        """Test init_simulation_for_workflow when _get_current_workflow_id returns None."""
-        simulation_config = SimulationConfig(
-            mock_config=NodeMockConfig(node_strategies=[]),
-        )
-
-        # Mock _get_current_workflow_id to return None
-        with patch.object(ActionsHub, "_get_current_workflow_id", return_value=None):
-            await ActionsHub.init_simulation_for_workflow(simulation_config)
-
-            # Check that no simulation was registered (workflow_id was None)
-            assert len(ActionsHub._workflow_id_to_simulation_map) == 0
+            # Check that simulation was registered with explicit workflow id
+            assert "explicit_wf" in ActionsHub._workflow_id_to_simulation_map
+            simulation = ActionsHub._workflow_id_to_simulation_map["explicit_wf"]
+            assert isinstance(simulation, WorkflowSimulationService)
 
     def test_get_simulation_from_workflow_id_exists(self):
         """Test get_simulation_from_workflow_id when simulation exists."""

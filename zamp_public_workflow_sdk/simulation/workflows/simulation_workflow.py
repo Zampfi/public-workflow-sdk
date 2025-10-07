@@ -45,9 +45,7 @@ class SimulationWorkflow:
                 result = await strategy.execute(
                     node_ids=node_strategy.nodes,
                 )
-                for node_id in node_strategy.nodes:
-                    if node_id in result.node_outputs:
-                        node_id_to_response_map[node_id] = result.node_outputs[node_id]
+                node_id_to_response_map.update(result.node_outputs)
             except Exception as e:
                 logger.error(
                     "Error processing node with strategy",
