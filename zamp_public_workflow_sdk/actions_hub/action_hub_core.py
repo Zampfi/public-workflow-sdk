@@ -156,10 +156,10 @@ class ActionsHub:
             info = workflow.info()
             if info.headers and NODE_ID_HEADER_KEY in info.headers:
                 node_id_payload = info.headers[NODE_ID_HEADER_KEY]
-                node_id_parent = workflow.payload_converter().from_payload(
+                parent_node_id = workflow.payload_converter().from_payload(
                     node_id_payload, str
                 )
-                if node_id_parent:
+                if parent_node_id:
                     tracking_key = f"{node_id_parent}.{action_name}"
             else:
                 tracking_key = action_name
