@@ -11,7 +11,10 @@ from .decorators import external
 class ConnectionIdentifier(BaseModel):
     """Connection identifier model."""
 
-    connection_id: str = Field(description="Connection id from Application Platform")
+    connection_id: Optional[str] = Field(default=None, description="Connection id from Application Platform")
+    credential_id: Optional[str] = Field(
+        default=None, description="Credential id from Application Platform"
+    )
     organization_id: Optional[str] = Field(
         default=None, description="Organization id from Application Platform"
     )
