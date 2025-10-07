@@ -89,6 +89,31 @@ class ActionsHub:
         ]
 
     @classmethod
+    def _get_action_name(cls, action: Union[str, Callable]) -> str:
+        """
+        Resolve the action name from various action types.
+        
+        Args:
+            action: The action (activity/workflow) name or callable
+            
+        Returns:
+            The resolved action name
+        """
+        if isinstance(action, str):
+            return action
+        
+        # Handle bound methods (e.g., instance.method)
+        if hasattr(action, '__self__') and hasattr(action, '__name__') and action.__self__ is not None:
+            return action.__self__.__class__.__name__
+        
+        # Handle unbound methods (e.g., Class.method)
+        if hasattr(action, '__qualname__') and '.' in action.__qualname__:
+            # For qualified names like "ClassName.method", use the class name
+            return action.__qualname__.split('.')[0]
+        
+        return action.__name__
+
+    @classmethod
     def _generate_node_id_for_action(
         cls, action: Union[str, Callable]
     ) -> tuple[str, str, str]:
@@ -102,26 +127,7 @@ class ActionsHub:
             Tuple of (action_name, workflow_id, node_id)
         """
         try:
-            # Get action name for node_id generation
-            if isinstance(action, str):
-                return action, cls._get_current_workflow_id(), cls._get_node_id(workflow_id=cls._get_current_workflow_id(), action_name=action)
-            
-            # Handle bound methods (e.g., instance.method)
-            if hasattr(action, '__self__') and hasattr(action, '__name__') and action.__self__ is not None:
-                class_name = action.__self__.__class__.__name__
-                workflow_id = cls._get_current_workflow_id()
-                node_id = cls._get_node_id(workflow_id=workflow_id, action_name=class_name)
-                return class_name, workflow_id, node_id
-            
-            # Handle unbound methods (e.g., Class.method)
-            if hasattr(action, '__qualname__') and '.' in action.__qualname__:
-                # For qualified names like "ClassName.method", use the class name
-                class_name = action.__qualname__.split('.')[0]
-                workflow_id = cls._get_current_workflow_id()
-                node_id = cls._get_node_id(workflow_id=workflow_id, action_name=class_name)
-                return class_name, workflow_id, node_id
-            
-            action_name = action.__name__
+            action_name = cls._get_action_name(action)
             workflow_id = cls._get_current_workflow_id()
             node_id = cls._get_node_id(workflow_id=workflow_id, action_name=action_name)
             return action_name, workflow_id, node_id
