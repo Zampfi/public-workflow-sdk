@@ -2,20 +2,19 @@
 Helper functions for temporal workflow history operations.
 """
 
+from __future__ import annotations
+
 import base64
+from typing import Dict, List, Optional, Tuple
+
 import structlog
-from typing import List, Optional, Dict
 
 from zamp_public_workflow_sdk.temporal.workflow_history.constants import (
-    EventType,
-    PayloadField,
-    EventTypeToAttributesKey,
-    EventField,
-)
-
-from zamp_public_workflow_sdk.temporal.workflow_history.models.node_payload_data import (
-    NodePayloadData,
-)
+    EventField, EventType, EventTypeToAttributesKey, PayloadField)
+from zamp_public_workflow_sdk.temporal.workflow_history.constants.constants import \
+    WorkflowExecutionField
+from zamp_public_workflow_sdk.temporal.workflow_history.models.node_payload_data import \
+    NodePayloadData
 
 logger = structlog.get_logger(__name__)
 
@@ -411,3 +410,60 @@ def extract_node_payloads(
         child_workflow_initiated_count=len(child_workflow_initiated_events),
     )
     return node_payloads
+
+
+def get_child_workflow_workflow_id_run_id(
+    events: List[dict], node_id: str
+) -> Optional[Tuple[str, str]]:
+    """
+    Get child workflow's workflow_id and run_id from CHILD_WORKFLOW_EXECUTION_STARTED event.
+
+    Args:
+        events: List of workflow events
+        node_id: The node ID of the child workflow (e.g., "ChildWorkflow#1")
+
+    Returns:
+        Tuple of (workflow_id, run_id) if found, None otherwise
+    """
+    logger.info(
+        "Getting child workflow workflow_id and run_id",
+        node_id=node_id,
+        event_count=len(events),
+    )
+
+    # Get node data for the specified child workflow
+    node_data = get_node_data_from_node_id(events, node_id)
+    if not node_data or node_id not in node_data:
+        logger.info("No node data found", node_id=node_id)
+        return None
+
+    node_payload_data = node_data[node_id]
+
+    # Find the CHILD_WORKFLOW_EXECUTION_STARTED event which contains workflow_id and run_id
+    for event in node_payload_data.node_events:
+        event_type = event.get(EventField.EVENT_TYPE.value)
+
+        if event_type != EventType.CHILD_WORKFLOW_EXECUTION_STARTED.value:
+            continue
+
+        # Extract attributes from the event
+        attrs_key = EventTypeToAttributesKey.CHILD_WORKFLOW_EXECUTION_STARTED.value
+        attrs = event.get(attrs_key)
+        if not attrs:
+            continue
+
+        # Extract workflow execution details
+        workflow_execution = attrs.get(
+            WorkflowExecutionField.WORKFLOW_EXECUTION.value, {}
+        )
+        child_workflow_id = workflow_execution.get(
+            WorkflowExecutionField.WORKFLOW_ID.value
+        )
+        child_run_id = workflow_execution.get(WorkflowExecutionField.RUN_ID.value)
+
+        # Validate both IDs are present before returning
+        if child_workflow_id and child_run_id:
+            return (child_workflow_id, child_run_id)
+
+    logger.info("No child workflow workflow_id and run_id found", node_id=node_id)
+    return None
