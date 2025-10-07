@@ -169,7 +169,7 @@ class ActionsHub:
                 execution_type=ExecutionType.EXECUTE, execution_response=None
             )
             
-        simulation = cls._workflow_id_to_simulation_map.get(workflow_id)
+        simulation = cls.get_simulation_from_workflow_id(workflow_id)
         if simulation:
             simulation_response = simulation.get_simulation_response(node_id)
         else:
