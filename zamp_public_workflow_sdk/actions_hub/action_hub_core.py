@@ -6,7 +6,6 @@ independent of the Pantheon platform.
 """
 
 import asyncio
-from platform import node
 import threading
 from collections import defaultdict
 from temporalio import workflow, activity
