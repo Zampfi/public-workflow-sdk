@@ -126,16 +126,10 @@ class ActionsHub:
         Returns:
             Tuple of (action_name, workflow_id, node_id)
         """
-        try:
-            action_name = cls._get_action_name(action)
-            workflow_id = cls._get_current_workflow_id()
-            node_id = cls._get_node_id(workflow_id=workflow_id, action_name=action_name)
-            return action_name, workflow_id, node_id
-            
-        except Exception as e:
-            logger.error("Failed to generate node_id for action", action=str(action), error=str(e))
-            sentry_sdk.capture_exception(e)
-            raise e
+        action_name = cls._get_action_name(action)
+        workflow_id = cls._get_current_workflow_id()
+        node_id = cls._get_node_id(workflow_id=workflow_id, action_name=action_name)
+        return action_name, workflow_id, node_id
 
     @classmethod
     def _get_node_id(cls, workflow_id: str, action_name: str) -> str:
