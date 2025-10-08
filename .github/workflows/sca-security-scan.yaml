@@ -1,0 +1,361 @@
+name: SCA Security Scanning
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  
+  workflow_dispatch:
+    inputs:
+      fail_on_severity:
+        description: 'Fail on severity level'
+        required: false
+        default: 'critical'
+        type: choice
+        options:
+          - critical
+          - high
+          - medium
+          - low
+
+permissions:
+  contents: read
+  pull-requests: write
+
+env:
+  GRYPE_CONFIG: '.grype.yaml'
+
+jobs:
+  pr-scan:
+    name: SCA Security Scan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Get base commit for differential scan
+        id: get_base_commit
+        run: |
+          BASE_COMMIT=$(git merge-base HEAD origin/${{ github.base_ref }})
+          echo "base_commit=$BASE_COMMIT" >> $GITHUB_OUTPUT
+          echo "Base commit for differential scan: $BASE_COMMIT"
+          echo "Will compare vulnerabilities between $BASE_COMMIT and HEAD"
+      
+      - name: Install Grype
+        run: |
+          curl -sSfL https://get.anchore.io/grype | sudo sh -s -- -b /usr/local/bin
+          grype version
+      
+      - name: Scan base branch
+        env:
+          BASE_COMMIT: ${{ steps.get_base_commit.outputs.base_commit }}
+        run: |
+          echo "Scanning base branch at commit $BASE_COMMIT..."
+          git checkout $BASE_COMMIT
+          grype dir:. -c "$GRYPE_CONFIG" -o json > base-scan.json || true
+          git checkout -
+          echo "Base branch scan complete"
+      
+      - name: Run vulnerability scan on PR branch
+        env:
+          BRANCH_NAME: ${{ github.head_ref }}
+          COMMIT_SHA: ${{ github.event.pull_request.head.sha }}
+          REPOSITORY: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          BASE_COMMIT: ${{ steps.get_base_commit.outputs.base_commit }}
+        run: |
+          echo "Scanning PR branch..."
+          grype dir:. -c "$GRYPE_CONFIG" -o json > pr-scan.json || true
+          
+          cat > scan-report.md << EOF
+          
+          **Branch:** \`$BRANCH_NAME\`
+          **Commit:** \`$COMMIT_SHA\`
+          **Base Commit:** \`$BASE_COMMIT\`
+          **Scan Date:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          **Scan Type:** Differential (NEW vulnerabilities only)
+          
+          EOF
+          
+          python3 << 'PYTHON'
+          import json
+          import os
+          from collections import defaultdict
+          
+          with open('base-scan.json', 'r') as f:
+              base_data = json.load(f)
+          
+          with open('pr-scan.json', 'r') as f:
+              pr_data = json.load(f)
+          
+          def create_vuln_key(match):
+              package = match['artifact']['name']
+              version = match['artifact']['version']
+              vuln_id = match['vulnerability']['id']
+              return f"{package}@{version}:{vuln_id}"
+          
+          base_vulns = {create_vuln_key(match): match for match in base_data.get('matches', [])}
+          pr_vulns = {create_vuln_key(match): match for match in pr_data.get('matches', [])}
+          
+          new_vuln_keys = set(pr_vulns.keys()) - set(base_vulns.keys())
+          
+          severity_counts = defaultdict(int)
+          new_vulnerabilities = []
+          
+          for key in new_vuln_keys:
+              match = pr_vulns[key]
+              severity = match['vulnerability'].get('severity', 'Unknown')
+              severity_counts[severity] += 1
+              
+              new_vulnerabilities.append({
+                  'id': match['vulnerability']['id'],
+                  'severity': severity,
+                  'package': match['artifact']['name'],
+                  'version': match['artifact']['version'],
+                  'fixed_in': match['vulnerability'].get('fix', {}).get('versions', [])
+              })
+          
+          base_total = len(base_data.get('matches', []))
+          pr_total = len(pr_data.get('matches', []))
+          new_total = len(new_vulnerabilities)
+          
+          with open('scan-report.md', 'a') as f:
+              f.write("## Summary\n\n")
+              f.write(f"- **Base branch vulnerabilities:** {base_total}\n")
+              f.write(f"- **PR branch vulnerabilities:** {pr_total}\n")
+              f.write(f"- **NEW vulnerabilities introduced:** {new_total}\n\n")
+              
+              f.write("### NEW Vulnerabilities by Severity\n\n")
+              f.write("| Severity | Count |\n")
+              f.write("|----------|-------|\n")
+              
+              for severity in ['Critical', 'High', 'Medium', 'Low', 'Negligible']:
+                  count = severity_counts.get(severity, 0)
+                  icon = {'Critical': '🔴', 'High': '🟠', 'Medium': '🟡', 'Low': '🔵', 'Negligible': '⚪'}.get(severity, '⚫')
+                  f.write(f"| {icon} {severity} | {count} |\n")
+              
+              f.write(f"| **Total NEW** | **{new_total}** |\n\n")
+              
+              critical = severity_counts.get('Critical', 0)
+              
+              if critical > 0:
+                  f.write("## ❌ Status: FAILED\n\n")
+                  f.write(f"This PR introduces {critical} NEW Critical severity vulnerabilities.\n\n")
+              elif new_total > 0:
+                  f.write("## ⚠️ Status: WARNING\n\n")
+                  f.write(f"This PR introduces {new_total} new vulnerabilities, but none are Critical severity.\n\n")
+              else:
+                  f.write("## ✅ Status: PASSED\n\n")
+                  f.write("This PR does not introduce any new vulnerabilities.\n\n")
+              
+              if new_vulnerabilities:
+                  f.write("## NEW Vulnerabilities Introduced by This PR\n\n")
+                  
+                  severity_order = {'Critical': 4, 'High': 3, 'Medium': 2, 'Low': 1, 'Negligible': 0, 'Unknown': 0}
+                  new_vulnerabilities.sort(key=lambda x: severity_order.get(x['severity'], 0), reverse=True)
+                  
+                  for vuln in new_vulnerabilities[:20]:
+                      icon = {'Critical': '🔴', 'High': '🟠', 'Medium': '🟡', 'Low': '🔵', 'Negligible': '⚪'}.get(vuln['severity'], '⚫')
+                      f.write(f"### {icon} {vuln['id']} - {vuln['severity']}\n")
+                      f.write(f"- **Package:** {vuln['package']} @ {vuln['version']}\n")
+                      if vuln['fixed_in']:
+                          f.write(f"- **Fixed in:** {', '.join(vuln['fixed_in'][:3])}\n")
+                      else:
+                          f.write(f"- **Fixed in:** No fix available\n")
+                      f.write("\n")
+                  
+                  if len(new_vulnerabilities) > 20:
+                      f.write(f"_... and {len(new_vulnerabilities) - 20} more NEW vulnerabilities_\n\n")
+              else:
+                  f.write("_No new vulnerabilities introduced by this PR._\n\n")
+              
+              repo = os.environ.get('REPOSITORY', '')
+              run_id = os.environ.get('RUN_ID', '')
+              f.write(f"\n---\n[📊 View Full Scan Results](https://github.com/{repo}/actions/runs/{run_id})\n")
+          
+          if critical > 0:
+              with open('scan_exit_code.txt', 'w') as f:
+                  f.write('1')
+          else:
+              with open('scan_exit_code.txt', 'w') as f:
+                  f.write('0')
+          PYTHON
+      
+      - name: Upload scan results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-scan-results-${{ github.run_id }}
+          path: scan-report.md
+          retention-days: 30
+      
+      - name: Comment on PR
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('scan-report.md', 'utf8');
+            
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body: report
+            });
+      
+      - name: Check scan result
+        if: always()
+        run: |
+          exit_code=$(cat scan_exit_code.txt)
+          if [ "$exit_code" -eq 1 ]; then
+            echo "❌ Scan failed due to Critical severity vulnerabilities"
+            exit 1
+          else
+            echo "✅ Scan passed"
+            exit 0
+          fi
+
+  manual-scan:
+    name: Complete Scan with SBOM
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install Syft and Grype
+        run: |
+          curl -sSfL https://get.anchore.io/syft | sudo sh -s -- -b /usr/local/bin
+          curl -sSfL https://get.anchore.io/grype | sudo sh -s -- -b /usr/local/bin
+          syft version
+          grype version
+      
+      - name: Generate SBOM (SPDX JSON)
+        run: |
+          echo "Generating SBOM in SPDX JSON format (industry standard)..."
+          syft dir:. -o spdx-json > sbom.spdx.json
+      
+      - name: Run vulnerability scan
+        id: scan
+        env:
+          FAIL_SEVERITY_INPUT: ${{ inputs.fail_on_severity || 'critical' }}
+          REPOSITORY: ${{ github.repository }}
+          BRANCH_NAME: ${{ github.ref_name }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          FAIL_SEVERITY="$FAIL_SEVERITY_INPUT"
+          
+          grype dir:. -c "$GRYPE_CONFIG" --fail-on "$FAIL_SEVERITY" -o json > scan-results.json || true
+          
+          cat > scan-report.md << EOF
+          
+          **Repository:** $REPOSITORY
+          **Branch:** $BRANCH_NAME
+          **Commit:** $COMMIT_SHA
+          **Scan Date:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          
+          EOF
+          
+          python3 << 'PYTHON'
+          import json
+          import os
+          from collections import defaultdict
+          
+          with open('scan-results.json', 'r') as f:
+              data = json.load(f)
+          
+          severity_counts = defaultdict(int)
+          vulnerabilities = []
+          
+          for match in data.get('matches', []):
+              severity = match['vulnerability'].get('severity', 'Unknown')
+              severity_counts[severity] += 1
+              
+              vulnerabilities.append({
+                  'id': match['vulnerability']['id'],
+                  'severity': severity,
+                  'package': match['artifact']['name'],
+                  'version': match['artifact']['version'],
+                  'fixed_in': match['vulnerability'].get('fix', {}).get('versions', [])
+              })
+          
+          with open('scan-report.md', 'a') as f:
+              f.write("## Vulnerability Summary\n\n")
+              f.write("| Severity | Count |\n")
+              f.write("|----------|-------|\n")
+              
+              for severity in ['Critical', 'High', 'Medium', 'Low', 'Negligible']:
+                  count = severity_counts.get(severity, 0)
+                  icon = {'Critical': '🔴', 'High': '🟠', 'Medium': '🟡', 'Low': '🔵', 'Negligible': '⚪'}.get(severity, '⚫')
+                  f.write(f"| {icon} {severity} | {count} |\n")
+              
+              total = sum(severity_counts.values())
+              f.write(f"| **Total** | **{total}** |\n\n")
+              
+              f.write("## SBOM Generated\n\n")
+              f.write("✅ Software Bill of Materials generated in SPDX JSON format\n\n")
+              
+              if vulnerabilities:
+                  f.write("## Top Vulnerabilities\n\n")
+                  severity_order = {'Critical': 4, 'High': 3, 'Medium': 2, 'Low': 1, 'Negligible': 0, 'Unknown': 0}
+                  vulnerabilities.sort(key=lambda x: severity_order.get(x['severity'], 0), reverse=True)
+                  
+                  for vuln in vulnerabilities[:20]:
+                      icon = {'Critical': '🔴', 'High': '🟠', 'Medium': '🟡', 'Low': '🔵', 'Negligible': '⚪'}.get(vuln['severity'], '⚫')
+                      f.write(f"### {icon} {vuln['id']} - {vuln['severity']}\n")
+                      f.write(f"- **Package:** {vuln['package']} @ {vuln['version']}\n")
+                      if vuln['fixed_in']:
+                          f.write(f"- **Fixed in:** {', '.join(vuln['fixed_in'][:3])}\n")
+                      else:
+                          f.write(f"- **Fixed in:** No fix available\n")
+                      f.write("\n")
+                  
+                  if len(vulnerabilities) > 20:
+                      f.write(f"_... and {len(vulnerabilities) - 20} more vulnerabilities_\n\n")
+          PYTHON
+          
+          CRITICAL=$(jq '[.matches[] | select(.vulnerability.severity == "Critical")] | length' scan-results.json)
+          HIGH=$(jq '[.matches[] | select(.vulnerability.severity == "High")] | length' scan-results.json)
+          
+          echo "critical_count=$CRITICAL" >> $GITHUB_OUTPUT
+          echo "high_count=$HIGH" >> $GITHUB_OUTPUT
+      
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: complete-scan-results-${{ github.run_id }}
+          path: |
+            sbom.spdx.json
+            scan-report.md
+          retention-days: 90
+      
+      - name: Create job summary
+        if: always()
+        run: cat scan-report.md >> $GITHUB_STEP_SUMMARY
+      
+      - name: Check vulnerability threshold
+        if: always()
+        env:
+          CRITICAL_COUNT: ${{ steps.scan.outputs.critical_count }}
+          HIGH_COUNT: ${{ steps.scan.outputs.high_count }}
+          FAIL_SEVERITY_INPUT: ${{ inputs.fail_on_severity || 'critical' }}
+        run: |
+          CRITICAL="$CRITICAL_COUNT"
+          HIGH="$HIGH_COUNT"
+          FAIL_SEVERITY="$FAIL_SEVERITY_INPUT"
+          
+          if [ "$FAIL_SEVERITY" = "critical" ] && [ "$CRITICAL" -gt 0 ]; then
+            echo "❌ Found $CRITICAL Critical vulnerabilities"
+            exit 1
+          elif [ "$FAIL_SEVERITY" = "high" ] && ([ "$CRITICAL" -gt 0 ] || [ "$HIGH" -gt 0 ]); then
+            echo "❌ Found $CRITICAL Critical and $HIGH High vulnerabilities"
+            exit 1
+          else
+            echo "✅ Scan passed"
+          fi

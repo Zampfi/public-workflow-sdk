@@ -1,0 +1,91 @@
+
+# Grype Configuration for Vulnerability Scanning
+# Documentation: https://github.com/anchore/grype#configuration
+
+# Default output format (overridden by CLI flags)
+output: 'table'
+
+# Fail on severity threshold
+fail-on-severity: 'critical'
+
+# Show suppressed vulnerabilities
+show-suppressed: false
+
+# Database settings
+db:
+  auto-update: true
+  validate-age: true
+  max-allowed-built-age: 120h
+
+# ============================================================================
+# WAIVER RULES - Add vulnerability exceptions here
+# ============================================================================
+ignore:
+  # EXAMPLES - These are commented out, uncomment and modify to use:
+  
+  # Example 1: Ignore specific CVE globally
+  # - vulnerability: CVE-2023-12345
+  #   # Reason: False positive - code path not used
+  #   # Reviewed: 2025-09-30
+  #   # Review again: 2026-03-30
+  
+  # Example 2: Ignore CVE in specific package only
+  # - vulnerability: CVE-2022-45678
+  #   package:
+  #     name: lodash
+  #     version: 4.17.19
+  #   # Reason: Dev dependency only, not in production
+  
+  # Example 3: Ignore all vulnerabilities in test directories
+  # - package:
+  #     location: '**/test/**'
+  #   # Reason: Test code not deployed
+  
+  # - package:
+  #     location: '**/tests/**'
+  
+  # Example 4: Ignore vulnerability with no fix available
+  # - vulnerability: CVE-2021-99999
+  #   fix-state: wont-fix
+  #   # Reason: Upstream won't fix, risk accepted after review
+  
+  # Add your actual waivers below:
+  # - vulnerability: CVE-YYYY-XXXXX
+  #   package:
+  #     name: package-name
+  #   # Reason: Explain why this is waived
+  #   # Reviewed: YYYY-MM-DD
+  #   # Review again: YYYY-MM-DD
+
+# ============================================================================
+# MATCH CONFIGURATION
+# Controls how Grype matches vulnerabilities to packages
+# ============================================================================
+#
+# What is CPE?
+# CPE (Common Platform Enumeration) is a standardized naming scheme for
+# software packages. For example: "cpe:2.3:a:vendor:product:version:*:*:*:*:*:*:*"
+#
+# What does "using-cpes" mean?
+# When set to TRUE:
+#   - Grype will use CPE matching in addition to package metadata matching
+#   - This can find MORE vulnerabilities but may also increase false positives
+#   - Useful when package names don't exactly match vulnerability database entries
+#
+# When set to FALSE (default):
+#   - Grype only uses direct package metadata matching (name, version, type)
+#   - More accurate, fewer false positives
+#   - Recommended for most use cases
+#
+# Recommendation: Keep these as FALSE unless you're getting false negatives
+# (missing known vulnerabilities) for specific ecosystems
+#
+match:
+  java:
+    using-cpes: false  # Set to true to enable CPE matching for Java packages (important-comment)
+  golang:
+    using-cpes: false  # Set to true to enable CPE matching for Go packages (important-comment)
+  python:
+    using-cpes: false  # Set to true to enable CPE matching for Python packages (important-comment)
+  javascript:
+    using-cpes: false  # Set to true to enable CPE matching for JavaScript packages (important-comment)
