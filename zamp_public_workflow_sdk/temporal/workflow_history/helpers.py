@@ -232,6 +232,27 @@ def _track_event_with_node_id(
         )
 
 
+def _add_event_to_node_events(
+    node_id: str,
+    event: dict,
+    event_type: str,
+    node_ids: Optional[List[str]],
+    node_payloads: Dict[str, "NodePayloadData"],
+) -> None:
+    """Add event to node's event list if node_id matches filter."""
+    if node_id and _should_include_node_id(node_id, node_ids):
+        if node_id not in node_payloads:
+            node_payloads[node_id] = NodePayloadData(
+                node_id=node_id, node_events=[]
+            )
+        node_payloads[node_id].node_events.append(event)
+        logger.info(
+            "Added event to node",
+            node_id=node_id,
+            event_type=event_type,
+        )
+
+
 def _add_event_and_payload(
     node_id: str,
     event: dict,
@@ -344,6 +365,14 @@ def extract_node_payloads(
                 continue
             node_id, payload_field = result
             workflow_node_id = node_id
+        
+        # Handle child workflow execution started (contains workflow_id and run_id)
+        if event_type == EventType.CHILD_WORKFLOW_EXECUTION_STARTED.value:
+            # extracting child workflow execution info (workflow_id, run_id)
+            extracted_node_id = extract_node_id_from_event(event)
+            _add_event_to_node_events(
+                extracted_node_id, event, event_type, node_ids, node_payloads
+            )
 
         # Handle workflow execution completed
         if event_type == EventType.WORKFLOW_EXECUTION_COMPLETED.value:
