@@ -5,9 +5,6 @@
 # Default output format (overridden by CLI flags)
 output: 'table'
 
-# Fail on severity threshold
-fail-on-severity: 'critical'
-
 # Show suppressed vulnerabilities
 show-suppressed: false
 
