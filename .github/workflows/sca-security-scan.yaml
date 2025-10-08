@@ -60,6 +60,7 @@ jobs:
           # Restore PR branch's .grype.yaml for consistent scanning
           cp /tmp/grype-config.yaml .grype.yaml
           grype dir:. -c "$GRYPE_CONFIG" -o json > base-scan.json || true
+          rm .grype.yaml
           git checkout -
           echo "Base branch scan complete"
       
