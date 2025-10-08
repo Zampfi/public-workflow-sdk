@@ -2,19 +2,24 @@
 Helper functions for temporal workflow history operations.
 """
 
-from __future__ import annotations
-
 import base64
 from typing import Dict, List, Optional, Tuple
 
 import structlog
 
 from zamp_public_workflow_sdk.temporal.workflow_history.constants import (
-    EventField, EventType, EventTypeToAttributesKey, PayloadField)
-from zamp_public_workflow_sdk.temporal.workflow_history.constants.constants import \
+    EventType,
+    PayloadField,
+    EventTypeToAttributesKey,
+    EventField,
+)
+
+from zamp_public_workflow_sdk.temporal.workflow_history.models.node_payload_data import (
+    NodePayloadData,
+)
+from zamp_public_workflow_sdk.temporal.workflow_history.constants.constants import (
     WorkflowExecutionField
-from zamp_public_workflow_sdk.temporal.workflow_history.models.node_payload_data import \
-    NodePayloadData
+)
 
 logger = structlog.get_logger(__name__)
 

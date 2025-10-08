@@ -2,21 +2,22 @@
 Temporal History simulation strategy implementation.
 """
 
-from __future__ import annotations
-
 from typing import Any, Dict, List, Optional
 
 import structlog
 
-from zamp_public_workflow_sdk.simulation.models.simulation_response import \
-    SimulationStrategyOutput
-from zamp_public_workflow_sdk.simulation.strategies.base_strategy import \
-    BaseStrategy
-from zamp_public_workflow_sdk.temporal.workflow_history.models import \
-    WorkflowHistory
-from zamp_public_workflow_sdk.temporal.workflow_history.models.fetch_temporal_workflow_history import (
-    FetchTemporalWorkflowHistoryInput, FetchTemporalWorkflowHistoryOutput)
 
+from zamp_public_workflow_sdk.simulation.models.simulation_response import (
+    SimulationStrategyOutput,
+)
+from zamp_public_workflow_sdk.simulation.strategies.base_strategy import BaseStrategy
+from zamp_public_workflow_sdk.temporal.workflow_history.models import (
+    WorkflowHistory,
+)
+from zamp_public_workflow_sdk.temporal.workflow_history.models.fetch_temporal_workflow_history import (
+    FetchTemporalWorkflowHistoryInput,
+    FetchTemporalWorkflowHistoryOutput,
+)
 logger = structlog.get_logger(__name__)
 
 # Constants

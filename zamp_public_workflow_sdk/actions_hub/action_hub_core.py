@@ -413,7 +413,7 @@ class ActionsHub:
         # Check if execution_mode is set to "API" in context variables
         if execution_mode is None:
             execution_mode = get_execution_mode_from_context()
-
+            
         if execution_mode == ExecutionMode.API:
             # Direct function execution mode - bypass Temporal
             logger.info(
