@@ -418,8 +418,7 @@ class ActionsHub:
             # Direct function execution mode - bypass Temporal
             logger.info(
                 "Executing activity in API mode, bypassing Temporal",
-                activity_name=activity_name,
-                node_id=node_id,
+                activity_name=activity,
             )
 
             # Get the activity function
@@ -443,6 +442,7 @@ class ActionsHub:
         # Check for simulation result
         simulation_result = cls._get_simulation_response(
             workflow_id=workflow_id,
+            activity_name=activity_name,
             node_id=node_id,
             action=activity,
             return_type=return_type,
@@ -635,8 +635,7 @@ class ActionsHub:
             # Direct function execution mode - bypass Temporal
             logger.info(
                 "Executing child workflow in API mode, bypassing Temporal",
-                workflow_name=child_workflow_name,
-                node_id=node_id,
+                workflow_name=workflow_name,
             )
 
             # Get the workflow function
@@ -669,6 +668,7 @@ class ActionsHub:
         # Check for simulation result
         simulation_result = cls._get_simulation_response(
             workflow_id=workflow_id,
+            child_workflow_name=child_workflow_name,
             node_id=node_id,
             action=workflow_name,
             return_type=result_type,
