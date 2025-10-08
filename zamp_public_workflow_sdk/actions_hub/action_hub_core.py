@@ -410,44 +410,10 @@ class ActionsHub:
         task_queue: str | None = None,
         **kwargs,
     ):
-        # Generate node_id for this activity execution
-        activity_name, workflow_id, node_id = cls._generate_node_id_for_action(activity)
-
-        # Check for simulation result
-        simulation_result = cls._get_simulation_response(
-            workflow_id=workflow_id,
-            node_id=node_id,
-            action=activity,
-            return_type=return_type,
-        )
-        if simulation_result.execution_type == ExecutionType.MOCK:
-            logger.info(
-                "Activity mocked",
-                activity_name=activity_name,
-                node_id=node_id,
-            )
-            return simulation_result.execution_response
-        # Note: retry_policy.initial_interval and maximum_interval are already timedelta objects
-
-        # Convert ISO string to timedelta
-        retry_policy.initial_interval = convert_iso_to_timedelta(
-            retry_policy.initial_interval
-        )
-        retry_policy.maximum_interval = convert_iso_to_timedelta(
-            retry_policy.maximum_interval
-        )
         # Check if execution_mode is set to "API" in context variables
         if execution_mode is None:
             execution_mode = get_execution_mode_from_context()
-
-        logger.info(
-            "Executing activity",
-            execution_mode=execution_mode,
-            activity_name=activity_name,
-            node_id=node_id,
-            workflow_id=workflow_id,
-        )
-
+            
         if execution_mode == ExecutionMode.API:
             # Direct function execution mode - bypass Temporal
             logger.info(
@@ -470,6 +436,33 @@ class ActionsHub:
                 return await func(*args)
             else:
                 return func(*args)
+
+        # Generate node_id for this activity execution
+        activity_name, workflow_id, node_id = cls._generate_node_id_for_action(activity)
+
+        # Check for simulation result
+        simulation_result = cls._get_simulation_response(
+            workflow_id=workflow_id,
+            node_id=node_id,
+            action=activity,
+            return_type=return_type,
+        )
+        if simulation_result.execution_type == ExecutionType.MOCK:
+            logger.info(
+                "Activity mocked",
+                activity_name=activity_name,
+                node_id=node_id,
+            )
+            return simulation_result.execution_response
+        
+        # Temporal execution mode
+        # Convert ISO string to timedelta
+        retry_policy.initial_interval = convert_iso_to_timedelta(
+            retry_policy.initial_interval
+        )
+        retry_policy.maximum_interval = convert_iso_to_timedelta(
+            retry_policy.maximum_interval
+        )
 
         node_id_arg = {TEMPORAL_NODE_ID_KEY: node_id}
         args = (node_id_arg,) + args
@@ -637,35 +630,7 @@ class ActionsHub:
         result_type: type | None = None,
         **kwargs,
     ):
-        # Generate node_id for this child workflow execution
-        child_workflow_name, workflow_id, node_id = cls._generate_node_id_for_action(
-            workflow_name
-        )
-
-        # Check for simulation result
-        simulation_result = cls._get_simulation_response(
-            workflow_id=workflow_id,
-            node_id=node_id,
-            action=workflow_name,
-            return_type=result_type,
-        )
-        if simulation_result.execution_type == ExecutionType.MOCK:
-            logger.info(
-                "Child workflow mocked",
-                activity_name=workflow_name,
-                node_id=node_id,
-            )
-            return simulation_result.execution_response
-
         execution_mode = get_execution_mode_from_context()
-        logger.info(
-            "Executing child workflow",
-            execution_mode=execution_mode,
-            workflow_name=child_workflow_name,
-            node_id=node_id,
-            workflow_id=workflow_id,
-        )
-
         if execution_mode == ExecutionMode.API:
             # Direct function execution mode - bypass Temporal
             logger.info(
@@ -696,6 +661,28 @@ class ActionsHub:
             else:
                 return func(*args)
 
+        # Generate node_id for this child workflow execution
+        child_workflow_name, workflow_id, node_id = cls._generate_node_id_for_action(
+            workflow_name
+        )
+
+        # Check for simulation result
+        simulation_result = cls._get_simulation_response(
+            workflow_id=workflow_id,
+            node_id=node_id,
+            action=workflow_name,
+            return_type=result_type,
+        )
+
+        if simulation_result.execution_type == ExecutionType.MOCK:
+            logger.info(
+                "Child workflow mocked",
+                activity_name=workflow_name,
+                node_id=node_id,
+            )
+            return simulation_result.execution_response
+        
+        # Temporal execution mode
         node_id_arg = {TEMPORAL_NODE_ID_KEY: node_id}
         args = (node_id_arg,) + args
 
