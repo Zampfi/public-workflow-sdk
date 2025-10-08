@@ -2,9 +2,6 @@
 # Grype Configuration for Vulnerability Scanning
 # Documentation: https://github.com/anchore/grype#configuration
 
-# Default output format (overridden by CLI flags)
-output: 'table'
-
 # Show suppressed vulnerabilities
 show-suppressed: false
 
