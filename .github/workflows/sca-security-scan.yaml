@@ -54,7 +54,11 @@ jobs:
           BASE_COMMIT: ${{ steps.get_base_commit.outputs.base_commit }}
         run: |
           echo "Scanning base branch at commit $BASE_COMMIT..."
+          # Save PR branch's .grype.yaml to use for base scan
+          cp .grype.yaml /tmp/grype-config.yaml
           git checkout $BASE_COMMIT
+          # Restore PR branch's .grype.yaml for consistent scanning
+          cp /tmp/grype-config.yaml .grype.yaml
           grype dir:. -c "$GRYPE_CONFIG" -o json > base-scan.json || true
           git checkout -
           echo "Base branch scan complete"
