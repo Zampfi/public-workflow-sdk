@@ -136,3 +136,4 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
                 error_type=type(e).__name__,
                 node_ids=node_ids,
             )
+            return {}
