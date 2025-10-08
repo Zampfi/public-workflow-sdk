@@ -442,7 +442,6 @@ class ActionsHub:
         # Check for simulation result
         simulation_result = cls._get_simulation_response(
             workflow_id=workflow_id,
-            activity_name=activity_name,
             node_id=node_id,
             action=activity,
             return_type=return_type,
@@ -450,7 +449,6 @@ class ActionsHub:
         if simulation_result.execution_type == ExecutionType.MOCK:
             logger.info(
                 "Activity mocked",
-                activity_name=activity_name,
                 node_id=node_id,
             )
             return simulation_result.execution_response
@@ -466,6 +464,14 @@ class ActionsHub:
 
         node_id_arg = {TEMPORAL_NODE_ID_KEY: node_id}
         args = (node_id_arg,) + args
+
+        # Executing in temporal mode
+        logger.info(
+            "Executing activity",
+            activity_name=activity,
+            node_id=node_id,
+            workflow_id=workflow_id,
+        )
 
         return await workflow.execute_activity(
             activity,
@@ -668,7 +674,6 @@ class ActionsHub:
         # Check for simulation result
         simulation_result = cls._get_simulation_response(
             workflow_id=workflow_id,
-            child_workflow_name=child_workflow_name,
             node_id=node_id,
             action=workflow_name,
             return_type=result_type,
@@ -677,7 +682,6 @@ class ActionsHub:
         if simulation_result.execution_type == ExecutionType.MOCK:
             logger.info(
                 "Child workflow mocked",
-                activity_name=workflow_name,
                 node_id=node_id,
             )
             return simulation_result.execution_response
@@ -685,6 +689,14 @@ class ActionsHub:
         # Temporal execution mode
         node_id_arg = {TEMPORAL_NODE_ID_KEY: node_id}
         args = (node_id_arg,) + args
+
+        # Executing in temporal mode
+        logger.info(
+            "Executing child workflow",
+            workflow_name=workflow_name,
+            node_id=node_id,
+            workflow_id=workflow_id,
+        )
 
         return await workflow.execute_child_workflow(
             workflow_name,
