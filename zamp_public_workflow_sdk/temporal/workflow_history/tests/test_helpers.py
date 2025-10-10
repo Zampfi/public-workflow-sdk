@@ -186,7 +186,7 @@ class TestHelpers:
         ]
 
         with patch(
-            "zamp_public_workflow_sdk.workflow_history.helpers.extract_node_id_from_event"
+            "zamp_public_workflow_sdk.temporal.workflow_history.helpers.extract_node_id_from_event"
         ) as mock_extract:
             mock_extract.return_value = "activity-node-1"
 
@@ -224,7 +224,7 @@ class TestHelpers:
         ]
 
         with patch(
-            "zamp_public_workflow_sdk.workflow_history.helpers.extract_node_id_from_event"
+            "zamp_public_workflow_sdk.temporal.workflow_history.helpers.extract_node_id_from_event"
         ) as mock_extract:
             mock_extract.side_effect = ["activity-node-1", None]
 
@@ -272,7 +272,7 @@ class TestHelpers:
         ]
 
         with patch(
-            "zamp_public_workflow_sdk.workflow_history.helpers.extract_node_id_from_event"
+            "zamp_public_workflow_sdk.temporal.workflow_history.helpers.extract_node_id_from_event"
         ) as mock_extract:
             mock_extract.return_value = "workflow-node-1"
 
@@ -333,7 +333,7 @@ class TestHelpers:
         ]
 
         with patch(
-            "zamp_public_workflow_sdk.workflow_history.helpers.extract_node_id_from_event"
+            "zamp_public_workflow_sdk.temporal.workflow_history.helpers.extract_node_id_from_event"
         ) as mock_extract:
             mock_extract.return_value = "workflow-node-1"
 
@@ -364,7 +364,7 @@ class TestHelpers:
         ]
 
         with patch(
-            "zamp_public_workflow_sdk.workflow_history.helpers.extract_node_id_from_event"
+            "zamp_public_workflow_sdk.temporal.workflow_history.helpers.extract_node_id_from_event"
         ) as mock_extract:
             mock_extract.return_value = "workflow-node-1"
 
@@ -402,7 +402,7 @@ class TestHelpers:
         ]
 
         with patch(
-            "zamp_public_workflow_sdk.workflow_history.helpers.extract_node_id_from_event"
+            "zamp_public_workflow_sdk.temporal.workflow_history.helpers.extract_node_id_from_event"
         ) as mock_extract:
             mock_extract.return_value = "workflow-node-1"
 
