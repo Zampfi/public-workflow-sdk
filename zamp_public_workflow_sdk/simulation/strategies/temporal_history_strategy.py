@@ -290,10 +290,9 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
         path_parts = full_child_path.split(".")
         current_history = parent_history
         
-        for i, workflow_part in enumerate(path_parts):
-            current_path = ".".join(path_parts[:i+1])
+        for depth_level in range(len(path_parts)):
+            current_path = ".".join(path_parts[:depth_level + 1])
             
-            # Use cache if available
             if current_path in cached_histories:
                 current_history = cached_histories[current_path]
                 continue
@@ -309,13 +308,13 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
             if current_path in workflow_nodes_needed:
                 fetch_node_ids = workflow_nodes_needed[current_path]
             else:
-                is_final = i == len(path_parts) - 1
-                if is_final:
+                is_final_level = depth_level == len(path_parts) - 1
+                if is_final_level:
                     # Final level: fetch the actual nodes with full prefix
                     fetch_node_ids = node_ids
                 else:
                     # Intermediate level: fetch the next child workflow with prefix
-                    fetch_node_ids = [".".join(path_parts[:i + 2])]
+                    fetch_node_ids = [".".join(path_parts[:depth_level + 2])]
             
             # Fetch and cache
             current_history = await self._fetch_temporal_history(node_ids=fetch_node_ids, workflow_id=workflow_id, run_id=run_id)

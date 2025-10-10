@@ -356,7 +356,6 @@ def extract_node_payloads(
             event_id=event_id,
         )
 
-        # Initialize node_id and payload_field for this iteration
         node_id = None
         payload_field = None
 
