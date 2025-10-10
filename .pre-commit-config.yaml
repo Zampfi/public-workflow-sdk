@@ -7,16 +7,26 @@ repos:
     rev: v4.1.0
     hooks:
       - id: check-added-large-files
+        types: [python]
       - id: check-case-conflict
+        types: [python]
       - id: check-merge-conflict
+        types: [python]
       - id: check-symlinks
+        types: [python]
       - id: check-yaml
+        types: [python]
       - id: debug-statements
         language_version: python3.12
+        types: [python]
       - id: end-of-file-fixer
+        types: [python]
       - id: mixed-line-ending
+        types: [python]
       - id: requirements-txt-fixer
+        types: [python]
       - id: trailing-whitespace
+        types: [python]
 
   - repo: https://github.com/asottile/pyupgrade
     rev: v2.31.0
@@ -24,6 +34,7 @@ repos:
       - id: pyupgrade
         args: [--py311-plus]
         language_version: python3.12
+        types: [python]
 
   - repo: https://github.com/hadialqattan/pycln
     rev: v1.2.5
@@ -32,34 +43,46 @@ repos:
         args: [--config=pyproject.toml]
         stages: [manual]
         language_version: python3.12
+        types: [python]
 
   - repo: https://github.com/pre-commit/pygrep-hooks
     rev: v1.9.0
     hooks:
       - id: python-check-blanket-noqa
+        types: [python]
       - id: python-check-blanket-type-ignore
+        types: [python]
       - id: python-no-log-warn
+        types: [python]
       - id: python-use-type-annotations
+        types: [python]
       - id: rst-backticks
+        types: [python]
       - id: rst-directive-colons
+        types: [python]
       - id: rst-inline-touching-normal
+        types: [python]
 
   - repo: https://github.com/mgedmin/check-manifest
     rev: "0.47"
     hooks:
       - id: check-manifest
         stages: [manual]
+        types: [python]
 
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.10.0
     hooks:
       - id: mypy
         language_version: python3.12
+        types: [python]
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.5.1
     hooks:
       - id: ruff
         args: [ --fix ]
+        types: [python]
       - id: ruff-format
         language_version: python3.12
+        types: [python]
