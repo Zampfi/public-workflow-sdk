@@ -2,9 +2,11 @@
 Activity models for ActionsHub - independent of Pantheon platform.
 """
 
-from pydantic import BaseModel
-from typing import Callable, Any, Sequence, List, Optional
 import inspect
+from typing import Any, Callable, Sequence
+
+from pydantic import BaseModel
+
 from .mcp_models import MCPConfig
 
 
@@ -12,8 +14,8 @@ class Activity(BaseModel):
     name: str
     description: str
     func: Callable
-    labels: List[str] = []
-    mcp_config: Optional[MCPConfig] = None
+    labels: list[str] = []
+    mcp_config: MCPConfig | None = None
     _parameters: tuple = None
     _returns: type | None = None
 

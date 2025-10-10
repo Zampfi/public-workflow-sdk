@@ -2,8 +2,9 @@
 Simplified context utilities for ActionsHub - removes circular dependencies.
 """
 
-import structlog
 from typing import Any
+
+import structlog
 
 
 def get_variable_from_context(variable_name: str, default_value: Any = None) -> Any:

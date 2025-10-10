@@ -2,22 +2,23 @@
 Unit tests for WorkflowSimulationService.
 """
 
-import pytest
-from unittest.mock import Mock, patch, AsyncMock
+from unittest.mock import AsyncMock, Mock, patch
 
-from zamp_public_workflow_sdk.simulation.workflow_simulation_service import (
-    WorkflowSimulationService,
-)
+import pytest
+
 from zamp_public_workflow_sdk.simulation.models import (
-    SimulationConfig,
+    CustomOutputConfig,
+    ExecutionType,
     NodeMockConfig,
     NodeStrategy,
+    SimulationConfig,
+    SimulationResponse,
     SimulationStrategyConfig,
     StrategyType,
-    CustomOutputConfig,
     TemporalHistoryConfig,
-    SimulationResponse,
-    ExecutionType,
+)
+from zamp_public_workflow_sdk.simulation.workflow_simulation_service import (
+    WorkflowSimulationService,
 )
 
 
@@ -167,12 +168,8 @@ class TestWorkflowSimulationService:
         mock_workflow_result = Mock()
         mock_workflow_result.node_id_to_response_map = {"node1#1": "test_output"}
 
-        with patch(
-            "zamp_public_workflow_sdk.actions_hub.ActionsHub"
-        ) as mock_actions_hub:
-            mock_actions_hub.execute_child_workflow = AsyncMock(
-                return_value=mock_workflow_result
-            )
+        with patch("zamp_public_workflow_sdk.actions_hub.ActionsHub") as mock_actions_hub:
+            mock_actions_hub.execute_child_workflow = AsyncMock(return_value=mock_workflow_result)
             mock_actions_hub.clear_node_id_tracker = Mock()
 
             await service._initialize_simulation_data()
@@ -198,12 +195,8 @@ class TestWorkflowSimulationService:
         sim_config = SimulationConfig(mock_config=mock_config)
         service = WorkflowSimulationService(sim_config)
 
-        with patch(
-            "zamp_public_workflow_sdk.actions_hub.ActionsHub"
-        ) as mock_actions_hub:
-            mock_actions_hub.execute_child_workflow = AsyncMock(
-                side_effect=Exception("Workflow failed")
-            )
+        with patch("zamp_public_workflow_sdk.actions_hub.ActionsHub") as mock_actions_hub:
+            mock_actions_hub.execute_child_workflow = AsyncMock(side_effect=Exception("Workflow failed"))
 
             with pytest.raises(Exception, match="Workflow failed"):
                 await service._initialize_simulation_data()
@@ -225,9 +218,7 @@ class TestWorkflowSimulationService:
         sim_config = SimulationConfig(mock_config=mock_config)
         service = WorkflowSimulationService(sim_config)
 
-        with patch(
-            "zamp_public_workflow_sdk.actions_hub.ActionsHub"
-        ) as mock_actions_hub:
+        with patch("zamp_public_workflow_sdk.actions_hub.ActionsHub") as mock_actions_hub:
             mock_actions_hub.execute_child_workflow = AsyncMock(return_value=None)
 
             with pytest.raises(AttributeError):

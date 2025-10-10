@@ -2,16 +2,17 @@
 Tests for ActionsHub simulation methods.
 """
 
+from unittest.mock import AsyncMock, Mock, patch
+
 import pytest
-from unittest.mock import Mock, AsyncMock, patch
 from pydantic import BaseModel
 
 from zamp_public_workflow_sdk.actions_hub.action_hub_core import ActionsHub
 from zamp_public_workflow_sdk.simulation.models import (
-    SimulationConfig,
-    SimulationResponse,
     ExecutionType,
     NodeMockConfig,
+    SimulationConfig,
+    SimulationResponse,
 )
 from zamp_public_workflow_sdk.simulation.workflow_simulation_service import (
     WorkflowSimulationService,
@@ -63,9 +64,7 @@ class TestActionsHubSimulation:
         """Test _get_simulation_response when simulation returns MOCK."""
         # Create mock simulation service
         mock_simulation = Mock(spec=WorkflowSimulationService)
-        mock_response = SimulationResponse(
-            execution_type=ExecutionType.MOCK, execution_response={"result": "mocked"}
-        )
+        mock_response = SimulationResponse(execution_type=ExecutionType.MOCK, execution_response={"result": "mocked"})
         mock_simulation.get_simulation_response.return_value = mock_response
 
         # Register the simulation
@@ -83,9 +82,7 @@ class TestActionsHubSimulation:
         """Test _get_simulation_response when simulation returns EXECUTE."""
         # Create mock simulation service
         mock_simulation = Mock(spec=WorkflowSimulationService)
-        mock_response = SimulationResponse(
-            execution_type=ExecutionType.EXECUTE, execution_response=None
-        )
+        mock_response = SimulationResponse(execution_type=ExecutionType.EXECUTE, execution_response=None)
         mock_simulation.get_simulation_response.return_value = mock_response
 
         # Register the simulation
@@ -106,9 +103,7 @@ class TestActionsHubSimulation:
 
         # Create mock simulation service
         mock_simulation = Mock(spec=WorkflowSimulationService)
-        mock_response = SimulationResponse(
-            execution_type=ExecutionType.MOCK, execution_response={"value": "test"}
-        )
+        mock_response = SimulationResponse(execution_type=ExecutionType.MOCK, execution_response={"value": "test"})
         mock_simulation.get_simulation_response.return_value = mock_response
 
         # Register the simulation
@@ -223,9 +218,7 @@ class TestActionsHubSimulation:
             "_initialize_simulation_data",
             new_callable=AsyncMock,
         ):
-            await ActionsHub.init_simulation_for_workflow(
-                simulation_config, workflow_id="test_workflow_123"
-            )
+            await ActionsHub.init_simulation_for_workflow(simulation_config, workflow_id="test_workflow_123")
 
             # Check that simulation was registered
             assert "test_workflow_123" in ActionsHub._workflow_id_to_simulation_map
@@ -246,9 +239,7 @@ class TestActionsHubSimulation:
             "_initialize_simulation_data",
             new_callable=AsyncMock,
         ):
-            await ActionsHub.init_simulation_for_workflow(
-                simulation_config, workflow_id="explicit_wf"
-            )
+            await ActionsHub.init_simulation_for_workflow(simulation_config, workflow_id="explicit_wf")
 
             # Check that simulation was registered with explicit workflow id
             assert "explicit_wf" in ActionsHub._workflow_id_to_simulation_map
@@ -274,9 +265,7 @@ class TestActionsHubSimulation:
         # through mocking
 
         mock_simulation = Mock(spec=WorkflowSimulationService)
-        mock_response = SimulationResponse(
-            execution_type=ExecutionType.MOCK, execution_response="mocked_result"
-        )
+        mock_response = SimulationResponse(execution_type=ExecutionType.MOCK, execution_response="mocked_result")
         mock_simulation.get_simulation_response.return_value = mock_response
         ActionsHub._workflow_id_to_simulation_map["test_wf"] = mock_simulation
 
@@ -294,9 +283,7 @@ class TestActionsHubSimulation:
     def test_child_workflow_simulation_integration(self):
         """Test that child workflow execution integrates with simulation response."""
         mock_simulation = Mock(spec=WorkflowSimulationService)
-        mock_response = SimulationResponse(
-            execution_type=ExecutionType.MOCK, execution_response="mocked_workflow"
-        )
+        mock_response = SimulationResponse(execution_type=ExecutionType.MOCK, execution_response="mocked_workflow")
         mock_simulation.get_simulation_response.return_value = mock_response
         ActionsHub._workflow_id_to_simulation_map["test_wf"] = mock_simulation
 
@@ -314,9 +301,7 @@ class TestActionsHubSimulation:
     def test_start_child_workflow_simulation_integration(self):
         """Test that start_child_workflow integrates with simulation response."""
         mock_simulation = Mock(spec=WorkflowSimulationService)
-        mock_response = SimulationResponse(
-            execution_type=ExecutionType.MOCK, execution_response="mocked_start"
-        )
+        mock_response = SimulationResponse(execution_type=ExecutionType.MOCK, execution_response="mocked_start")
         mock_simulation.get_simulation_response.return_value = mock_response
         ActionsHub._workflow_id_to_simulation_map["test_wf"] = mock_simulation
 
@@ -341,18 +326,14 @@ class TestActionsHubSimulation:
 
         # Create mock simulation service
         mock_simulation = Mock(spec=WorkflowSimulationService)
-        mock_response = SimulationResponse(
-            execution_type=ExecutionType.MOCK, execution_response={"value": "test"}
-        )
+        mock_response = SimulationResponse(execution_type=ExecutionType.MOCK, execution_response={"value": "test"})
         mock_simulation.get_simulation_response.return_value = mock_response
 
         # Register the simulation
         ActionsHub._workflow_id_to_simulation_map["test_wf"] = mock_simulation
 
         # Call with action but no return_type - should call _get_action_return_type
-        with patch.object(
-            ActionsHub, "_get_action_return_type", return_value=str
-        ) as mock_get_return_type:
+        with patch.object(ActionsHub, "_get_action_return_type", return_value=str) as mock_get_return_type:
             ActionsHub._get_simulation_response(
                 workflow_id="test_wf",
                 node_id="node_1",

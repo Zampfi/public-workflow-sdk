@@ -1,11 +1,11 @@
 """
 Configurable metadata context interceptor for Temporal workflows and activities.
 
-This interceptor extracts metadata from the zamp_metadata_context field in workflow 
+This interceptor extracts metadata from the zamp_metadata_context field in workflow
 and activity arguments and binds them to the Python context.
 """
 
-from typing import Any, Callable, Dict, Type
+from typing import Any, Callable
 
 from temporalio import activity, workflow
 from temporalio.worker import (
@@ -26,6 +26,7 @@ from temporalio.worker import (
 # Constant for the metadata context field name
 METADATA_CONTEXT_FIELD = "zamp_metadata_context"
 
+
 # Activity interceptor
 class MetadataContextActivityInterceptor(ActivityInboundInterceptor):
     def __init__(
@@ -41,12 +42,12 @@ class MetadataContextActivityInterceptor(ActivityInboundInterceptor):
     async def execute_activity(self, input: ExecuteActivityInput) -> Any:
         # Extract metadata from args if present
         self._bind_metadata_from_args(input.args)
-        
+
         # Also check headers for metadata (from parent workflow)
         self._bind_metadata_from_headers(input.headers)
-        
+
         return await self.next.execute_activity(input)
-    
+
     def _bind_metadata_from_args(self, args: tuple) -> None:
         """Extract metadata context from args and bind to context"""
         for arg in args:
@@ -94,22 +95,19 @@ class MetadataContextWorkflowInboundInterceptor(WorkflowInboundInterceptor):
         self._current_metadata = {}
 
     def init(self, outbound: WorkflowOutboundInterceptor) -> None:
-        self.next.init(MetadataContextWorkflowOutboundInterceptor(
-            outbound,
-            self.get_metadata
-        ))
+        self.next.init(MetadataContextWorkflowOutboundInterceptor(outbound, self.get_metadata))
 
-    def get_metadata(self) -> Dict[str, Any]:
+    def get_metadata(self) -> dict[str, Any]:
         """Get the current metadata context."""
         return self._current_metadata
 
     async def execute_workflow(self, input: ExecuteWorkflowInput) -> Any:
         # Extract metadata from args if present
         self._extract_metadata_from_args(input.args)
-        
+
         # Also check headers for metadata (from parent workflow)
         self._extract_metadata_from_headers(input.headers)
-        
+
         # Bind metadata to context
         if self._current_metadata:
             with workflow.unsafe.sandbox_unrestricted():
@@ -118,9 +116,9 @@ class MetadataContextWorkflowInboundInterceptor(WorkflowInboundInterceptor):
                         self.context_bind_fn(**{key: value})
                 except Exception as e:
                     self.logger.error(f"Error setting metadata context variables: {str(e)}")
-        
+
         return await self.next.execute_workflow(input)
-    
+
     def _extract_metadata_from_args(self, args: tuple) -> None:
         """Extract metadata context from args and store it"""
         for arg in args:
@@ -173,22 +171,22 @@ class MetadataContextWorkflowOutboundInterceptor(WorkflowOutboundInterceptor):
         # Add metadata context to activity headers
         self._add_metadata_to_headers(input.headers)
         return self.next.start_activity(input)
-    
+
     async def start_child_workflow(self, input: StartChildWorkflowInput) -> Any:
         # Add metadata context to child workflow headers
         self._add_metadata_to_headers(input.headers)
         return await self.next.start_child_workflow(input)
-    
+
     def start_local_activity(self, input: StartLocalActivityInput) -> Any:
         # Add metadata context to local activity headers
         self._add_metadata_to_headers(input.headers)
         return self.next.start_local_activity(input)
-    
+
     async def signal_child_workflow(self, input: SignalChildWorkflowInput) -> None:
         # Add metadata context to signal headers
         self._add_metadata_to_headers(input.headers)
         return await self.next.signal_child_workflow(input)
-    
+
     async def signal_external_workflow(self, input: SignalExternalWorkflowInput) -> None:
         # Add metadata context to signal headers
         self._add_metadata_to_headers(input.headers)
@@ -199,22 +197,22 @@ class MetadataContextWorkflowOutboundInterceptor(WorkflowOutboundInterceptor):
 class MetadataContextInterceptor(Interceptor):
     """
     Configurable metadata context interceptor that extracts and propagates metadata from arguments.
-    
+
     This interceptor looks for a 'zamp_metadata_context' attribute in workflow and activity arguments.
-    If found, it converts the Pydantic model to a dictionary and binds all key-value pairs 
+    If found, it converts the Pydantic model to a dictionary and binds all key-value pairs
     to the Python context using the provided context binding function.
-    
+
     The metadata is automatically propagated to child workflows and activities through headers,
     so they can access the same context variables without modifying their arguments.
-    
+
     Expected usage:
     - Arguments should be Pydantic models with a 'zamp_metadata_context' attribute
     - The 'zamp_metadata_context' should be a Pydantic model (e.g., ZampMetadataContext)
-    
+
     This interceptor extracts metadata from incoming calls and propagates it through headers
     to child workflows/activities without modifying their arguments.
     """
-    
+
     def __init__(
         self,
         logger_module: Any,
@@ -222,26 +220,19 @@ class MetadataContextInterceptor(Interceptor):
     ):
         """
         Initialize the metadata context interceptor with configurable parameters.
-        
+
         Args:
             logger_module: Logger to use for logging (must support debug and error methods)
             context_bind_fn: Function to bind context variables
         """
         self.logger = logger_module.get_logger(__name__)
         self.context_bind_fn = context_bind_fn
-    
+
     def intercept_activity(self, next: ActivityInboundInterceptor) -> ActivityInboundInterceptor:
-        return MetadataContextActivityInterceptor(
-            next,
-            self.context_bind_fn,
-            self.logger
-        )
-    
-    def workflow_interceptor_class(self, input: WorkflowInterceptorClassInput) -> Type[WorkflowInboundInterceptor]:
+        return MetadataContextActivityInterceptor(next, self.context_bind_fn, self.logger)
+
+    def workflow_interceptor_class(self, input: WorkflowInterceptorClassInput) -> type[WorkflowInboundInterceptor]:
         def interceptor_creator(next_interceptor):
-            return MetadataContextWorkflowInboundInterceptor(
-                next_interceptor,
-                self.context_bind_fn,
-                self.logger
-            )
-        return interceptor_creator 
+            return MetadataContextWorkflowInboundInterceptor(next_interceptor, self.context_bind_fn, self.logger)
+
+        return interceptor_creator

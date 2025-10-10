@@ -2,8 +2,10 @@
 Models for ActionsHub - independent of Pantheon platform.
 """
 
+from __future__ import annotations
+
 from pydantic import BaseModel, Field
-from typing import Any, Callable, Optional, Dict
+from typing import Any, Callable
 from datetime import timedelta
 from .activity_models import Activity
 from .workflow_models import Workflow
@@ -23,10 +25,10 @@ class Action(BaseModel):
     action_type: ActionType
     labels: list[str] = []
     func: Callable | None = None
-    mcp_config: Optional[MCPConfig] = None
+    mcp_config: MCPConfig | None = None
 
     @classmethod
-    def from_workflow(cls, workflow: Workflow) -> "Action":
+    def from_workflow(cls, workflow: Workflow) -> Action:
         return cls(
             name=workflow.name,
             description=workflow.description,
@@ -37,7 +39,7 @@ class Action(BaseModel):
         )
 
     @classmethod
-    def from_activity(cls, activity: Activity) -> "Action":
+    def from_activity(cls, activity: Activity) -> Action:
         return cls(
             name=activity.name,
             description=activity.description,
@@ -50,7 +52,7 @@ class Action(BaseModel):
         )
 
     @classmethod
-    def from_business_logic(cls, business_logic: BusinessLogic) -> "Action":
+    def from_business_logic(cls, business_logic: BusinessLogic) -> Action:
         return cls(
             name=business_logic.name,
             description=business_logic.description,
@@ -106,15 +108,9 @@ class Action(BaseModel):
 
 
 class ActionFilter(BaseModel):
-    name: Optional[str] = Field(
-        default="", description="The name of the action to filter by"
-    )
-    labels: Optional[list[str]] = Field(
-        default=[], description="The labels of the action to filter by"
-    )
-    resticted_action_set: Optional[list[str]] = Field(
-        default=[], description="The action set to filter by"
-    )
+    name: str | None = Field(default="", description="The name of the action to filter by")
+    labels: list[str] | None = Field(default=[], description="The labels of the action to filter by")
+    resticted_action_set: list[str] | None = Field(default=[], description="The action set to filter by")
 
     def filter_actions(self, actions: list[Action]) -> list[Action]:
         filtered_actions = []
@@ -151,7 +147,7 @@ class RetryPolicy(BaseModel):
 
     # Define a static property for the default retry policy
     @staticmethod
-    def default() -> "RetryPolicy":
+    def default() -> RetryPolicy:
         # ~11 retries approximating around 1 hour
         return RetryPolicy(
             initial_interval=timedelta(seconds=30),
@@ -161,7 +157,7 @@ class RetryPolicy(BaseModel):
         )
 
     @staticmethod
-    def child_workflow_default() -> "RetryPolicy":
+    def child_workflow_default() -> RetryPolicy:
         return RetryPolicy(
             initial_interval=timedelta(seconds=5),
             maximum_attempts=3,  # 2 retries + 1 initial attempt
@@ -180,9 +176,5 @@ class CodeExecutorConfig(BaseModel):
 
 class ExecuteCodeParams(BaseModel):
     function: Any = Field(..., description="Callable function to execute")
-    args: tuple = Field(
-        default=(), description="Positional arguments to pass to the function"
-    )
-    kwargs: Dict[str, Any] = Field(
-        default_factory=dict, description="Keyword arguments to pass to the function"
-    )
+    args: tuple = Field(default=(), description="Positional arguments to pass to the function")
+    kwargs: dict[str, Any] = Field(default_factory=dict, description="Keyword arguments to pass to the function")

@@ -1,6 +1,7 @@
-from pydantic import BaseModel
 from typing import Any
-from zamp_public_workflow_sdk.temporal.data_converters.type_utils import get_fqn
+
+from pydantic import BaseModel
+
 
 class GenericSerializedValue(BaseModel):
     serialized_value: Any
