@@ -2,8 +2,6 @@
 Models for ActionsHub - independent of Pantheon platform.
 """
 
-from __future__ import annotations
-
 from .activity_models import Activity
 from .business_logic_models import BusinessLogic
 from .common_models import ZampMetadataContext

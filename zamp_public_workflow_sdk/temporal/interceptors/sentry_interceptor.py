@@ -4,8 +4,6 @@ Configurable Sentry interceptor for Temporal workflows and activities.
 This interceptor captures workflow and activity failures and reports them to Sentry.
 """
 
-from __future__ import annotations
-
 from typing import Any, Callable
 
 from temporalio import workflow

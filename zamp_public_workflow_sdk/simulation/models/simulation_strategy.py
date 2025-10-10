@@ -4,8 +4,6 @@ Strategy models for simulation system.
 This module contains models related to simulation strategies and their configurations.
 """
 
-from __future__ import annotations
-
 from enum import Enum
 from typing import Any
 

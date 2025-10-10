@@ -2,14 +2,6 @@
 Tests for constants.py
 """
 
-from __future__ import annotations
-
-import os
-import sys
-
-# Add the parent directory to the path so we can import the modules
-sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-
 from zamp_public_workflow_sdk.actions_hub.constants import DEFAULT_MODE, ExecutionMode
 
 

@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from typing import Any, Callable, Union
 
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.base import BaseTransformer

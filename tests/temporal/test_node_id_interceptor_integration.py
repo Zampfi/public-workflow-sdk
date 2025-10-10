@@ -5,16 +5,10 @@ This module contains integration tests that demonstrate the complete flow
 of node_id handling from workflow to activities using the NodeIdInterceptor.
 """
 
-from __future__ import annotations
-
-import os
-import sys
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-# Add the project root to Python path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 from temporalio import workflow
 from temporalio.worker import (

@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from datetime import datetime
 from io import BytesIO
 from typing import Any, Generic, TypeVar

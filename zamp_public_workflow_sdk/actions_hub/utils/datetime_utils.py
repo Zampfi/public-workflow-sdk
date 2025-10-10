@@ -2,8 +2,6 @@
 Simplified datetime utilities for ActionsHub - removes complex dependencies.
 """
 
-from __future__ import annotations
-
 import pandas as pd
 
 

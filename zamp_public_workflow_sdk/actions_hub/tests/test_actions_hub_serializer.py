@@ -2,8 +2,6 @@
 Tests for ActionsHub serializer
 """
 
-from __future__ import annotations
-
 from enum import Enum
 from io import BytesIO
 

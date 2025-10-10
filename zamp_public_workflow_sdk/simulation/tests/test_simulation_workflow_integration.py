@@ -2,8 +2,6 @@
 Integration tests for simulation workflows and services.
 """
 
-from __future__ import annotations
-
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest

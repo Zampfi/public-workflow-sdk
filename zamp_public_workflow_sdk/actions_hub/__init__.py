@@ -5,8 +5,6 @@ A central hub for registering and executing actions (activities, workflows, busi
 independent of the Pantheon platform.
 """
 
-from __future__ import annotations
-
 from .action_hub_core import ActionsHub
 from .constants import ActionType, ExecutionMode
 from .models.core_models import Action, ActionFilter, RetryPolicy

@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from temporalio import workflow
 
 with workflow.unsafe.imports_passed_through():

@@ -2,8 +2,6 @@
 Simplified context utilities for ActionsHub - removes circular dependencies.
 """
 
-from __future__ import annotations
-
 from typing import Any
 
 import structlog

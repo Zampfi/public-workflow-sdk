@@ -9,8 +9,6 @@ This interceptor handles node_id propagation from workflows to activities and ch
 All processing is done in the WorkflowOutboundInterceptor, eliminating the need for an ActivityInboundInterceptor.
 """
 
-from __future__ import annotations
-
 from typing import Any
 
 from temporalio import workflow

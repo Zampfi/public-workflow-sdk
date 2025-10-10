@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import asyncio
 
 from sample.activity import final_activity, generate_joke, human_approval

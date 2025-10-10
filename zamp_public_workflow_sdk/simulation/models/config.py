@@ -4,9 +4,6 @@ Configuration models for simulation system.
 This module contains models related to simulation configuration and node mocking.
 """
 
-from __future__ import annotations
-
-
 from pydantic import BaseModel, Field
 
 from ..constants.versions import SupportedVersions

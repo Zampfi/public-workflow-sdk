@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from .fetch_temporal_workflow_history import FetchTemporalWorkflowHistoryInput, FetchTemporalWorkflowHistoryOutput
 from .file import File, FileMetadata, FileProvider, GCPFileMetadata, S3FileMetadata
 from .node_payload_data import NodePayloadData

@@ -1,6 +1,3 @@
-from __future__ import annotations
-
-
 from pydantic import BaseModel, Field
 
 from zamp_public_workflow_sdk.temporal.workflow_history.helpers import (

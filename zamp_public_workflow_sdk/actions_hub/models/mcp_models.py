@@ -7,9 +7,8 @@ within the ActionsHub system.
 
 from __future__ import annotations
 
-from enum import Enum
-
 from pydantic import BaseModel, Field
+from enum import Enum
 
 
 class MCPAction(Enum):

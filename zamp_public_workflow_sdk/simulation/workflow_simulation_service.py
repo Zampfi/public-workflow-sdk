@@ -2,8 +2,6 @@
 Workflow Simulation Service for managing simulation state and responses.
 """
 
-from __future__ import annotations
-
 from typing import Any
 
 import structlog

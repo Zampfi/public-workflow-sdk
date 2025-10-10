@@ -2,8 +2,6 @@
 Activity models for ActionsHub - independent of Pantheon platform.
 """
 
-from __future__ import annotations
-
 import inspect
 from typing import Any, Callable, Sequence
 

@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from temporalio.client import Client
 
 from zamp_public_workflow_sdk.temporal.models.temporal_models import (

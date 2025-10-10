@@ -2,8 +2,6 @@
 Tests for action_types.py
 """
 
-from __future__ import annotations
-
 import os
 import sys
 

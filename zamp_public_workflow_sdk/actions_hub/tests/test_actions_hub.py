@@ -2,17 +2,11 @@
 Tests for actions_hub.py
 """
 
-from __future__ import annotations
-
-import os
-import sys
 from datetime import timedelta
 from unittest.mock import Mock, patch
 
 import pytest
 
-# Add the parent directory to the path so we can import the modules
-sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from zamp_public_workflow_sdk.actions_hub.action_hub_core import ActionsHub
 from zamp_public_workflow_sdk.actions_hub.constants import ActionType

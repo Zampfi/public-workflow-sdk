@@ -1,6 +1,3 @@
-from __future__ import annotations
-
-
 from pydantic import BaseModel
 
 from zamp_public_workflow_sdk.temporal.data_converters.pydantic_payload_converter import (

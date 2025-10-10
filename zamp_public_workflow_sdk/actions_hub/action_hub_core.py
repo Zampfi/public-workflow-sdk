@@ -5,8 +5,6 @@ A central hub for registering and executing actions (activities, workflows, busi
 independent of the Pantheon platform.
 """
 
-from __future__ import annotations
-
 import asyncio
 import threading
 from collections import defaultdict

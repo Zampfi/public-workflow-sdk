@@ -5,8 +5,6 @@ This interceptor extracts metadata from the zamp_metadata_context field in workf
 and activity arguments and binds them to the Python context.
 """
 
-from __future__ import annotations
-
 from typing import Any, Callable
 
 from temporalio import activity, workflow

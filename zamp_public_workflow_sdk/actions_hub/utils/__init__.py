@@ -2,8 +2,6 @@
 Utility functions for ActionsHub.
 """
 
-from __future__ import annotations
-
 # Import utility functions
 # Note: fetch_actions_prompt is imported directly when needed to avoid circular imports
 # Import context utilities

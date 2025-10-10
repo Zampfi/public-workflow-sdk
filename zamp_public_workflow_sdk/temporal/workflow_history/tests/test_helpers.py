@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from unittest.mock import patch
 
 from zamp_public_workflow_sdk.temporal.workflow_history.helpers import (

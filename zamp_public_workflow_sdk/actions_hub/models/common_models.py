@@ -2,9 +2,6 @@
 Common models for ActionsHub - independent of Pantheon platform.
 """
 
-from __future__ import annotations
-
-
 from pydantic import BaseModel, Field
 
 from .decorators import external

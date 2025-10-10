@@ -2,8 +2,6 @@
 Constants and enums for temporal workflow operations.
 """
 
-from __future__ import annotations
-
 from enum import Enum
 
 

@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import concurrent
 from dataclasses import dataclass, field
 from datetime import timedelta

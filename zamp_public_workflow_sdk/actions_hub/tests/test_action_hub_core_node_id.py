@@ -4,8 +4,6 @@ Unit tests for ActionsHub node ID generation and tracking functionality.
 This module tests the new node ID system introduced in the fixPR-NodeIDRevamp branch.
 """
 
-from __future__ import annotations
-
 import threading
 from unittest.mock import Mock, patch
 

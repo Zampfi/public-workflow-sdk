@@ -2,8 +2,6 @@
 Utility functions for ActionsHub - independent of Pantheon platform.
 """
 
-from __future__ import annotations
-
 import structlog
 
 from zamp_public_workflow_sdk.temporal.data_converters.type_utils import get_fqn as get_fqn_from_zamp
