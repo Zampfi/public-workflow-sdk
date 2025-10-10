@@ -2,8 +2,6 @@
 Integration tests for ActionsHub simulation functionality.
 """
 
-from __future__ import annotations
-
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest

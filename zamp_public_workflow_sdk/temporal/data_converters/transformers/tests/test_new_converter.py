@@ -1,12 +1,6 @@
-import io
-from typing import Generic, TypeVar
-
 from pydantic import BaseModel
-
 from zamp_public_workflow_sdk.temporal.data_converters.type_utils import is_serialize_by_default_serializer
-
-# Define TypeVar for generic types
-T = TypeVar("T", bound=BaseModel)
+import io
 
 
 def test_simple_pydantic_model():
@@ -94,18 +88,12 @@ def test_nested_base_model():
     )
 
     assert is_serialize_by_default_serializer(nested_model) is False
-    nested_model_dumped = {
-        "basic": {"string": "test"},
-        "non_serializable": io.BytesIO(b"test"),
-    }
+    nested_model_dumped = {"basic": {"string": "test"}, "non_serializable": io.BytesIO(b"test")}
     assert is_serialize_by_default_serializer(nested_model_dumped) is False
 
     nested_model.non_serializable = None
     assert is_serialize_by_default_serializer(nested_model) is True
-    nested_model_dumped = nested_model_dumped = {
-        "basic": {"string": "test"},
-        "non_serializable": None,
-    }
+    nested_model_dumped = nested_model_dumped = {"basic": {"string": "test"}, "non_serializable": None}
     assert is_serialize_by_default_serializer(nested_model_dumped) is True
 
 
@@ -122,7 +110,7 @@ def test_list_case():
     class PydanticModelWithList(BaseModel):
         list: list[int]
 
-    class PydanticModelWithListT(BaseModel, Generic[T]):
+    class PydanticModelWithListT[T: BaseModel](BaseModel):
         list: list[T]
 
     class PydanticModelWithListT2(BaseModel):

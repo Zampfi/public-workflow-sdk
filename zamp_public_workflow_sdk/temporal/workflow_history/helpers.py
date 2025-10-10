@@ -2,8 +2,6 @@
 Helper functions for temporal workflow history operations.
 """
 
-from __future__ import annotations
-
 import structlog
 
 from zamp_public_workflow_sdk.temporal.workflow_history.constants import (

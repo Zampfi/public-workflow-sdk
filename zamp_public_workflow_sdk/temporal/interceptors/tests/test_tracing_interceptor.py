@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import contextvars
 import uuid
 from unittest.mock import AsyncMock, MagicMock, patch

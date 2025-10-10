@@ -1,11 +1,7 @@
+from pydantic import BaseModel
 from datetime import datetime
 from io import BytesIO
-from typing import Any, Generic, TypeVar
-
-from pydantic import BaseModel
-
-# Define TypeVar for generic types
-T = TypeVar("T", bound=BaseModel)
+from typing import Any
 
 
 class TestModelWithInteger(BaseModel):
@@ -37,7 +33,7 @@ class TestModelCompositeModel(BaseModel):
         arbitrary_types_allowed = True
 
 
-class TestModelWithGenericTypeVar(BaseModel, Generic[T]):
+class TestModelWithGenericTypeVar[T: BaseModel](BaseModel):
     generic_type_var: T
     list_generic_type_var: list[T]
 
@@ -55,7 +51,7 @@ class TestModelWithTuple(BaseModel):
     tuple: tuple
 
 
-class TestModelWithUnionAndOptional(BaseModel, Generic[T]):
+class TestModelWithUnionAndOptional[T: BaseModel](BaseModel):
     data: dict[str, Any] | T | None
 
 

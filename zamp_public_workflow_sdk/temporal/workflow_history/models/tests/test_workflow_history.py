@@ -1,8 +1,6 @@
-from __future__ import annotations
-
 import pytest
 
-from zamp_public_workflow_sdk.workflow_history.models.workflow_history import WorkflowHistory
+from zamp_public_workflow_sdk.temporal.workflow_history.models.workflow_history import WorkflowHistory
 
 
 class TestWorkflowHistory:
