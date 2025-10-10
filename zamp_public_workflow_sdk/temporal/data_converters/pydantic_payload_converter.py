@@ -34,7 +34,19 @@ class PydanticJSONPayloadConverter(JSONPlainPayloadConverter):
     def __init__(self):
         super().__init__()
         self.temporal_pydantic_converter = PydanticJSONPlainPayloadConverter()
-        
+
+        if not Transformer._transformers:
+            Transformer.register_transformer(PydanticTypeTransformer())
+            Transformer.register_transformer(PydanticModelMetaclassTransformer())
+            Transformer.register_transformer(BytesTransformer())
+            Transformer.register_transformer(BytesIOTransformer())
+            Transformer.register_transformer(DateTransformer())
+            Transformer.register_transformer(UnionTransformer())
+
+        if not Transformer._collection_transformers:
+            Transformer.register_collection_transformer(TupleTransformer())
+            Transformer.register_collection_transformer(ListTransformer())
+
     def to_payload(self, value: Any) -> Optional[Payload]:
         # Use sandbox_unrestricted to move serialization outside the sandbox
         with workflow.unsafe.sandbox_unrestricted():
@@ -52,7 +64,7 @@ class PydanticJSONPayloadConverter(JSONPlainPayloadConverter):
         # Use sandbox_unrestricted to move deserialization outside the sandbox
         with workflow.unsafe.sandbox_unrestricted():
             return self.temporal_pydantic_converter.from_payload(payload, type_hint)
-    
+
 class PydanticPayloadConverter(CompositePayloadConverter):
     """Payload converter that replaces Temporal JSON conversion with Pydantic
     JSON conversion.

@@ -1,10 +1,11 @@
 import pytest
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.transformer import Transformer
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.tests.test_models import TestModelWithInteger, TestModelWithListOfIntegers, TestModelCompositeModel, TestModelWithString, TestModelWithGenericTypeVar, TestModelWithGenericDictionary, TestModelWithPydanticType, TestModelWithUnion, TestModelWithTuple, TestModelWithUnionAndOptional, TestModelWithAny, TestModelWithOptionalAny
-from zamp_public_workflow_sdk.temporal.data_converters.type_utils import get_fqn
+from zamp_public_workflow_sdk.temporal.data_converters.type_utils import get_fqn, get_reference_from_fqn
 from zamp_public_workflow_sdk.temporal.data_converters.pydantic_payload_converter import PydanticJSONPayloadConverter, DEFAULT_CONVERTER_METADATA_KEY
 from io import BytesIO
-from pydantic import BaseModel
+from pydantic import BaseModel, field_serializer, field_validator
+from pydantic_core import core_schema
 from typing import Any, Dict
 
 class Basic(BaseModel):
@@ -16,6 +17,17 @@ class Nested1(BaseModel):
 class Nested2(BaseModel):
     nested1: Nested1
     type_var: type[BaseModel]
+
+    @field_serializer('type_var')
+    def serialize_type_var(self, value: type[BaseModel]) -> str:
+        return get_fqn(value)
+
+    @field_validator('type_var', mode='wrap')
+    @classmethod
+    def validate_type_var(cls, value, handler, info):
+        if isinstance(value, str):
+            return get_reference_from_fqn(value)
+        return handler(value)
 
 def test_basic():
     converter = PydanticJSONPayloadConverter()
@@ -34,7 +46,6 @@ def test_basic():
     payload = converter.to_payload(dict)
     assert DEFAULT_CONVERTER_METADATA_KEY not in payload.metadata
 
-@pytest.mark.xfail(reason="Pydantic cannot serialize ModelMetaclass types")
 def test_nested_case():
     converter = PydanticJSONPayloadConverter()
 

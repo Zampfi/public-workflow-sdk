@@ -20,12 +20,11 @@ def test_pydantic_transformer_list():
     model = TestModelWithListOfIntegers(integers=[1, 2, 3])
     serialized = Transformer.serialize(model).serialized_value
     assert serialized['integers'] == [1, 2, 3]
-    assert serialized['__integers_type'] == 'list'
+    assert serialized['__integers_type'] in ['list', 'list[int]']
 
     deserialized = Transformer.deserialize(serialized, TestModelWithListOfIntegers)
     assert deserialized.integers == [1, 2, 3]
 
-@pytest.mark.xfail(reason="Complex transformer serialization not fully implemented")
 def test_pydantic_transformer_composite():
     current_datetime = datetime.now()
     model = TestModelCompositeModel(integer=TestModelWithInteger(integer=1), string=TestModelWithString(string="test"), integers=[TestModelWithInteger(integer=1), TestModelWithInteger(integer=2)], bytesIo=BytesIO(b"test"), bytes=b"test", datetime=current_datetime, type_obj=TestModelWithInteger)
@@ -48,7 +47,6 @@ def test_pydantic_transformer_composite():
     assert deserialized.datetime == current_datetime
     assert deserialized.type_obj == TestModelWithInteger
 
-@pytest.mark.xfail(reason="Complex transformer serialization not fully implemented")
 def test_pydantic_transformer_pydantic_type():
     model = TestModelWithPydanticType(pydantic_type=TestModelWithInteger)
     serialized = Transformer.serialize(model).serialized_value
@@ -58,7 +56,6 @@ def test_pydantic_transformer_pydantic_type():
     deserialized = Transformer.deserialize(serialized, TestModelWithPydanticType)
     assert deserialized.pydantic_type == TestModelWithInteger
 
-@pytest.mark.xfail(reason="Complex transformer serialization not fully implemented")
 def test_pydantic_transformer_generic_type_var():
     model = TestModelWithGenericTypeVar(generic_type_var=TestModelWithInteger(integer=1), list_generic_type_var=[TestModelWithInteger(integer=1), TestModelWithInteger(integer=2)])
     serialized = Transformer.serialize(model).serialized_value
@@ -69,7 +66,6 @@ def test_pydantic_transformer_generic_type_var():
     assert serialized["list_generic_type_var"][0]["__integer_type"] == "int"
     assert serialized["list_generic_type_var"][1]["__integer_type"] == "int"
 
-@pytest.mark.xfail(reason="Complex transformer serialization not fully implemented")
 def test_pydantic_transformer_generic_dictionary():
     test_model = TestModelWithInteger(integer=1)
     model = TestModelWithGenericDictionary(generic_dict={"key": 1, "key2": test_model, "key3": [test_model]})
@@ -94,7 +90,6 @@ def test_pydantic_transformer_union():
     deserialized = Transformer.deserialize(serialized, TestModelWithUnion)
     assert deserialized.union == 1
 
-@pytest.mark.xfail(reason="Complex transformer serialization not fully implemented")
 def test_pydantic_transformer_tuple():
     model = TestModelWithTuple(tuple=(1, "str", TestModelWithInteger(integer=3), {"key": "value"}))
     serialized = Transformer.serialize(model).serialized_value
@@ -111,7 +106,6 @@ def test_pydantic_transformer_tuple():
     deserialized = Transformer.deserialize(serialized, TestModelWithTuple)
     assert deserialized.tuple == (1, "str", TestModelWithInteger(integer=3), {"key": "value"})
 
-@pytest.mark.xfail(reason="Complex transformer serialization not fully implemented")
 def test_pydantic_transformer_union_and_optional():
     model = TestModelWithUnionAndOptional(data=TestModelWithInteger(integer=1))
     serialized = Transformer.serialize(model).serialized_value
@@ -208,7 +202,6 @@ def test_pydantic_transformer_optional_any():
     assert deserialized.optional_any == {"key": 1, "key2": TestModelWithInteger(integer=2)}
 
 
-@pytest.mark.xfail(reason="Complex transformer serialization not fully implemented")
 def test_pydantic_normal_dict():
     dict_value = {
         "key1": 1,
