@@ -349,6 +349,8 @@ def extract_node_payloads(
     for event_index, event in enumerate(events):
         event_type = event.get(EventField.EVENT_TYPE.value)
         event_id = event.get(EventField.EVENT_ID.value)
+        node_id = None
+        payload_field = None
         logger.info(
             "Processing event",
             event_index=event_index,
