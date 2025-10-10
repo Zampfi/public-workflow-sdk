@@ -39,10 +39,3 @@ disable_error_code = [
 [tool.ruff]
 target-version = "py312"
 line-length = 120
-
-[tool.ruff.lint]
-select = ["I"]  # Enable import sorting
-
-[tool.ruff.lint.isort]
-required-imports = ["from __future__ import annotations"]
-known-first-party = ["zamp_public_workflow_sdk"]

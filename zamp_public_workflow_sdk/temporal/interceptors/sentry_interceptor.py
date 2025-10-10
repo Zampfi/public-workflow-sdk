@@ -6,7 +6,7 @@ This interceptor captures workflow and activity failures and reports them to Sen
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, Optional, Type
+from typing import Any, Callable
 
 from temporalio import workflow
 from temporalio.worker import (

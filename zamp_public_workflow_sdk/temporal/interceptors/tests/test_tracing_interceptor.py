@@ -259,7 +259,8 @@ class TestTraceWorkflowOutboundInterceptor:
     def test_start_activity(self, mock_next_workflow_outbound, mock_payload_converter):
         with patch.object(workflow, "payload_converter", return_value=mock_payload_converter):
             # Mock get_trace_id function
-            get_trace_id = lambda: "trace-id-123"
+            def get_trace_id():
+                return "trace-id-123"
 
             interceptor = TraceWorkflowOutboundInterceptor(
                 mock_next_workflow_outbound, "X-Trace-ID", "test_trace_id", get_trace_id
@@ -282,7 +283,8 @@ class TestTraceWorkflowOutboundInterceptor:
     async def test_start_child_workflow(self, mock_next_workflow_outbound, mock_payload_converter):
         with patch.object(workflow, "payload_converter", return_value=mock_payload_converter):
             # Mock get_trace_id function
-            get_trace_id = lambda: "trace-id-123"
+            def get_trace_id():
+                return "trace-id-123"
 
             interceptor = TraceWorkflowOutboundInterceptor(
                 mock_next_workflow_outbound, "X-Trace-ID", "test_trace_id", get_trace_id
@@ -304,7 +306,8 @@ class TestTraceWorkflowOutboundInterceptor:
     def test_start_local_activity(self, mock_next_workflow_outbound, mock_payload_converter):
         with patch.object(workflow, "payload_converter", return_value=mock_payload_converter):
             # Mock get_trace_id function
-            get_trace_id = lambda: "trace-id-123"
+            def get_trace_id():
+                return "trace-id-123"
 
             interceptor = TraceWorkflowOutboundInterceptor(
                 mock_next_workflow_outbound, "X-Trace-ID", "test_trace_id", get_trace_id
@@ -327,7 +330,8 @@ class TestTraceWorkflowOutboundInterceptor:
     async def test_signal_child_workflow(self, mock_next_workflow_outbound, mock_payload_converter):
         with patch.object(workflow, "payload_converter", return_value=mock_payload_converter):
             # Mock get_trace_id function
-            get_trace_id = lambda: "trace-id-123"
+            def get_trace_id():
+                return "trace-id-123"
 
             interceptor = TraceWorkflowOutboundInterceptor(
                 mock_next_workflow_outbound, "X-Trace-ID", "test_trace_id", get_trace_id
@@ -350,7 +354,8 @@ class TestTraceWorkflowOutboundInterceptor:
     async def test_signal_external_workflow(self, mock_next_workflow_outbound, mock_payload_converter):
         with patch.object(workflow, "payload_converter", return_value=mock_payload_converter):
             # Mock get_trace_id function
-            get_trace_id = lambda: "trace-id-123"
+            def get_trace_id():
+                return "trace-id-123"
 
             interceptor = TraceWorkflowOutboundInterceptor(
                 mock_next_workflow_outbound, "X-Trace-ID", "test_trace_id", get_trace_id

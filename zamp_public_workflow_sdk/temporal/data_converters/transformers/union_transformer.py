@@ -22,7 +22,7 @@ class UnionTransformer(BaseTransformer):
             try:
                 if type_hint.__origin__ is Union:
                     return True
-            except:
+            except (AttributeError, TypeError):
                 pass
 
         return False

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, TypeVar
+from typing import TypeVar
 
 from pydantic import BaseModel
 
@@ -29,10 +29,10 @@ def test_get_fqn():
 
 
 def test_get_reference_from_fqn():
-    assert get_reference_from_fqn("int") == int
-    assert get_reference_from_fqn("str") == str
-    assert get_reference_from_fqn("float") == float
-    assert get_reference_from_fqn("bool") == bool
+    assert get_reference_from_fqn("int") is int
+    assert get_reference_from_fqn("str") is str
+    assert get_reference_from_fqn("float") is float
+    assert get_reference_from_fqn("bool") is bool
     assert get_reference_from_fqn("list[int]") == list[int]
     assert get_reference_from_fqn("list[list[str]]") == list[list[str]]
     assert get_reference_from_fqn("dict[str, int]") == dict[str, int]

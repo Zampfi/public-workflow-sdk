@@ -7,7 +7,7 @@ This module contains models related to simulation strategies and their configura
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any, List, Union
+from typing import Any
 
 from pydantic import BaseModel, Field, model_validator
 

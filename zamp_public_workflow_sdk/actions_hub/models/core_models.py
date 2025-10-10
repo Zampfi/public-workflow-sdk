@@ -5,7 +5,7 @@ Models for ActionsHub - independent of Pantheon platform.
 from __future__ import annotations
 
 from datetime import timedelta
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable
 
 from pydantic import BaseModel, Field
 from temporalio.common import RetryPolicy as TemporalRetryPolicy

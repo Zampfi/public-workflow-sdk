@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import base64
 import json
-from typing import Iterable, List, Optional
+from typing import Iterable
 from uuid import uuid4
 
 from cryptography.fernet import Fernet

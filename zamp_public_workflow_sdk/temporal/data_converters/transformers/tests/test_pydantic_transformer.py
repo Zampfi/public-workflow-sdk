@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from io import BytesIO
-from typing import Any, Dict
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -59,7 +59,7 @@ def test_nested_case():
 
 
 def test_generic_case():
-    from typing import Generic, Optional, TypeVar
+    from typing import Generic, TypeVar
 
     from pydantic import BaseModel, Field
 

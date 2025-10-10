@@ -1,15 +1,14 @@
 from __future__ import annotations
 
 import io
-import typing
 from typing import Generic, TypeVar
 
 from pydantic import BaseModel
 
+from zamp_public_workflow_sdk.temporal.data_converters.type_utils import is_serialize_by_default_serializer
+
 # Define TypeVar for generic types
 T = TypeVar("T", bound=BaseModel)
-
-from zamp_public_workflow_sdk.temporal.data_converters.type_utils import is_serialize_by_default_serializer
 
 
 def test_simple_pydantic_model():
@@ -36,8 +35,6 @@ def test_pydantic_model_with_bytesio():
 
 
 def test_pydantic_model_with_type_property():
-    from typing import Type
-
     class PydanticModelWithTypeProperty(BaseModel):
         type_prop: type[BaseModel]
 

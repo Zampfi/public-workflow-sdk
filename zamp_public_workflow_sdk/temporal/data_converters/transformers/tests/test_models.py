@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from io import BytesIO
-from typing import Any, Dict, Generic, Optional, Type, TypeVar, Union
+from typing import Any, Generic, TypeVar
 
 from pydantic import BaseModel
 

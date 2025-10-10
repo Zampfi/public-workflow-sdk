@@ -3,7 +3,7 @@ from __future__ import annotations
 import concurrent
 from dataclasses import dataclass, field
 from datetime import timedelta
-from typing import Callable, Optional, Sequence
+from typing import Callable, Sequence
 
 from temporalio.worker import (
     PollerBehavior,

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from typing import Any, Callable, Optional, Type
+from typing import Any, Callable
 
 from temporalio import activity, workflow
 from temporalio.worker import (

@@ -6,7 +6,7 @@ from enum import Enum
 from typing import Any, Mapping, Sequence
 
 from temporalio.api.common.v1 import Payload
-from temporalio.client import ListWorkflowsInput, StartWorkflowInput, WorkflowExecution, WorkflowExecutionStatus
+from temporalio.client import ListWorkflowsInput, StartWorkflowInput, WorkflowExecution
 from temporalio.common import (
     RetryPolicy,
     SearchAttributes,

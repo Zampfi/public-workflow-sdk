@@ -11,7 +11,7 @@ All processing is done in the WorkflowOutboundInterceptor, eliminating the need 
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 from temporalio import workflow
 from temporalio.worker import (

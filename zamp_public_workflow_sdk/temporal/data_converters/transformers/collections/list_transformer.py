@@ -13,7 +13,7 @@ class ListTransformer(BaseCollectionsTransformer):
         super().__init__()
         self.should_serialize: Callable[[Any], bool] = lambda value: isinstance(value, list)
         self.should_deserialize: Callable[[Any, Any], bool] = (
-            lambda value, type_hint: type_hint is list or getattr(type_hint, "__origin__", None) == list
+            lambda value, type_hint: type_hint is list or getattr(type_hint, "__origin__", None) is list
         )
 
     def _serialize_internal(self, value: Any) -> GenericSerializedValue:

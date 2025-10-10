@@ -11,7 +11,7 @@ from temporalio import workflow
 
 
 def get_fqn(cls: type) -> str:
-    if cls == type(None) or cls == None:
+    if cls == type(None) or cls is None:
         return "None"
 
     if cls.__module__ == "builtins":
@@ -141,7 +141,7 @@ def is_union_type(type_hint) -> bool:
 
 
 def is_list_non_serializable_type(type_hint) -> bool:
-    if type_hint is list or getattr(type_hint, "__origin__", None) == list:
+    if type_hint is list or getattr(type_hint, "__origin__", None) is list:
         if not hasattr(type_hint, "__args__"):
             return True
 

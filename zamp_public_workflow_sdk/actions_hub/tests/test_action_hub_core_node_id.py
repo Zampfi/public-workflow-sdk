@@ -285,7 +285,7 @@ class TestActionsHubNodeIdIntegration:
         def test_activity() -> str:
             return "test_result"
 
-        result = await ActionsHub.execute_activity("test_activity")
+        await ActionsHub.execute_activity("test_activity")
 
         # Verify node ID was generated and used
         mock_execute_activity.assert_called_once()
@@ -307,7 +307,7 @@ class TestActionsHubNodeIdIntegration:
         mock_workflow_info.return_value = Mock(workflow_id="test-workflow", headers=None)
         mock_execute_child.return_value = "workflow_result"
 
-        result = await ActionsHub.execute_child_workflow("TestWorkflow")
+        await ActionsHub.execute_child_workflow("TestWorkflow")
 
         # Verify node ID was generated and used
         mock_execute_child.assert_called_once()
@@ -457,7 +457,10 @@ class TestActionsHubNodeIdEdgeCases:
 
     def test_get_action_name_with_lambda(self):
         """Test _get_action_name with lambda function."""
-        lambda_func = lambda x: x * 2
+
+        def lambda_func(x):
+            return x * 2
+
         result = ActionsHub._get_action_name(lambda_func)
         # Lambda defined inside test method gets the test class name
         assert result == "TestActionsHubNodeIdEdgeCases"

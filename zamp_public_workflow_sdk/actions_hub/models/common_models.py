@@ -4,7 +4,6 @@ Common models for ActionsHub - independent of Pantheon platform.
 
 from __future__ import annotations
 
-from typing import Dict, Optional
 
 from pydantic import BaseModel, Field
 
