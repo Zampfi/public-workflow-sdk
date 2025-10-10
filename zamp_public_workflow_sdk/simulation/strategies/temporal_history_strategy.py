@@ -76,7 +76,9 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
 
             if temporal_history is not None:
                 output = await self._extract_node_output(temporal_history, node_ids)
-                return SimulationStrategyOutput(node_outputs=output)
+                simulation_strategy_output = SimulationStrategyOutput(node_outputs=output)
+                logger.info("Extracted node outputs", node_outputs=simulation_strategy_output.model_dump_json())
+                return simulation_strategy_output
 
             return SimulationStrategyOutput()
 
@@ -157,6 +159,11 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
             # Group nodes by their immediate parent workflow
             nodes_by_parent = self._group_nodes_by_parent_workflow(node_ids)
             all_node_outputs = {}
+            
+            # Shared cache for workflow histories to avoid duplicate fetches
+            # Also pre-collect all node_ids needed from each workflow path
+            cached_histories = {}
+            workflow_nodes_needed = self._collect_nodes_per_workflow(node_ids)
 
             for parent_workflow_id, nodes_in_workflow in nodes_by_parent.items():
                 if parent_workflow_id == MAIN_WORKFLOW_IDENTIFIER:
@@ -172,6 +179,8 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
                             temporal_history,
                             parent_workflow_id,
                             nodes_in_workflow,
+                            cached_histories,
+                            workflow_nodes_needed,
                         )
                     )
                     all_node_outputs.update(child_workflow_outputs)
@@ -212,112 +221,170 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
         parent_history: WorkflowHistory,
         child_workflow_id: str,
         node_ids: List[str],
+        cached_histories: Dict[str, WorkflowHistory] = None,
+        workflow_nodes_needed: Dict[str, List[str]] = None,
     ) -> Dict[str, Optional[Any]]:
         """
         Extract outputs for nodes that belong to a child workflow.
 
         This method:
         1. Gets child workflow's workflow_id and run_id from parent's history
-        2. Fetches the child workflow's history
+        2. Fetches the child workflow's history (or reuses cached)
         3. Extracts node outputs from child workflow history
 
         Args:
             parent_history: The parent workflow history object
             child_workflow_id: The child workflow identifier (e.g., "ChildWorkflow#1")
             node_ids: List of node IDs in the child workflow
+            cached_histories: Cache of already fetched workflow histories
+            workflow_nodes_needed: Pre-collected map of workflow paths to their needed nodes
 
         Returns:
             Dictionary mapping node IDs to their outputs (None if not found)
         """
-        # Get child workflow's workflow_id and run_id from parent's history
-        workflow_id_run_id = parent_history.get_child_workflow_workflow_id_run_id(
-            child_workflow_id
-        )
-
-        if not workflow_id_run_id:
-            logger.warning(
-                "Child workflow workflow_id and run_id not found in parent history",
-                child_workflow_id=child_workflow_id,
-                parent_workflow_id=parent_history.workflow_id,
-            )
-            return {node_id: None for node_id in node_ids}
-
-        workflow_id, run_id = workflow_id_run_id
-
-        # Fetch child workflow history
-        child_history = await self._fetch_temporal_history(
-            node_ids=node_ids,
-            workflow_id=workflow_id,
-            run_id=run_id,
+        if cached_histories is None:
+            cached_histories = {}
+        if workflow_nodes_needed is None:
+            workflow_nodes_needed = {}
+            
+        # Get full path (e.g., "Parent#1.Child#1.activity#1" + "Child#1" -> "Parent#1.Child#1")
+        full_child_path = self._get_workflow_path_from_node(node_ids[0], child_workflow_id)
+        
+        # Fetch child workflow history (traverses nested paths if needed)
+        child_history = await self._fetch_nested_child_workflow_history(
+            parent_history, full_child_path, node_ids, cached_histories, workflow_nodes_needed
         )
 
         if not child_history:
-            logger.warning(
-                "Failed to fetch child workflow history",
-                child_workflow_id=child_workflow_id,
-                workflow_id=workflow_id,
-                run_id=run_id,
-            )
             return {node_id: None for node_id in node_ids}
 
-        # Extract node data from child workflow history
+        # Extract outputs using full node IDs (workflow stores with prefix, e.g., "Parent#1.activity#1")
         child_nodes_data = child_history.get_nodes_data()
-
-        # Map node IDs to their outputs
         node_outputs = {}
-        for node_id in node_ids:
-            if node_id in child_nodes_data:
-                node_outputs[node_id] = child_nodes_data[node_id].output_payload
+        
+        for full_node_id in node_ids:
+            if full_node_id in child_nodes_data:
+                node_outputs[full_node_id] = child_nodes_data[full_node_id].output_payload
             else:
-                logger.warning(
-                    "Node not found in child workflow history",
-                    node_id=node_id,
-                    child_workflow_id=child_workflow_id,
-                )
-                node_outputs[node_id] = None
+                node_outputs[full_node_id] = None
 
         return node_outputs
+
+    async def _fetch_nested_child_workflow_history(
+        self,
+        parent_history: WorkflowHistory,
+        full_child_path: str,
+        node_ids: List[str],
+        cached_histories: Dict[str, WorkflowHistory] = None,
+        workflow_nodes_needed: Dict[str, List[str]] = None,
+    ) -> Optional[WorkflowHistory]:
+        """
+        Fetch nested child workflow by traversing the path.
+        E.g., "Parent#1.Child#1" fetches Parent#1, then Child#1 from Parent#1.
+        """
+        if cached_histories is None:
+            cached_histories = {}
+        if workflow_nodes_needed is None:
+            workflow_nodes_needed = {}
+            
+        path_parts = full_child_path.split(".")
+        current_history = parent_history
+        
+        for i, workflow_part in enumerate(path_parts):
+            current_path = ".".join(path_parts[:i+1])
+            
+            # Use cache if available
+            if current_path in cached_histories:
+                current_history = cached_histories[current_path]
+                continue
+            
+            # Get workflow_id and run_id from parent using full prefixed node_id
+            workflow_id_run_id = current_history.get_child_workflow_workflow_id_run_id(current_path)
+            if not workflow_id_run_id:
+                return None
+            
+            workflow_id, run_id = workflow_id_run_id
+            
+            # Use pre-collected nodes or fallback
+            if current_path in workflow_nodes_needed:
+                fetch_node_ids = workflow_nodes_needed[current_path]
+            else:
+                is_final = i == len(path_parts) - 1
+                if is_final:
+                    # Final level: fetch the actual nodes with full prefix
+                    fetch_node_ids = node_ids
+                else:
+                    # Intermediate level: fetch the next child workflow with prefix
+                    fetch_node_ids = [".".join(path_parts[:i + 2])]
+            
+            # Fetch and cache
+            current_history = await self._fetch_temporal_history(node_ids=fetch_node_ids, workflow_id=workflow_id, run_id=run_id)
+            if not current_history:
+                return None
+            
+            cached_histories[current_path] = current_history
+        
+        return current_history
+
+    def _get_workflow_path_from_node(self, node_id: str, child_workflow_id: str) -> str:
+        """
+        Extract workflow path up to child_workflow_id from a node_id.
+        E.g., node_id="Parent#1.Child#1.activity#1", child_workflow_id="Child#1" -> "Parent#1.Child#1"
+        """
+        parts = node_id.split(".")
+        try:
+            child_index = parts.index(child_workflow_id)
+            return ".".join(parts[:child_index + 1])
+        except ValueError:
+            return child_workflow_id
+
+    def _collect_nodes_per_workflow(self, node_ids: List[str]) -> Dict[str, List[str]]:
+        """
+        Collect all node_ids needed from each workflow for batching (with workflow prefix).
+        
+        Input: ["Parent#1.query#1", "Parent#1.Child#1.activity#1"]
+        Output: {"Parent#1": ["Parent#1.query#1", "Parent#1.Child#1"], 
+                 "Parent#1.Child#1": ["Parent#1.Child#1.activity#1"]}
+        """
+        workflow_nodes = {}
+        
+        for node_id in node_ids:
+            parts = node_id.split(".")
+            
+            # For each level, collect what that workflow needs (with prefix)
+            for i in range(1, len(parts)):
+                workflow_path = ".".join(parts[:i])
+                node_with_prefix = ".".join(parts[:i+1])
+                
+                if workflow_path not in workflow_nodes:
+                    workflow_nodes[workflow_path] = []
+                
+                if node_with_prefix not in workflow_nodes[workflow_path]:
+                    workflow_nodes[workflow_path].append(node_with_prefix)
+        
+        return workflow_nodes
 
     def _group_nodes_by_parent_workflow(
         self, node_ids: List[str]
     ) -> Dict[str, List[str]]:
         """
         Group node IDs by their immediate parent workflow.
-
-        Node IDs follow a hierarchical dot notation where each node belongs to a parent workflow:
-        - Main workflow nodes: 'activity#1' -> parent = MAIN_WORKFLOW_IDENTIFIER
-        - Direct child workflow nodes: 'ChildWorkflow#1.activity#1' -> parent = 'ChildWorkflow#1'
-        - Nested child workflow nodes: 'Parent#1.Child#1.activity#1' -> parent = 'Child#1'
-
-        Args:
-            node_ids: List of node execution IDs to group
-
-        Returns:
-            Dictionary mapping parent workflow identifier to list of its child node IDs
+        - 'activity#1' -> parent = MAIN_WORKFLOW_IDENTIFIER
+        - 'Child#1.activity#1' -> parent = 'Child#1'
+        - 'Parent#1.Child#1.activity#1' -> parent = 'Child#1'
         """
         nodes_by_parent = {}
-
-        # Sort by nesting depth (dot count) to process shallower nodes first
-        sorted_node_ids = sorted(node_ids, key=lambda node_id: node_id.count("."))
-
-        for node_id in sorted_node_ids:
-            # Split node ID to identify parent workflow
-            # Examples:
-            #   'activity#1' -> ['activity#1']
-            #   'Child#1.activity#1' -> ['Child#1', 'activity#1']
-            #   'Parent#1.Child#1.activity#1' -> ['Parent#1', 'Child#1', 'activity#1']
-            path_parts = node_id.split(".")
-
-            if len(path_parts) == 1:
-                # Top-level node in main workflow
-                parent_workflow_id = MAIN_WORKFLOW_IDENTIFIER
+        
+        for node_id in node_ids:
+            parts = node_id.split(".")
+            
+            if len(parts) == 1:
+                parent = MAIN_WORKFLOW_IDENTIFIER
             else:
-                # Node in child workflow - immediate parent is the second-to-last element
-                parent_workflow_id = path_parts[-2]
-
-            if parent_workflow_id not in nodes_by_parent:
-                nodes_by_parent[parent_workflow_id] = []
-
-            nodes_by_parent[parent_workflow_id].append(node_id)
-
+                parent = parts[-2]  # Immediate parent is second-to-last
+            
+            if parent not in nodes_by_parent:
+                nodes_by_parent[parent] = []
+            nodes_by_parent[parent].append(node_id)
+        
         return nodes_by_parent

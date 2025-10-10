@@ -356,78 +356,82 @@ def extract_node_payloads(
             event_id=event_id,
         )
 
+        # Initialize node_id and payload_field for this iteration
+        node_id = None
+        payload_field = None
+
         # Handle workflow execution started
         if event_type == EventType.WORKFLOW_EXECUTION_STARTED.value:
             result = _process_event_with_input_payload(
                 event, EventType.WORKFLOW_EXECUTION_STARTED
             )
-            if not result:
-                continue
-            node_id, payload_field = result
-            workflow_node_id = node_id
+            if result:
+                node_id, payload_field = result
+                workflow_node_id = node_id
         
         # Handle child workflow execution started (contains workflow_id and run_id)
-        if event_type == EventType.CHILD_WORKFLOW_EXECUTION_STARTED.value:
+        elif event_type == EventType.CHILD_WORKFLOW_EXECUTION_STARTED.value:
             # extracting child workflow execution info (workflow_id, run_id)
             extracted_node_id = extract_node_id_from_event(event)
             _add_event_to_node_events(
                 extracted_node_id, event, event_type, node_ids, node_payloads
             )
+            # Don't process further for this event type
+            continue
 
         # Handle workflow execution completed
-        if event_type == EventType.WORKFLOW_EXECUTION_COMPLETED.value:
+        elif event_type == EventType.WORKFLOW_EXECUTION_COMPLETED.value:
             result = _process_workflow_execution_completed(event, workflow_node_id)
-            if not result:
-                continue
-            node_id, payload_field = result
+            if result:
+                node_id, payload_field = result
 
         # Handle activity task completed
-        if event_type == EventType.ACTIVITY_TASK_COMPLETED.value:
+        elif event_type == EventType.ACTIVITY_TASK_COMPLETED.value:
             result = _process_event_with_result_payload(
                 event,
                 EventType.ACTIVITY_TASK_COMPLETED,
                 EventField.SCHEDULED_EVENT_ID,
                 activity_scheduled_events,
             )
-            if not result:
-                continue
-            node_id, payload_field = result
+            if result:
+                node_id, payload_field = result
 
         # Handle activity task scheduled
-        if event_type == EventType.ACTIVITY_TASK_SCHEDULED.value:
+        elif event_type == EventType.ACTIVITY_TASK_SCHEDULED.value:
             result = _process_event_with_input_payload(
                 event, EventType.ACTIVITY_TASK_SCHEDULED
             )
-            if not result:
-                continue
-            node_id, payload_field = result
-            _track_event_with_node_id(event, node_id, activity_scheduled_events)
+            if result:
+                node_id, payload_field = result
+                _track_event_with_node_id(event, node_id, activity_scheduled_events)
 
         # Handle child workflow execution initiated
-        if event_type == EventType.START_CHILD_WORKFLOW_EXECUTION_INITIATED.value:
+        elif event_type == EventType.START_CHILD_WORKFLOW_EXECUTION_INITIATED.value:
             result = _process_event_with_input_payload(
                 event, EventType.START_CHILD_WORKFLOW_EXECUTION_INITIATED
             )
-            if not result:
-                continue
-            node_id, payload_field = result
-            _track_event_with_node_id(
-                event,
-                node_id,
-                child_workflow_initiated_events,
-            )
+            if result:
+                node_id, payload_field = result
+                _track_event_with_node_id(
+                    event,
+                    node_id,
+                    child_workflow_initiated_events,
+                )
 
         # Handle child workflow execution completed
-        if event_type == EventType.CHILD_WORKFLOW_EXECUTION_COMPLETED.value:
+        elif event_type == EventType.CHILD_WORKFLOW_EXECUTION_COMPLETED.value:
             result = _process_event_with_result_payload(
                 event,
                 EventType.CHILD_WORKFLOW_EXECUTION_COMPLETED,
                 EventField.INITIATED_EVENT_ID,
                 child_workflow_initiated_events,
             )
-            if not result:
-                continue
-            node_id, payload_field = result
+            if result:
+                node_id, payload_field = result
+
+        # Skip if we didn't extract a node_id for this event
+        if not node_id or not payload_field:
+            continue
 
         # Skip if node_id is not in target list
         if not _should_include_node_id(node_id, node_ids):
