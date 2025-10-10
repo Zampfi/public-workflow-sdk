@@ -1,11 +1,12 @@
+cryptography==45.0.5
+diff-cover==8.0.3
+google-cloud-storage==2.11.0
+pandas>=2.2.2
 pydantic
 pytest
 pytest-asyncio
 pytest-cov
 python-dateutil
 python-dotenv
-temporalio==1.13.0
-google-cloud-storage==2.11.0
 structlog
-cryptography==45.0.5
-diff-cover==8.0.3
+temporalio==1.13.0
