@@ -7,8 +7,7 @@ from temporalio.common import RetryPolicy
 
 from sample.params import WorkflowInput
 from zamp_public_workflow_sdk.temporal.models.temporal_models import *
-from zamp_public_workflow_sdk.temporal.temporal_service import (
-    TemporalClientConfig, TemporalService)
+from zamp_public_workflow_sdk.temporal.temporal_service import TemporalClientConfig, TemporalService
 
 
 class API:
@@ -18,9 +17,7 @@ class API:
     @staticmethod
     async def get_api_handle():
         return await TemporalService.connect(
-            TemporalClientConfig(
-                host="localhost:7233", namespace="default", is_cloud=True
-            )
+            TemporalClientConfig(host="localhost:7233", namespace="default", is_cloud=True)
         )
 
 
@@ -66,9 +63,7 @@ async def get_workflow_details():
     api = await API.get_api_handle()
     result = await list_workflows()
     ans = result[0]
-    workflow = await api.get_workflow_details(
-        GetWorkflowDetailsParams(workflow_id=ans.workflow_id, run_id=ans.run_id)
-    )
+    workflow = await api.get_workflow_details(GetWorkflowDetailsParams(workflow_id=ans.workflow_id, run_id=ans.run_id))
     return workflow
 
 
@@ -129,9 +124,7 @@ async def cancel_workflow():
     result = await list_workflows()
     ans = result[0]  # Get first workflow from list
 
-    result = await api.cancel_workflow(
-        CancelWorkflowParams(workflow_id=ans.workflow_id, run_id=ans.run_id)
-    )
+    result = await api.cancel_workflow(CancelWorkflowParams(workflow_id=ans.workflow_id, run_id=ans.run_id))
     return result
 
 

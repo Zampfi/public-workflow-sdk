@@ -14,10 +14,13 @@ from __future__ import annotations
 from typing import Any, Optional
 
 from temporalio import workflow
-from temporalio.worker import (Interceptor, StartActivityInput,
-                               StartChildWorkflowInput,
-                               WorkflowInboundInterceptor,
-                               WorkflowOutboundInterceptor)
+from temporalio.worker import (
+    Interceptor,
+    StartActivityInput,
+    StartChildWorkflowInput,
+    WorkflowInboundInterceptor,
+    WorkflowOutboundInterceptor,
+)
 
 # Constants
 NODE_ID_HEADER_KEY = "node_id"

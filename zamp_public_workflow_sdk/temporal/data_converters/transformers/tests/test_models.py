@@ -7,7 +7,7 @@ from typing import Any, Dict, Generic, Optional, Type, TypeVar, Union
 from pydantic import BaseModel
 
 # Define TypeVar for generic types
-T = TypeVar('T', bound=BaseModel)
+T = TypeVar("T", bound=BaseModel)
 
 
 class TestModelWithInteger(BaseModel):

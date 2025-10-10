@@ -3,12 +3,9 @@ from __future__ import annotations
 import base64
 from typing import Any
 
-from zamp_public_workflow_sdk.temporal.data_converters.transformers.base import \
-    BaseTransformer
-from zamp_public_workflow_sdk.temporal.data_converters.transformers.models import \
-    GenericSerializedValue
-from zamp_public_workflow_sdk.temporal.data_converters.type_utils import \
-    get_fqn
+from zamp_public_workflow_sdk.temporal.data_converters.transformers.base import BaseTransformer
+from zamp_public_workflow_sdk.temporal.data_converters.transformers.models import GenericSerializedValue
+from zamp_public_workflow_sdk.temporal.data_converters.type_utils import get_fqn
 
 
 class BytesTransformer(BaseTransformer):

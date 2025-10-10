@@ -3,18 +3,20 @@ from __future__ import annotations
 import pytest
 
 from zamp_public_workflow_sdk.temporal.models.temporal_models import (
-    CancelWorkflowParams, GetWorkflowDetailsParams, ListWorkflowParams,
-    QueryWorkflowParams, RunWorkflowParams, SignalWorkflowParams,
-    TerminateWorkflowParams)
-from zamp_public_workflow_sdk.temporal.temporal_service import (
-    TemporalClientConfig, TemporalService)
+    CancelWorkflowParams,
+    GetWorkflowDetailsParams,
+    ListWorkflowParams,
+    QueryWorkflowParams,
+    RunWorkflowParams,
+    SignalWorkflowParams,
+    TerminateWorkflowParams,
+)
+from zamp_public_workflow_sdk.temporal.temporal_service import TemporalClientConfig, TemporalService
 
 
 @pytest.fixture
 def service_config():
-    return TemporalClientConfig(
-        host="test-host:7233", namespace="test-namespace", is_cloud=False
-    )
+    return TemporalClientConfig(host="test-host:7233", namespace="test-namespace", is_cloud=False)
 
 
 @pytest.mark.asyncio
@@ -26,9 +28,7 @@ async def test_service_initialization(temporal_service):
 @pytest.mark.asyncio
 async def test_start_async_workflow(temporal_service, mock_workflow_handle):
     response = await temporal_service.start_async_workflow(
-        RunWorkflowParams(
-            workflow="TestWorkflow", id="test-id", task_queue="test-queue"
-        )
+        RunWorkflowParams(workflow="TestWorkflow", id="test-id", task_queue="test-queue")
     )
     assert response.error is None
     assert response.run_id == "mock-run-id"
@@ -37,9 +37,7 @@ async def test_start_async_workflow(temporal_service, mock_workflow_handle):
 @pytest.mark.asyncio
 async def test_start_sync_workflow(temporal_service):
     response = await temporal_service.start_sync_workflow(
-        RunWorkflowParams(
-            workflow="TestWorkflow", id="test-id", task_queue="test-queue"
-        )
+        RunWorkflowParams(workflow="TestWorkflow", id="test-id", task_queue="test-queue")
     )
     assert response.error is None
     assert response.result == "mock-execution-result"
@@ -56,9 +54,7 @@ async def test_list_workflows(temporal_service):
 
 @pytest.mark.asyncio
 async def test_get_workflow_details(temporal_service):
-    response = await temporal_service.get_workflow_details(
-        GetWorkflowDetailsParams(workflow_id="test-id")
-    )
+    response = await temporal_service.get_workflow_details(GetWorkflowDetailsParams(workflow_id="test-id"))
     assert response.error is None
     assert response.details.workflow_id == "mock-workflow-id"
     assert isinstance(response.history, list)
@@ -66,9 +62,7 @@ async def test_get_workflow_details(temporal_service):
 
 @pytest.mark.asyncio
 async def test_query_workflow(temporal_service):
-    response = await temporal_service.query_workflow(
-        QueryWorkflowParams(workflow_id="test-id", query="test_query")
-    )
+    response = await temporal_service.query_workflow(QueryWorkflowParams(workflow_id="test-id", query="test_query"))
     assert response.error is None
     assert response.response == "mock-query-result"
 
@@ -83,9 +77,7 @@ async def test_signal_workflow(temporal_service):
 
 @pytest.mark.asyncio
 async def test_cancel_workflow(temporal_service):
-    response = await temporal_service.cancel_workflow(
-        CancelWorkflowParams(workflow_id="test-id")
-    )
+    response = await temporal_service.cancel_workflow(CancelWorkflowParams(workflow_id="test-id"))
     assert response.error is None
 
 

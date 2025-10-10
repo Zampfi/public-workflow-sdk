@@ -10,8 +10,7 @@ from temporalio.api.common.v1 import Payload
 from temporalio.converter import PayloadCodec
 
 from zamp_public_workflow_sdk.temporal.codec.models import BucketData
-from zamp_public_workflow_sdk.temporal.codec.storage_client import \
-    StorageClient
+from zamp_public_workflow_sdk.temporal.codec.storage_client import StorageClient
 
 PAYLOAD_SIZE_THRESHOLD = 100 * 1024
 CODEC_BUCKET_ENCODING = "codec_bucket"
@@ -21,9 +20,7 @@ CODEC_SENSITIVE_METADATA_VALUE = "sensitive"
 
 
 class LargePayloadCodec(PayloadCodec):
-    def __init__(
-        self, storage_client: StorageClient, encryption_key: str | None = None
-    ):
+    def __init__(self, storage_client: StorageClient, encryption_key: str | None = None):
         self.storage_client = storage_client
         self.encryption_key = encryption_key
         if encryption_key is not None:
@@ -39,9 +36,7 @@ class LargePayloadCodec(PayloadCodec):
             key_bytes = base64.urlsafe_b64decode(encryption_key + "==")
             # Check if the decoded key is exactly 32 bytes
             if len(key_bytes) != 32:
-                raise ValueError(
-                    f"Encryption key must decode to exactly 32 bytes, got {len(key_bytes)} bytes"
-                )
+                raise ValueError(f"Encryption key must decode to exactly 32 bytes, got {len(key_bytes)} bytes")
         except Exception as e:
             if isinstance(e, ValueError) and "32 bytes" in str(e):
                 raise e
@@ -64,27 +59,20 @@ class LargePayloadCodec(PayloadCodec):
         for p in payload:
             if (
                 p.ByteSize() > PAYLOAD_SIZE_THRESHOLD
-                or p.metadata.get(CODEC_SENSITIVE_METADATA_KEY, b"None")
-                == CODEC_SENSITIVE_METADATA_VALUE.encode()
+                or p.metadata.get(CODEC_SENSITIVE_METADATA_KEY, b"None") == CODEC_SENSITIVE_METADATA_VALUE.encode()
             ):
                 blob_name = f"{uuid4()}"
                 await self.storage_client.upload_file(blob_name, p.data)
-                bucket_data = BucketData(
-                    blob_name, p.metadata.get("encoding", "binary/plain").decode()
-                )
+                bucket_data = BucketData(blob_name, p.metadata.get("encoding", "binary/plain").decode())
                 metadata = p.metadata if p.metadata else {}
                 metadata["encoding"] = CODEC_BUCKET_ENCODING.encode()
-                encoded_payloads.append(
-                    Payload(data=bucket_data.get_bytes(), metadata=metadata)
-                )
+                encoded_payloads.append(Payload(data=bucket_data.get_bytes(), metadata=metadata))
             elif self.encryption_key is not None:
                 # Encrypt the data for smaller payloads
                 encrypted_data = self._encrypt_data(p.data)
                 base64_encrypted_data = base64.b64encode(encrypted_data).decode()
                 original_encoding = p.metadata.get("encoding", "binary/plain").decode()
-                data_bytes = json.dumps(
-                    {"data": base64_encrypted_data, "encoding": original_encoding}
-                ).encode()
+                data_bytes = json.dumps({"data": base64_encrypted_data, "encoding": original_encoding}).encode()
                 metadata = p.metadata if p.metadata else {}
                 metadata["encoding"] = CODEC_ENCRYPTED_ENCODING.encode()
                 encoded_payloads.append(Payload(data=data_bytes, metadata=metadata))

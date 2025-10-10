@@ -6,10 +6,8 @@ import pytest
 from temporalio.client import Client, WorkflowHandle
 from temporalio.worker import Worker
 
-from zamp_public_workflow_sdk.temporal.models.temporal_models import \
-    WorkflowExecutionStatus
-from zamp_public_workflow_sdk.temporal.temporal_worker import (
-    Activity, TemporalWorkerConfig, Workflow)
+from zamp_public_workflow_sdk.temporal.models.temporal_models import WorkflowExecutionStatus
+from zamp_public_workflow_sdk.temporal.temporal_worker import Activity, TemporalWorkerConfig, Workflow
 
 
 @pytest.fixture
@@ -42,9 +40,7 @@ def mock_workflow_handle(mock_workflow_execution):
     handle.cancel = AsyncMock(return_value=None)
     handle.terminate = AsyncMock(return_value=None)
     handle.describe = AsyncMock(return_value=mock_workflow_execution)
-    handle.fetch_history = AsyncMock(
-        return_value=MagicMock(to_json_dict=lambda: [{"event": "WorkflowStarted"}])
-    )
+    handle.fetch_history = AsyncMock(return_value=MagicMock(to_json_dict=lambda: [{"event": "WorkflowStarted"}]))
 
     return handle
 
@@ -102,10 +98,8 @@ def mock_temporal_client(mock_workflow_handle):
 @pytest.fixture
 def temporal_service(mock_temporal_client):
     """Create TemporalService with mocked client"""
-    from zamp_public_workflow_sdk.temporal.temporal_client import \
-        TemporalClient
-    from zamp_public_workflow_sdk.temporal.temporal_service import \
-        TemporalService
+    from zamp_public_workflow_sdk.temporal.temporal_client import TemporalClient
+    from zamp_public_workflow_sdk.temporal.temporal_service import TemporalService
 
     temporal_client = TemporalClient(mock_temporal_client)
     return TemporalService(temporal_client)
@@ -148,7 +142,5 @@ def mock_worker(mock_temporal_client, mock_worker_config):
     worker.shutdown = AsyncMock()
     worker.task_queue = mock_worker_config.task_queue
     worker._max_concurrent_activities = mock_worker_config.max_concurrent_activities
-    worker._max_concurrent_workflow_tasks = (
-        mock_worker_config.max_concurrent_workflow_tasks
-    )
+    worker._max_concurrent_workflow_tasks = mock_worker_config.max_concurrent_workflow_tasks
     return worker

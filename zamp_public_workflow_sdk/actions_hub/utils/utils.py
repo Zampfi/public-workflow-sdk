@@ -6,8 +6,7 @@ from __future__ import annotations
 
 import structlog
 
-from zamp_public_workflow_sdk.temporal.data_converters.type_utils import \
-    get_fqn as get_fqn_from_zamp
+from zamp_public_workflow_sdk.temporal.data_converters.type_utils import get_fqn as get_fqn_from_zamp
 
 logger = structlog.get_logger(__name__)
 

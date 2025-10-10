@@ -27,9 +27,7 @@ class SampleModel(BaseModel):
     name: str = Field(default="", description="The name of the model")
     age: int = Field(default=0, description="The age of the model")
     this_is_a_type: type[BaseModel] = Field(description="The type of the model")
-    brr: SubModel = Field(
-        default=SubModel(name="", age=0), description="The submodel of the model"
-    )
+    brr: SubModel = Field(default=SubModel(name="", age=0), description="The submodel of the model")
     enum: SampleEnum = Field(default=SampleEnum.A, description="The enum of the model")
     bytesIO: BytesIO = Field(default=BytesIO(), description="The bytesio of the model")
 

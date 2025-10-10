@@ -6,11 +6,14 @@ from enum import Enum
 from typing import Any, Mapping, Sequence
 
 from temporalio.api.common.v1 import Payload
-from temporalio.client import (ListWorkflowsInput, StartWorkflowInput,
-                               WorkflowExecution, WorkflowExecutionStatus)
-from temporalio.common import (RetryPolicy, SearchAttributes,
-                               TypedSearchAttributes, WorkflowIDConflictPolicy,
-                               WorkflowIDReusePolicy)
+from temporalio.client import ListWorkflowsInput, StartWorkflowInput, WorkflowExecution, WorkflowExecutionStatus
+from temporalio.common import (
+    RetryPolicy,
+    SearchAttributes,
+    TypedSearchAttributes,
+    WorkflowIDConflictPolicy,
+    WorkflowIDReusePolicy,
+)
 
 
 @dataclass
@@ -121,9 +124,7 @@ class WorkflowResponse:
             run_id=workflow.run_id,
             workflow_type=workflow.workflow_type,
             task_queue=workflow.task_queue,
-            status=WorkflowExecutionStatus(workflow.status.name)
-            if workflow.status
-            else None,
+            status=WorkflowExecutionStatus(workflow.status.name) if workflow.status else None,
             start_time=workflow.start_time,
             close_time=workflow.close_time,
             execution_time=workflow.execution_time,

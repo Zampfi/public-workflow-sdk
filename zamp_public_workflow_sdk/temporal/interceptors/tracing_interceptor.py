@@ -4,15 +4,20 @@ import uuid
 from typing import Any, Callable, Optional, Type
 
 from temporalio import activity, workflow
-from temporalio.worker import (ActivityInboundInterceptor,
-                               ExecuteActivityInput, ExecuteWorkflowInput,
-                               Interceptor, SignalChildWorkflowInput,
-                               SignalExternalWorkflowInput, StartActivityInput,
-                               StartChildWorkflowInput,
-                               StartLocalActivityInput,
-                               WorkflowInboundInterceptor,
-                               WorkflowInterceptorClassInput,
-                               WorkflowOutboundInterceptor)
+from temporalio.worker import (
+    ActivityInboundInterceptor,
+    ExecuteActivityInput,
+    ExecuteWorkflowInput,
+    Interceptor,
+    SignalChildWorkflowInput,
+    SignalExternalWorkflowInput,
+    StartActivityInput,
+    StartChildWorkflowInput,
+    StartLocalActivityInput,
+    WorkflowInboundInterceptor,
+    WorkflowInterceptorClassInput,
+    WorkflowOutboundInterceptor,
+)
 
 
 # Activity interceptor
@@ -117,9 +122,7 @@ class TraceWorkflowOutboundInterceptor(WorkflowOutboundInterceptor):
         self.trace_context_key = trace_context_key
         self.get_trace_id_fn = get_trace_id_fn
 
-    def _add_trace_to_headers(
-        self, headers: dict, trace_id: str | None = None
-    ) -> None:
+    def _add_trace_to_headers(self, headers: dict, trace_id: str | None = None) -> None:
         """Helper to add trace ID to headers"""
         if trace_id is None:
             trace_id = self.get_trace_id_fn()
@@ -149,9 +152,7 @@ class TraceWorkflowOutboundInterceptor(WorkflowOutboundInterceptor):
         self._add_trace_to_headers(input.headers)
         return await self.next.signal_child_workflow(input)
 
-    async def signal_external_workflow(
-        self, input: SignalExternalWorkflowInput
-    ) -> None:
+    async def signal_external_workflow(self, input: SignalExternalWorkflowInput) -> None:
         self._add_trace_to_headers(input.headers)
         return await self.next.signal_external_workflow(input)
 
@@ -198,16 +199,10 @@ class TraceInterceptor(Interceptor):
         """Generate a new trace ID."""
         return str(uuid.uuid4())
 
-    def intercept_activity(
-        self, next: ActivityInboundInterceptor
-    ) -> ActivityInboundInterceptor:
-        return TraceActivityInterceptor(
-            next, self.trace_header_key, self.trace_context_key, self.context_bind_fn
-        )
+    def intercept_activity(self, next: ActivityInboundInterceptor) -> ActivityInboundInterceptor:
+        return TraceActivityInterceptor(next, self.trace_header_key, self.trace_context_key, self.context_bind_fn)
 
-    def workflow_interceptor_class(
-        self, input: WorkflowInterceptorClassInput
-    ) -> type[WorkflowInboundInterceptor]:
+    def workflow_interceptor_class(self, input: WorkflowInterceptorClassInput) -> type[WorkflowInboundInterceptor]:
         def interceptor_creator(next_interceptor):
             return TraceWorkflowInboundInterceptor(
                 next_interceptor,

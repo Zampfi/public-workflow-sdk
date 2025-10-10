@@ -4,10 +4,8 @@ import asyncio
 
 from sample.activity import final_activity, generate_joke, human_approval
 from sample.workflow import JokeWorkflow
-from zamp_public_workflow_sdk.temporal.temporal_service import (
-    TemporalClientConfig, TemporalService)
-from zamp_public_workflow_sdk.temporal.temporal_worker import (
-    Activity, TemporalWorkerConfig, Workflow)
+from zamp_public_workflow_sdk.temporal.temporal_service import TemporalClientConfig, TemporalService
+from zamp_public_workflow_sdk.temporal.temporal_worker import Activity, TemporalWorkerConfig, Workflow
 
 
 async def main():
@@ -22,9 +20,7 @@ async def main():
     workflows = [Workflow(name="JokeWorkflow", workflow=JokeWorkflow)]
 
     worker = await service.worker(
-        TemporalWorkerConfig(
-            task_queue="joke-queue", activities=activities, workflows=workflows
-        )
+        TemporalWorkerConfig(task_queue="joke-queue", activities=activities, workflows=workflows)
     )
     await worker.run()
 

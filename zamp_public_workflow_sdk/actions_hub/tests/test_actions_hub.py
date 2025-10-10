@@ -16,8 +16,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from zamp_public_workflow_sdk.actions_hub.action_hub_core import ActionsHub
 from zamp_public_workflow_sdk.actions_hub.constants import ActionType
-from zamp_public_workflow_sdk.actions_hub.models.core_models import (
-    Action, RetryPolicy)
+from zamp_public_workflow_sdk.actions_hub.models.core_models import Action, RetryPolicy
 
 
 class TestActionsHub:
@@ -26,20 +25,15 @@ class TestActionsHub:
     def setup_method(self):
         """Set up test fixtures."""
         # Mock the ActionsHub class to avoid complex dependencies
-        with patch(
-            "zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.unsafe.imports_passed_through"
-        ):
+        with patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.unsafe.imports_passed_through"):
             # Import ActionsHub directly from the module
-            from zamp_public_workflow_sdk.actions_hub.action_hub_core import \
-                ActionsHub
+            from zamp_public_workflow_sdk.actions_hub.action_hub_core import ActionsHub
 
             self.ActionsHub = ActionsHub
 
         # Store original registries to restore later
         self.original_activities = self.ActionsHub._activities.copy()
-        self.original_business_logic_methods = (
-            self.ActionsHub._business_logic_methods.copy()
-        )
+        self.original_business_logic_methods = self.ActionsHub._business_logic_methods.copy()
         self.original_workflows = self.ActionsHub._workflows.copy()
         self.original_action_list = self.ActionsHub._action_list.copy()
 
@@ -55,9 +49,7 @@ class TestActionsHub:
         self.ActionsHub._activities.clear()
         self.ActionsHub._activities.update(self.original_activities)
         self.ActionsHub._business_logic_methods.clear()
-        self.ActionsHub._business_logic_methods.update(
-            self.original_business_logic_methods
-        )
+        self.ActionsHub._business_logic_methods.update(self.original_business_logic_methods)
         self.ActionsHub._workflows.clear()
         self.ActionsHub._workflows.update(self.original_workflows)
         self.ActionsHub._action_list.clear()
@@ -126,15 +118,12 @@ class TestActionsHub:
         def test_activity_get_actions(x: str) -> str:
             return x
 
-        @self.ActionsHub.register_business_logic(
-            "Test business logic for get_actions", ["test"]
-        )
+        @self.ActionsHub.register_business_logic("Test business logic for get_actions", ["test"])
         def test_business_logic_get_actions(x: str) -> str:
             return x
 
         # Test with specific filter to get the activity
-        from zamp_public_workflow_sdk.actions_hub.models.core_models import \
-            ActionFilter
+        from zamp_public_workflow_sdk.actions_hub.models.core_models import ActionFilter
 
         filter_obj = ActionFilter(resticted_action_set={"test_activity_get_actions"})
         actions = self.ActionsHub.get_available_actions(filter_obj)
@@ -151,9 +140,7 @@ class TestActionsHub:
         actions2 = self.ActionsHub.get_available_actions(filter_obj2)
 
         # Check that we get exactly 1 action (the name filtered one)
-        assert (
-            len(actions2) == 1
-        ), f"Expected 1 name filtered action, got {len(actions2)}"
+        assert len(actions2) == 1, f"Expected 1 name filtered action, got {len(actions2)}"
         assert actions2[0].name == "test_business_logic_get_actions"
 
     def test_get_actions_with_filter(self):
@@ -165,8 +152,7 @@ class TestActionsHub:
             return x
 
         # Test with filter
-        from zamp_public_workflow_sdk.actions_hub.models.core_models import \
-            ActionFilter
+        from zamp_public_workflow_sdk.actions_hub.models.core_models import ActionFilter
 
         filter_obj = ActionFilter(resticted_action_set={"test_activity_filter"})
         actions = self.ActionsHub.get_available_actions(filter_obj)
@@ -208,9 +194,7 @@ class TestActionsHub:
     def test_get_business_logic(self):
         """Test getting specific business logic."""
 
-        @self.ActionsHub.register_business_logic(
-            "Test business logic for get", ["test"]
-        )
+        @self.ActionsHub.register_business_logic("Test business logic for get", ["test"])
         def test_business_logic_get(x):
             return x
 
@@ -218,9 +202,7 @@ class TestActionsHub:
         business_logic_list = self.ActionsHub.get_business_logic_by_labels(["test"])
 
         # Check that we get exactly 1 business logic function
-        assert (
-            len(business_logic_list) == 1
-        ), f"Expected 1 business logic, got {len(business_logic_list)}"
+        assert len(business_logic_list) == 1, f"Expected 1 business logic, got {len(business_logic_list)}"
 
         # Verify it's the correct business logic
         assert business_logic_list[0].name == "test_business_logic_get"
@@ -230,23 +212,18 @@ class TestActionsHub:
         """Test registering connection mappings."""
         hub = self.ActionsHub()
 
-        from zamp_public_workflow_sdk.actions_hub.models.credentials_models import (
-            ActionConnectionsMapping, Connection)
+        from zamp_public_workflow_sdk.actions_hub.models.credentials_models import ActionConnectionsMapping, Connection
 
         # Create proper Connection objects
         conn1 = Connection(connection_id="conn1", summary="Connection 1")
         conn2 = Connection(connection_id="conn2", summary="Connection 2")
 
-        mapping = ActionConnectionsMapping(
-            action_name="test_action", connections=[conn1, conn2]
-        )
+        mapping = ActionConnectionsMapping(action_name="test_action", connections=[conn1, conn2])
 
         hub.register_action_list([mapping])
 
         # Check that the mapping is registered (check if it's in _action_list)
-        assert (
-            len(hub._action_list) == 1
-        ), f"Expected 1 mapping, got {len(hub._action_list)}"
+        assert len(hub._action_list) == 1, f"Expected 1 mapping, got {len(hub._action_list)}"
 
         # Verify it's the correct mapping
         assert hub._action_list[0].action_name == "test_action"
@@ -256,23 +233,18 @@ class TestActionsHub:
         """Test getting connection mappings."""
         hub = self.ActionsHub()
 
-        from zamp_public_workflow_sdk.actions_hub.models.credentials_models import (
-            ActionConnectionsMapping, Connection)
+        from zamp_public_workflow_sdk.actions_hub.models.credentials_models import ActionConnectionsMapping, Connection
 
         # Create proper Connection objects
         conn1 = Connection(connection_id="conn1", summary="Connection 1")
         conn2 = Connection(connection_id="conn2", summary="Connection 2")
 
-        mapping = ActionConnectionsMapping(
-            action_name="test_action", connections=[conn1, conn2]
-        )
+        mapping = ActionConnectionsMapping(action_name="test_action", connections=[conn1, conn2])
 
         hub.register_action_list([mapping])
 
         # Check that the mapping is registered (check if it's in _action_list)
-        assert (
-            len(hub._action_list) == 1
-        ), f"Expected 1 mapping, got {len(hub._action_list)}"
+        assert len(hub._action_list) == 1, f"Expected 1 mapping, got {len(hub._action_list)}"
 
         # Verify it's the correct mapping
         assert hub._action_list[0].action_name == "test_action"
@@ -294,8 +266,7 @@ class TestActionsHub:
 
     def test_retry_policy_defaults(self):
         """Test retry policy defaults."""
-        from zamp_public_workflow_sdk.actions_hub.models.core_models import \
-            RetryPolicy
+        from zamp_public_workflow_sdk.actions_hub.models.core_models import RetryPolicy
 
         # Test that RetryPolicy class works
         retry_policy = RetryPolicy.default()
@@ -307,8 +278,7 @@ class TestActionsHub:
 
     def test_retry_policy_custom(self):
         """Test custom retry policies."""
-        from zamp_public_workflow_sdk.actions_hub.models.core_models import \
-            RetryPolicy
+        from zamp_public_workflow_sdk.actions_hub.models.core_models import RetryPolicy
 
         # Test creating custom retry policy
         custom_retry_policy = RetryPolicy(

@@ -5,10 +5,14 @@ from dataclasses import dataclass, field
 from datetime import timedelta
 from typing import Callable, Optional, Sequence
 
-from temporalio.worker import (PollerBehavior, PollerBehaviorSimpleMaximum,
-                               UnsandboxedWorkflowRunner, Worker, WorkerTuner)
-from temporalio.worker.workflow_sandbox import (SandboxedWorkflowRunner,
-                                                SandboxRestrictions)
+from temporalio.worker import (
+    PollerBehavior,
+    PollerBehaviorSimpleMaximum,
+    UnsandboxedWorkflowRunner,
+    Worker,
+    WorkerTuner,
+)
+from temporalio.worker.workflow_sandbox import SandboxedWorkflowRunner, SandboxRestrictions
 
 from zamp_public_workflow_sdk.temporal.temporal_client import TemporalClient
 
@@ -51,12 +55,8 @@ class TemporalWorkerConfig:
     interceptors: Sequence[object] = field(default_factory=list)
     disable_sandbox: bool = False
     tuner: WorkerTuner | None = None
-    workflow_task_poller_behavior: PollerBehavior | None = (
-        PollerBehaviorSimpleMaximum(maximum=5)
-    )
-    activity_task_poller_behavior: PollerBehavior | None = (
-        PollerBehaviorSimpleMaximum(maximum=5)
-    )
+    workflow_task_poller_behavior: PollerBehavior | None = PollerBehaviorSimpleMaximum(maximum=5)
+    activity_task_poller_behavior: PollerBehavior | None = PollerBehaviorSimpleMaximum(maximum=5)
     passthrough_modules: Sequence[str] = field(default_factory=list)
 
 
@@ -74,9 +74,7 @@ class TemporalWorker(Worker):
             additional_options["workflow_runner"] = UnsandboxedWorkflowRunner()
         else:
             additional_options["workflow_runner"] = SandboxedWorkflowRunner(
-                restrictions=SandboxRestrictions.default.with_passthrough_modules(
-                    *config.passthrough_modules
-                )
+                restrictions=SandboxRestrictions.default.with_passthrough_modules(*config.passthrough_modules)
             )
         super().__init__(
             client=temporal_client.client,

@@ -11,7 +11,10 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from zamp_public_workflow_sdk.actions_hub.helper import (
-    find_connection_id_path, inject_connection_id, remove_connection_id)
+    find_connection_id_path,
+    inject_connection_id,
+    remove_connection_id,
+)
 
 
 class TestHelperFunctions:

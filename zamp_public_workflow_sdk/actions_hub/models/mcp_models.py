@@ -30,9 +30,7 @@ class MCPAccessPattern(Enum):
 class MCPConfig(BaseModel):
     """MCP configuration for a service."""
 
-    service_name: str = Field(
-        ..., description="Name of the service (must match activity labels)"
-    )
+    service_name: str = Field(..., description="Name of the service (must match activity labels)")
     accesses: list[MCPAction] = Field(
         default_factory=list,
         description="List of access types like [MCPAction.READ.value, MCPAction.WRITE.value]",
@@ -61,9 +59,7 @@ class MCPConfig(BaseModel):
 class MCPServiceConfig(BaseModel):
     """MCP service configuration containing multiple services and their access controls."""
 
-    services: list[MCPConfig] = Field(
-        default_factory=list, description="List of service configurations"
-    )
+    services: list[MCPConfig] = Field(default_factory=list, description="List of service configurations")
 
     def add_service(self, service_name: str, access_str: str) -> None:
         """Add a service with access control."""

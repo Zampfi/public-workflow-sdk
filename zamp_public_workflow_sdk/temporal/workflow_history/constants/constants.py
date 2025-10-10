@@ -18,9 +18,7 @@ class EventType(Enum):
     WORKFLOW_TASK_STARTED = "EVENT_TYPE_WORKFLOW_TASK_STARTED"
     WORKFLOW_TASK_COMPLETED = "EVENT_TYPE_WORKFLOW_TASK_COMPLETED"
     ACTIVITY_TASK_STARTED = "EVENT_TYPE_ACTIVITY_TASK_STARTED"
-    START_CHILD_WORKFLOW_EXECUTION_INITIATED = (
-        "EVENT_TYPE_START_CHILD_WORKFLOW_EXECUTION_INITIATED"
-    )
+    START_CHILD_WORKFLOW_EXECUTION_INITIATED = "EVENT_TYPE_START_CHILD_WORKFLOW_EXECUTION_INITIATED"
     CHILD_WORKFLOW_EXECUTION_STARTED = "EVENT_TYPE_CHILD_WORKFLOW_EXECUTION_STARTED"
     CHILD_WORKFLOW_EXECUTION_COMPLETED = "EVENT_TYPE_CHILD_WORKFLOW_EXECUTION_COMPLETED"
 
@@ -57,13 +55,9 @@ class EventTypeToAttributesKey(Enum):
     WORKFLOW_TASK_STARTED = "workflowTaskStartedEventAttributes"
     WORKFLOW_TASK_COMPLETED = "workflowTaskCompletedEventAttributes"
     ACTIVITY_TASK_STARTED = "activityTaskStartedEventAttributes"
-    START_CHILD_WORKFLOW_EXECUTION_INITIATED = (
-        "startChildWorkflowExecutionInitiatedEventAttributes"
-    )
+    START_CHILD_WORKFLOW_EXECUTION_INITIATED = "startChildWorkflowExecutionInitiatedEventAttributes"
     CHILD_WORKFLOW_EXECUTION_STARTED = "childWorkflowExecutionStartedEventAttributes"
-    CHILD_WORKFLOW_EXECUTION_COMPLETED = (
-        "childWorkflowExecutionCompletedEventAttributes"
-    )
+    CHILD_WORKFLOW_EXECUTION_COMPLETED = "childWorkflowExecutionCompletedEventAttributes"
 
 
 def get_workflow_history_file_name(workflow_id: str, run_id: str) -> str:

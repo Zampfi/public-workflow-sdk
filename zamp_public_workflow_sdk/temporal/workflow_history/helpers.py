@@ -26,9 +26,7 @@ def _get_attributes_key_for_event_type(event_type: str) -> str | None:
         event_type_enum = EventType(event_type)
         attrs_key_enum = getattr(EventTypeToAttributesKey, event_type_enum.name)
         result = attrs_key_enum.value
-        logger.info(
-            "Successfully found attributes key", event_type=event_type, attrs_key=result
-        )
+        logger.info("Successfully found attributes key", event_type=event_type, attrs_key=result)
         return result
     except (ValueError, AttributeError) as e:
         logger.warning(
@@ -61,35 +59,21 @@ def extract_node_id_from_event(event: dict) -> str | None:
         event_type=event.get(EventField.EVENT_TYPE.value),
     )
 
-    if (
-        PayloadField.HEADER.value in event
-        and PayloadField.FIELDS.value in event[PayloadField.HEADER.value]
-    ):
+    if PayloadField.HEADER.value in event and PayloadField.FIELDS.value in event[PayloadField.HEADER.value]:
         logger.info("Found header fields in event, extracting node_id")
-        node_id = _get_node_id_from_header(
-            event[PayloadField.HEADER.value][PayloadField.FIELDS.value]
-        )
+        node_id = _get_node_id_from_header(event[PayloadField.HEADER.value][PayloadField.FIELDS.value])
         if node_id:
-            logger.info(
-                "Successfully extracted node_id from event header", node_id=node_id
-            )
+            logger.info("Successfully extracted node_id from event header", node_id=node_id)
             return node_id
 
     event_type = event.get(EventField.EVENT_TYPE.value)
     attrs_key = _get_attributes_key_for_event_type(event_type)
 
     if attrs_key and attrs_key in event:
-        logger.info(
-            "Found attributes key in event, checking for node_id", attrs_key=attrs_key
-        )
+        logger.info("Found attributes key in event, checking for node_id", attrs_key=attrs_key)
         attrs = event[attrs_key]
-        if (
-            PayloadField.HEADER.value in attrs
-            and PayloadField.FIELDS.value in attrs[PayloadField.HEADER.value]
-        ):
-            node_id = _get_node_id_from_header(
-                attrs[PayloadField.HEADER.value][PayloadField.FIELDS.value]
-            )
+        if PayloadField.HEADER.value in attrs and PayloadField.FIELDS.value in attrs[PayloadField.HEADER.value]:
+            node_id = _get_node_id_from_header(attrs[PayloadField.HEADER.value][PayloadField.FIELDS.value])
             if node_id:
                 logger.info(
                     "Successfully extracted node_id from event attributes",
@@ -101,27 +85,19 @@ def extract_node_id_from_event(event: dict) -> str | None:
     return None
 
 
-def _extract_payload_data(
-    event: dict, event_type: str, payload_field: str
-) -> dict | None:
+def _extract_payload_data(event: dict, event_type: str, payload_field: str) -> dict | None:
     """Extract payload data from event attributes."""
-    logger.info(
-        "Extracting payload data", event_type=event_type, payload_field=payload_field
-    )
+    logger.info("Extracting payload data", event_type=event_type, payload_field=payload_field)
     attrs_key = _get_attributes_key_for_event_type(event_type)
 
     if not attrs_key or attrs_key not in event:
         logger.info("No attributes key found or key not in event", attrs_key=attrs_key)
         return None
 
-    payloads = (
-        event[attrs_key].get(payload_field, {}).get(PayloadField.PAYLOADS.value, [])
-    )
+    payloads = event[attrs_key].get(payload_field, {}).get(PayloadField.PAYLOADS.value, [])
     if payloads and PayloadField.DATA.value in payloads[0]:
         result = payloads[0][PayloadField.DATA.value]
-        logger.info(
-            "Successfully extracted payload data", payload_size=len(str(result))
-        )
+        logger.info("Successfully extracted payload data", payload_size=len(str(result)))
         return result
     else:
         logger.info("No payload data found in event")
@@ -140,9 +116,7 @@ def _should_include_node_id(node_id: str, target_node_ids: list[str] | None) -> 
     return result
 
 
-def _process_event_with_input_payload(
-    event: dict, event_type: EventType
-) -> tuple[str, str] | None:
+def _process_event_with_input_payload(event: dict, event_type: EventType) -> tuple[str, str] | None:
     """Process event that has input payload and return (node_id, payload_field) or None."""
     logger.info("Processing event", event_type=event_type.value)
     node_id = extract_node_id_from_event(event)
@@ -154,9 +128,7 @@ def _process_event_with_input_payload(
         )
         return node_id, PayloadField.INPUT.value
     else:
-        logger.warning(
-            "Failed to extract node_id from event", event_type=event_type.value
-        )
+        logger.warning("Failed to extract node_id from event", event_type=event_type.value)
     return None
 
 
@@ -174,9 +146,7 @@ def _process_workflow_execution_completed(
         logger.info("Skipping workflow execution completed - no workflow_node_id")
         return None
 
-    logger.info(
-        "Found workflow node_id for execution completed", node_id=workflow_node_id
-    )
+    logger.info("Found workflow node_id for execution completed", node_id=workflow_node_id)
     return workflow_node_id, PayloadField.RESULT.value
 
 
@@ -251,13 +221,9 @@ def _add_event_and_payload(
         event_count=len(node_payloads[node_id].node_events),
     )
 
-    payload = _extract_payload_data(
-        event, event.get(EventField.EVENT_TYPE.value), payload_field
-    )
+    payload = _extract_payload_data(event, event.get(EventField.EVENT_TYPE.value), payload_field)
     if not payload:
-        logger.info(
-            "No payload data found, skipping payload assignment", node_id=node_id
-        )
+        logger.info("No payload data found, skipping payload assignment", node_id=node_id)
         return
 
     if payload_field == PayloadField.INPUT.value:
@@ -270,45 +236,31 @@ def _add_event_and_payload(
 
 def get_input_from_node_id(events: list[dict], node_id: str) -> dict | None:
     """Get input payload for a specific node ID from events."""
-    logger.info(
-        "Getting input payload for node", node_id=node_id, event_count=len(events)
-    )
+    logger.info("Getting input payload for node", node_id=node_id, event_count=len(events))
     node_data = extract_node_payloads(events, [node_id])
     result = node_data[node_id].input_payload if node_id in node_data else None
-    logger.info(
-        "Retrieved input payload", node_id=node_id, has_input=result is not None
-    )
+    logger.info("Retrieved input payload", node_id=node_id, has_input=result is not None)
     return result
 
 
 def get_output_from_node_id(events: list[dict], node_id: str) -> dict | None:
     """Get output payload for a specific node ID from events."""
-    logger.info(
-        "Getting output payload for node", node_id=node_id, event_count=len(events)
-    )
+    logger.info("Getting output payload for node", node_id=node_id, event_count=len(events))
     node_data = extract_node_payloads(events, [node_id])
     result = node_data[node_id].output_payload if node_id in node_data else None
-    logger.info(
-        "Retrieved output payload", node_id=node_id, has_output=result is not None
-    )
+    logger.info("Retrieved output payload", node_id=node_id, has_output=result is not None)
     return result
 
 
-def get_node_data_from_node_id(
-    events: list[dict], node_id: str
-) -> dict[str, NodePayloadData]:
+def get_node_data_from_node_id(events: list[dict], node_id: str) -> dict[str, NodePayloadData]:
     """Get all node data (including input/output payloads and all events) for a specific node ID from events."""
-    logger.info(
-        "Getting all node data for node", node_id=node_id, event_count=len(events)
-    )
+    logger.info("Getting all node data for node", node_id=node_id, event_count=len(events))
     result = extract_node_payloads(events, [node_id])
     logger.info("Retrieved node data", node_id=node_id, found=node_id in result)
     return result
 
 
-def extract_node_payloads(
-    events: list[dict], node_ids: list[str] | None = None
-) -> dict[str, NodePayloadData]:
+def extract_node_payloads(events: list[dict], node_ids: list[str] | None = None) -> dict[str, NodePayloadData]:
     """Extract all node data including input/output payloads and all events for each node_id from workflow events."""
     logger.info(
         "Starting extraction of all node payloads",
@@ -334,9 +286,7 @@ def extract_node_payloads(
 
         # Handle workflow execution started
         if event_type == EventType.WORKFLOW_EXECUTION_STARTED.value:
-            result = _process_event_with_input_payload(
-                event, EventType.WORKFLOW_EXECUTION_STARTED
-            )
+            result = _process_event_with_input_payload(event, EventType.WORKFLOW_EXECUTION_STARTED)
             if not result:
                 continue
             node_id, payload_field = result
@@ -363,9 +313,7 @@ def extract_node_payloads(
 
         # Handle activity task scheduled
         if event_type == EventType.ACTIVITY_TASK_SCHEDULED.value:
-            result = _process_event_with_input_payload(
-                event, EventType.ACTIVITY_TASK_SCHEDULED
-            )
+            result = _process_event_with_input_payload(event, EventType.ACTIVITY_TASK_SCHEDULED)
             if not result:
                 continue
             node_id, payload_field = result
@@ -373,9 +321,7 @@ def extract_node_payloads(
 
         # Handle child workflow execution initiated
         if event_type == EventType.START_CHILD_WORKFLOW_EXECUTION_INITIATED.value:
-            result = _process_event_with_input_payload(
-                event, EventType.START_CHILD_WORKFLOW_EXECUTION_INITIATED
-            )
+            result = _process_event_with_input_payload(event, EventType.START_CHILD_WORKFLOW_EXECUTION_INITIATED)
             if not result:
                 continue
             node_id, payload_field = result

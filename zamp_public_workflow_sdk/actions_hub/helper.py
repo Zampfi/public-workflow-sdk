@@ -15,11 +15,7 @@ def remove_connection_id(schema: list[Any]) -> list[Any]:
 
     result = []
     for arg in schema:
-        if (
-            isinstance(arg, dict)
-            and arg.get("title") == "ConnectionIdentifier"
-            and arg.get("type") == "object"
-        ):
+        if isinstance(arg, dict) and arg.get("title") == "ConnectionIdentifier" and arg.get("type") == "object":
             # Skip this dictionary item
             continue
         elif isinstance(arg, list):
@@ -47,11 +43,7 @@ def find_connection_id_path(schema: list[Any]) -> list[str]:
 
     # Check each item in the schema for ConnectionIdentifier
     for i, item in enumerate(schema):
-        if (
-            isinstance(item, dict)
-            and item.get("title") == "ConnectionIdentifier"
-            and item.get("type") == "object"
-        ):
+        if isinstance(item, dict) and item.get("title") == "ConnectionIdentifier" and item.get("type") == "object":
             return [str(i), "connection_id"]
 
         # Check if it's a list that might contain a ConnectionIdentifier
@@ -68,9 +60,7 @@ def find_connection_id_path(schema: list[Any]) -> list[str]:
     return ["connection_id"]
 
 
-def inject_connection_id(
-    params: dict[str, Any], connection_id: str, path: list[str]
-) -> list[dict[str, Any]]:
+def inject_connection_id(params: dict[str, Any], connection_id: str, path: list[str]) -> list[dict[str, Any]]:
     """
     Insert connection_id at the specified path in params.
     Returns a list with connection_id as the first element and params as the second.

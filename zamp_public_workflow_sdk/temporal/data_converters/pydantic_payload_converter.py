@@ -6,12 +6,12 @@ import structlog
 from temporalio import workflow
 from temporalio.api.common.v1 import Payload
 from temporalio.contrib.pydantic import PydanticJSONPlainPayloadConverter
-from temporalio.converter import (CompositePayloadConverter,
-                                  DefaultPayloadConverter,
-                                  JSONPlainPayloadConverter)
+from temporalio.converter import CompositePayloadConverter, DefaultPayloadConverter, JSONPlainPayloadConverter
 
 from zamp_public_workflow_sdk.temporal.codec.large_payload_codec import (
-    CODEC_SENSITIVE_METADATA_KEY, CODEC_SENSITIVE_METADATA_VALUE)
+    CODEC_SENSITIVE_METADATA_KEY,
+    CODEC_SENSITIVE_METADATA_VALUE,
+)
 from zamp_public_workflow_sdk.temporal.codec.models import CodecModel
 
 logger = structlog.get_logger(__name__)
@@ -36,9 +36,7 @@ class PydanticJSONPayloadConverter(JSONPlainPayloadConverter):
             metadata = {}
             if isinstance(value, CodecModel):
                 value = value.value
-                metadata[CODEC_SENSITIVE_METADATA_KEY] = (
-                    CODEC_SENSITIVE_METADATA_VALUE.encode()
-                )
+                metadata[CODEC_SENSITIVE_METADATA_KEY] = CODEC_SENSITIVE_METADATA_VALUE.encode()
 
             payload = self.temporal_pydantic_converter.to_payload(value)
             if metadata and len(metadata) > 0:
@@ -59,11 +57,7 @@ class PydanticPayloadConverter(CompositePayloadConverter):
     def __init__(self) -> None:
         super().__init__(
             *(
-                (
-                    c
-                    if not isinstance(c, JSONPlainPayloadConverter)
-                    else PydanticJSONPayloadConverter()
-                )
+                (c if not isinstance(c, JSONPlainPayloadConverter) else PydanticJSONPayloadConverter())
                 for c in DefaultPayloadConverter.default_encoding_payload_converters
             )
         )

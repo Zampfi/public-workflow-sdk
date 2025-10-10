@@ -2,14 +2,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from zamp_public_workflow_sdk.temporal.data_converters.transformers.collections.base import \
-    BaseCollectionsTransformer
-from zamp_public_workflow_sdk.temporal.data_converters.transformers.models import \
-    GenericSerializedValue
-from zamp_public_workflow_sdk.temporal.data_converters.transformers.transformer import \
-    Transformer
-from zamp_public_workflow_sdk.temporal.data_converters.type_utils import \
-    get_fqn
+from zamp_public_workflow_sdk.temporal.data_converters.transformers.collections.base import BaseCollectionsTransformer
+from zamp_public_workflow_sdk.temporal.data_converters.transformers.models import GenericSerializedValue
+from zamp_public_workflow_sdk.temporal.data_converters.transformers.transformer import Transformer
+from zamp_public_workflow_sdk.temporal.data_converters.type_utils import get_fqn
 
 
 class TupleTransformer(BaseCollectionsTransformer):
@@ -32,9 +28,7 @@ class TupleTransformer(BaseCollectionsTransformer):
             serialized_individual_type_hints=generic_type_hints,
         )
 
-    def _deserialize_internal(
-        self, value: Any, type_hint: type, individual_type_hints: list[type]
-    ) -> Any:
+    def _deserialize_internal(self, value: Any, type_hint: type, individual_type_hints: list[type]) -> Any:
         deserialized_items = []
         for item, item_type_hint in zip(value, individual_type_hints):
             deserialized_item = Transformer.deserialize(item, item_type_hint)

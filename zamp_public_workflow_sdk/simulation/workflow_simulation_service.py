@@ -2,11 +2,13 @@
 Workflow Simulation Service for managing simulation state and responses.
 """
 
-import structlog
+from __future__ import annotations
+
 from typing import Any, Dict, Optional
 
+import structlog
 
-from zamp_public_workflow_sdk.simulation.models import SimulationResponse, ExecutionType
+from zamp_public_workflow_sdk.simulation.models import ExecutionType, SimulationResponse
 from zamp_public_workflow_sdk.simulation.models.config import SimulationConfig
 from zamp_public_workflow_sdk.simulation.models.simulation_strategy import (
     NodeStrategy,
@@ -42,7 +44,7 @@ class WorkflowSimulationService:
         """
         self.simulation_config = simulation_config
         # this response is raw response to be set using FetchWorkflowHistoryWorkflow
-        self.node_id_to_response_map: Dict[str, Any] = {}
+        self.node_id_to_response_map: dict[str, Any] = {}
 
     async def _initialize_simulation_data(self) -> None:
         """
@@ -111,12 +113,10 @@ class WorkflowSimulationService:
                 execution_response=self.node_id_to_response_map[node_id],
             )
 
-        return SimulationResponse(
-            execution_type=ExecutionType.EXECUTE, execution_response=None
-        )
+        return SimulationResponse(execution_type=ExecutionType.EXECUTE, execution_response=None)
 
     @staticmethod
-    def get_strategy(node_strategy: NodeStrategy) -> Optional[BaseStrategy]:
+    def get_strategy(node_strategy: NodeStrategy) -> BaseStrategy | None:
         """
         Create strategy handler based on strategy type.
 
@@ -135,13 +135,7 @@ class WorkflowSimulationService:
                 )
             case StrategyType.CUSTOM_OUTPUT:
                 custom_config = node_strategy.strategy.config
-                return CustomOutputStrategyHandler(
-                    output_value=custom_config.output_value
-                )
+                return CustomOutputStrategyHandler(output_value=custom_config.output_value)
             case _:
-                logger.error(
-                    "Unknown strategy type", strategy_type=node_strategy.strategy.type
-                )
-                raise ValueError(
-                    f"Unknown strategy type: {node_strategy.strategy.type}"
-                )
+                logger.error("Unknown strategy type", strategy_type=node_strategy.strategy.type)
+                raise ValueError(f"Unknown strategy type: {node_strategy.strategy.type}")

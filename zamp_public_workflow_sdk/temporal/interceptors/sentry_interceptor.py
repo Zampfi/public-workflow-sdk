@@ -9,13 +9,17 @@ from __future__ import annotations
 from typing import Any, Callable, Dict, Optional, Type
 
 from temporalio import workflow
-from temporalio.worker import (ActivityInboundInterceptor,
-                               ActivityOutboundInterceptor,
-                               ExecuteActivityInput, ExecuteWorkflowInput,
-                               Interceptor, StartChildWorkflowInput,
-                               WorkflowInboundInterceptor,
-                               WorkflowInterceptorClassInput,
-                               WorkflowOutboundInterceptor)
+from temporalio.worker import (
+    ActivityInboundInterceptor,
+    ActivityOutboundInterceptor,
+    ExecuteActivityInput,
+    ExecuteWorkflowInput,
+    Interceptor,
+    StartChildWorkflowInput,
+    WorkflowInboundInterceptor,
+    WorkflowInterceptorClassInput,
+    WorkflowOutboundInterceptor,
+)
 
 with workflow.unsafe.imports_passed_through():
     from sentry_sdk import capture_exception, init, push_scope
@@ -113,9 +117,7 @@ class SentryActivityInboundInterceptor(ActivityInboundInterceptor):
                 ]
 
                 # Extract context using provided function
-                extracted_tags, extracted_context = extract_context_from_contextvars(
-                    self.context_extraction_fn
-                )
+                extracted_tags, extracted_context = extract_context_from_contextvars(self.context_extraction_fn)
 
                 # Set tags for filtering/searching
                 for key, value in extracted_tags.items():
@@ -184,9 +186,7 @@ class SentryActivityOutboundInterceptor(ActivityOutboundInterceptor):
                 ]
 
                 # Extract context using provided function
-                extracted_tags, extracted_context = extract_context_from_contextvars(
-                    self.context_extraction_fn
-                )
+                extracted_tags, extracted_context = extract_context_from_contextvars(self.context_extraction_fn)
 
                 # Set tags for filtering/searching
                 for key, value in extracted_tags.items():
@@ -266,9 +266,7 @@ class SentryWorkflowInboundInterceptor(WorkflowInboundInterceptor):
                 ]
 
                 # Extract context using provided function
-                extracted_tags, extracted_context = extract_context_from_contextvars(
-                    self.context_extraction_fn
-                )
+                extracted_tags, extracted_context = extract_context_from_contextvars(self.context_extraction_fn)
 
                 # Set tags for filtering/searching
                 for key, value in extracted_tags.items():
@@ -319,9 +317,7 @@ class SentryWorkflowInboundInterceptor(WorkflowInboundInterceptor):
                 ]
 
                 # Extract context using provided function
-                extracted_tags, extracted_context = extract_context_from_contextvars(
-                    self.context_extraction_fn
-                )
+                extracted_tags, extracted_context = extract_context_from_contextvars(self.context_extraction_fn)
 
                 # Set tags for filtering/searching
                 for key, value in extracted_tags.items():
@@ -336,12 +332,8 @@ class SentryWorkflowInboundInterceptor(WorkflowInboundInterceptor):
                     "args": str(input.args),
                     "direction": "child_inbound",
                     "cron_schedule": input.cron_schedule,
-                    "execution_timeout": str(input.execution_timeout)
-                    if input.execution_timeout
-                    else None,
-                    "run_timeout": str(input.run_timeout)
-                    if input.run_timeout
-                    else None,
+                    "execution_timeout": str(input.execution_timeout) if input.execution_timeout else None,
+                    "run_timeout": str(input.run_timeout) if input.run_timeout else None,
                 }
                 context.update(extracted_context)
 
@@ -397,9 +389,7 @@ class SentryWorkflowOutboundInterceptor(WorkflowOutboundInterceptor):
                 ]
 
                 # Extract context using provided function
-                extracted_tags, extracted_context = extract_context_from_contextvars(
-                    self.context_extraction_fn
-                )
+                extracted_tags, extracted_context = extract_context_from_contextvars(self.context_extraction_fn)
 
                 # Set tags for filtering/searching
                 for key, value in extracted_tags.items():
@@ -450,9 +440,7 @@ class SentryWorkflowOutboundInterceptor(WorkflowOutboundInterceptor):
                 ]
 
                 # Extract context using provided function
-                extracted_tags, extracted_context = extract_context_from_contextvars(
-                    self.context_extraction_fn
-                )
+                extracted_tags, extracted_context = extract_context_from_contextvars(self.context_extraction_fn)
 
                 # Set tags for filtering/searching
                 for key, value in extracted_tags.items():
@@ -467,12 +455,8 @@ class SentryWorkflowOutboundInterceptor(WorkflowOutboundInterceptor):
                     "args": str(input.args),
                     "direction": "child_outbound",
                     "cron_schedule": input.cron_schedule,
-                    "execution_timeout": str(input.execution_timeout)
-                    if input.execution_timeout
-                    else None,
-                    "run_timeout": str(input.run_timeout)
-                    if input.run_timeout
-                    else None,
+                    "execution_timeout": str(input.execution_timeout) if input.execution_timeout else None,
+                    "run_timeout": str(input.run_timeout) if input.run_timeout else None,
                 }
                 context.update(extracted_context)
 
@@ -532,9 +516,7 @@ class SentryInterceptor(Interceptor):
                 **sentry_options,
             )
 
-    def intercept_activity(
-        self, next: ActivityInboundInterceptor
-    ) -> ActivityInboundInterceptor:
+    def intercept_activity(self, next: ActivityInboundInterceptor) -> ActivityInboundInterceptor:
         """Create activity inbound interceptor."""
         return SentryActivityInboundInterceptor(
             next,
@@ -543,9 +525,7 @@ class SentryInterceptor(Interceptor):
             self.additional_context_fn,
         )
 
-    def workflow_interceptor_class(
-        self, input: WorkflowInterceptorClassInput
-    ) -> type[WorkflowInboundInterceptor]:
+    def workflow_interceptor_class(self, input: WorkflowInterceptorClassInput) -> type[WorkflowInboundInterceptor]:
         """Create workflow inbound interceptor class."""
 
         def interceptor_creator(next_interceptor):

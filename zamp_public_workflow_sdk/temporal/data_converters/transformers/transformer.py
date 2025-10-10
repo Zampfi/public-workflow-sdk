@@ -6,15 +6,18 @@ from pydantic import BaseModel
 from pydantic.fields import FieldInfo
 from pydantic_core import to_jsonable_python
 
-from zamp_public_workflow_sdk.temporal.data_converters.transformers.base import \
-    BaseTransformer
-from zamp_public_workflow_sdk.temporal.data_converters.transformers.collections.base import \
-    BaseCollectionsTransformer
-from zamp_public_workflow_sdk.temporal.data_converters.transformers.models import \
-    GenericSerializedValue
+from zamp_public_workflow_sdk.temporal.data_converters.transformers.base import BaseTransformer
+from zamp_public_workflow_sdk.temporal.data_converters.transformers.collections.base import BaseCollectionsTransformer
+from zamp_public_workflow_sdk.temporal.data_converters.transformers.models import GenericSerializedValue
 from zamp_public_workflow_sdk.temporal.data_converters.type_utils import (
-    get_fqn, get_individual_type_field_name, get_reference_from_fqn,
-    get_type_field_name, is_dict_type, is_pydantic_model, is_type_field)
+    get_fqn,
+    get_individual_type_field_name,
+    get_reference_from_fqn,
+    get_type_field_name,
+    is_dict_type,
+    is_pydantic_model,
+    is_type_field,
+)
 
 
 class Transformer:
@@ -39,9 +42,7 @@ class Transformer:
             )
 
         if value is None:
-            return GenericSerializedValue(
-                serialized_value=None, serialized_type_hint=get_fqn(type(value))
-            )
+            return GenericSerializedValue(serialized_value=None, serialized_type_hint=get_fqn(type(value)))
 
         for collection_transformer in cls._collection_transformers:
             serialized = collection_transformer.serialize(value)
@@ -54,9 +55,7 @@ class Transformer:
                 serialized = cls.serialize(item_value)
                 if type(serialized) is GenericSerializedValue:
                     serialized_result[item_key] = serialized.serialized_value
-                    serialized_result[get_type_field_name(item_key)] = (
-                        serialized.serialized_type_hint
-                    )
+                    serialized_result[get_type_field_name(item_key)] = serialized.serialized_type_hint
                     if serialized.serialized_individual_type_hints is not None:
                         serialized_result[get_individual_type_field_name(item_key)] = (
                             serialized.serialized_individual_type_hints
@@ -90,39 +89,27 @@ class Transformer:
             return value
 
         for collection_transformer in cls._collection_transformers:
-            deserialized = collection_transformer.deserialize(
-                value, type_hint, individual_type_hints
-            )
+            deserialized = collection_transformer.deserialize(value, type_hint, individual_type_hints)
             if deserialized is not None:
                 return deserialized
 
         if cls._should_deserialize(type_hint):
             deserialized_result = cls._default_deserialized_model(value, type_hint)
-            for item_key, item_type, item_value in cls._get_enumerator(
-                deserialized_result
-            ):
+            for item_key, item_type, item_value in cls._get_enumerator(deserialized_result):
                 if is_type_field(item_key):
                     continue
 
                 type_key = get_type_field_name(item_key)
                 if type_key in value:
-                    item_type = get_reference_from_fqn(
-                        cls._get_attribute(value, type_key)
-                    )
+                    item_type = get_reference_from_fqn(cls._get_attribute(value, type_key))
 
                 individual_type_hints = None
                 individual_type_hints_key = get_individual_type_field_name(item_key)
                 if individual_type_hints_key in value:
-                    individual_type_hints = cls._get_attribute(
-                        value, individual_type_hints_key
-                    )
-                    individual_type_hints = [
-                        get_reference_from_fqn(hint) for hint in individual_type_hints
-                    ]
+                    individual_type_hints = cls._get_attribute(value, individual_type_hints_key)
+                    individual_type_hints = [get_reference_from_fqn(hint) for hint in individual_type_hints]
 
-                deserialized = cls.deserialize(
-                    item_value, item_type, individual_type_hints
-                )
+                deserialized = cls.deserialize(item_value, item_type, individual_type_hints)
                 cls._set_attribute(deserialized_result, item_key, deserialized)
 
             deserialized_result = cls._delete_type_keys(deserialized_result)

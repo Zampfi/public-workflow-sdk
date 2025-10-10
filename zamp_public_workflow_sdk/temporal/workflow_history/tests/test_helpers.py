@@ -3,8 +3,11 @@ from __future__ import annotations
 from unittest.mock import patch
 
 from zamp_public_workflow_sdk.temporal.workflow_history.helpers import (
-    _extract_payload_data, _get_node_id_from_header,
-    extract_node_id_from_event, extract_node_payloads)
+    _extract_payload_data,
+    _get_node_id_from_header,
+    extract_node_id_from_event,
+    extract_node_payloads,
+)
 
 
 class TestHelpers:
@@ -56,13 +59,7 @@ class TestHelpers:
 
     def test_extract_node_id_from_event_with_header(self):
         """Test extracting node_id from event with header fields."""
-        event = {
-            "header": {
-                "fields": {
-                    "node_id": {"data": "eyJub2RlX2lkIjogIndvcmtmbG93LW5vZGUtMSJ9"}
-                }
-            }
-        }
+        event = {"header": {"fields": {"node_id": {"data": "eyJub2RlX2lkIjogIndvcmtmbG93LW5vZGUtMSJ9"}}}}
 
         result = extract_node_id_from_event(event)
 
@@ -81,11 +78,7 @@ class TestHelpers:
         event = {
             "eventType": "EVENT_TYPE_WORKFLOW_EXECUTION_STARTED",
             "workflowExecutionStartedEventAttributes": {
-                "header": {
-                    "fields": {
-                        "node_id": {"data": "eyJub2RlX2lkIjogIndvcmtmbG93LW5vZGUtMSJ9"}
-                    }
-                }
+                "header": {"fields": {"node_id": {"data": "eyJub2RlX2lkIjogIndvcmtmbG93LW5vZGUtMSJ9"}}}
             },
         }
 
@@ -105,14 +98,10 @@ class TestHelpers:
         """Test extracting payload data with valid payloads."""
         event = {
             "eventType": "EVENT_TYPE_WORKFLOW_EXECUTION_STARTED",
-            "workflowExecutionStartedEventAttributes": {
-                "input": {"payloads": [{"data": "eyJ0ZXN0IjogImlucHV0In0="}]}
-            },
+            "workflowExecutionStartedEventAttributes": {"input": {"payloads": [{"data": "eyJ0ZXN0IjogImlucHV0In0="}]}},
         }
 
-        result = _extract_payload_data(
-            event, "EVENT_TYPE_WORKFLOW_EXECUTION_STARTED", "input"
-        )
+        result = _extract_payload_data(event, "EVENT_TYPE_WORKFLOW_EXECUTION_STARTED", "input")
 
         assert result == "eyJ0ZXN0IjogImlucHV0In0="
 
@@ -131,9 +120,7 @@ class TestHelpers:
             "workflowExecutionStartedEventAttributes": {"input": {}},
         }
 
-        result = _extract_payload_data(
-            event, "EVENT_TYPE_WORKFLOW_EXECUTION_STARTED", "input"
-        )
+        result = _extract_payload_data(event, "EVENT_TYPE_WORKFLOW_EXECUTION_STARTED", "input")
 
         assert result is None
 
@@ -144,9 +131,7 @@ class TestHelpers:
             "workflowExecutionStartedEventAttributes": {"input": {"payloads": []}},
         }
 
-        result = _extract_payload_data(
-            event, "EVENT_TYPE_WORKFLOW_EXECUTION_STARTED", "input"
-        )
+        result = _extract_payload_data(event, "EVENT_TYPE_WORKFLOW_EXECUTION_STARTED", "input")
 
         assert result is None
 
@@ -159,9 +144,7 @@ class TestHelpers:
             },
         }
 
-        result = _extract_payload_data(
-            event, "EVENT_TYPE_WORKFLOW_EXECUTION_STARTED", "input"
-        )
+        result = _extract_payload_data(event, "EVENT_TYPE_WORKFLOW_EXECUTION_STARTED", "input")
 
         assert result is None
 
@@ -172,30 +155,19 @@ class TestHelpers:
                 "eventType": "EVENT_TYPE_ACTIVITY_TASK_SCHEDULED",
                 "eventId": 1,
                 "activityTaskScheduledEventAttributes": {
-                    "header": {
-                        "fields": {
-                            "node_id": {
-                                "data": "eyJub2RlX2lkIjogImFjdGl2aXR5LW5vZGUtMSJ9"
-                            }
-                        }
-                    },
+                    "header": {"fields": {"node_id": {"data": "eyJub2RlX2lkIjogImFjdGl2aXR5LW5vZGUtMSJ9"}}},
                     "input": {"payloads": [{"data": "eyJhY3Rpdml0eSI6ICJ0ZXN0In0="}]},
                 },
             }
         ]
 
-        with patch(
-            "zamp_public_workflow_sdk.workflow_history.helpers.extract_node_id_from_event"
-        ) as mock_extract:
+        with patch("zamp_public_workflow_sdk.workflow_history.helpers.extract_node_id_from_event") as mock_extract:
             mock_extract.return_value = "activity-node-1"
 
             result = extract_node_payloads(events)
 
             assert "activity-node-1" in result
-            assert (
-                result["activity-node-1"].input_payload
-                == "eyJhY3Rpdml0eSI6ICJ0ZXN0In0="
-            )
+            assert result["activity-node-1"].input_payload == "eyJhY3Rpdml0eSI6ICJ0ZXN0In0="
 
     def test_extract_node_payloads_activity_completed(self):
         """Test extracting node payloads for activity completed event."""
@@ -204,13 +176,7 @@ class TestHelpers:
                 "eventType": "EVENT_TYPE_ACTIVITY_TASK_SCHEDULED",
                 "eventId": 1,
                 "activityTaskScheduledEventAttributes": {
-                    "header": {
-                        "fields": {
-                            "node_id": {
-                                "data": "eyJub2RlX2lkIjogImFjdGl2aXR5LW5vZGUtMSJ9"
-                            }
-                        }
-                    }
+                    "header": {"fields": {"node_id": {"data": "eyJub2RlX2lkIjogImFjdGl2aXR5LW5vZGUtMSJ9"}}}
                 },
             },
             {
@@ -222,18 +188,13 @@ class TestHelpers:
             },
         ]
 
-        with patch(
-            "zamp_public_workflow_sdk.workflow_history.helpers.extract_node_id_from_event"
-        ) as mock_extract:
+        with patch("zamp_public_workflow_sdk.workflow_history.helpers.extract_node_id_from_event") as mock_extract:
             mock_extract.side_effect = ["activity-node-1", None]
 
             result = extract_node_payloads(events)
 
             assert "activity-node-1" in result
-            assert (
-                result["activity-node-1"].output_payload
-                == "eyJyZXN1bHQiOiAic3VjY2VzcyJ9"
-            )
+            assert result["activity-node-1"].output_payload == "eyJyZXN1bHQiOiAic3VjY2VzcyJ9"
 
     def test_extract_node_payloads_workflow_completed(self):
         """Test extracting node payloads for workflow completed event."""
@@ -258,21 +219,13 @@ class TestHelpers:
             {
                 "eventType": "EVENT_TYPE_WORKFLOW_EXECUTION_STARTED",
                 "workflowExecutionStartedEventAttributes": {
-                    "header": {
-                        "fields": {
-                            "node_id": {
-                                "data": "eyJub2RlX2lkIjogIndvcmtmbG93LW5vZGUtMSJ9"
-                            }
-                        }
-                    },
+                    "header": {"fields": {"node_id": {"data": "eyJub2RlX2lkIjogIndvcmtmbG93LW5vZGUtMSJ9"}}},
                     "input": {"payloads": [{"data": "eyJ0ZXN0IjogImlucHV0In0="}]},
                 },
             }
         ]
 
-        with patch(
-            "zamp_public_workflow_sdk.workflow_history.helpers.extract_node_id_from_event"
-        ) as mock_extract:
+        with patch("zamp_public_workflow_sdk.workflow_history.helpers.extract_node_id_from_event") as mock_extract:
             mock_extract.return_value = "workflow-node-1"
 
             result = extract_node_payloads(events, ["other-node"])
@@ -319,21 +272,13 @@ class TestHelpers:
             {
                 "eventType": "EVENT_TYPE_WORKFLOW_EXECUTION_STARTED",
                 "workflowExecutionStartedEventAttributes": {
-                    "header": {
-                        "fields": {
-                            "node_id": {
-                                "data": "eyJub2RlX2lkIjogIndvcmtmbG93LW5vZGUtMSJ9"
-                            }
-                        }
-                    }
+                    "header": {"fields": {"node_id": {"data": "eyJub2RlX2lkIjogIndvcmtmbG93LW5vZGUtMSJ9"}}}
                     # Missing input payloads
                 },
             }
         ]
 
-        with patch(
-            "zamp_public_workflow_sdk.workflow_history.helpers.extract_node_id_from_event"
-        ) as mock_extract:
+        with patch("zamp_public_workflow_sdk.workflow_history.helpers.extract_node_id_from_event") as mock_extract:
             mock_extract.return_value = "workflow-node-1"
 
             result = extract_node_payloads(events)
@@ -350,21 +295,13 @@ class TestHelpers:
             {
                 "eventType": "EVENT_TYPE_WORKFLOW_EXECUTION_STARTED",
                 "workflowExecutionStartedEventAttributes": {
-                    "header": {
-                        "fields": {
-                            "node_id": {
-                                "data": "eyJub2RlX2lkIjogIndvcmtmbG93LW5vZGUtMSJ9"
-                            }
-                        }
-                    },
+                    "header": {"fields": {"node_id": {"data": "eyJub2RlX2lkIjogIndvcmtmbG93LW5vZGUtMSJ9"}}},
                     "input": {"payloads": []},
                 },
             }
         ]
 
-        with patch(
-            "zamp_public_workflow_sdk.workflow_history.helpers.extract_node_id_from_event"
-        ) as mock_extract:
+        with patch("zamp_public_workflow_sdk.workflow_history.helpers.extract_node_id_from_event") as mock_extract:
             mock_extract.return_value = "workflow-node-1"
 
             result = extract_node_payloads(events)
@@ -381,13 +318,7 @@ class TestHelpers:
             {
                 "eventType": "EVENT_TYPE_WORKFLOW_EXECUTION_STARTED",
                 "workflowExecutionStartedEventAttributes": {
-                    "header": {
-                        "fields": {
-                            "node_id": {
-                                "data": "eyJub2RlX2lkIjogIndvcmtmbG93LW5vZGUtMSJ9"
-                            }
-                        }
-                    },
+                    "header": {"fields": {"node_id": {"data": "eyJub2RlX2lkIjogIndvcmtmbG93LW5vZGUtMSJ9"}}},
                     "input": {
                         "payloads": [
                             {
@@ -400,9 +331,7 @@ class TestHelpers:
             }
         ]
 
-        with patch(
-            "zamp_public_workflow_sdk.workflow_history.helpers.extract_node_id_from_event"
-        ) as mock_extract:
+        with patch("zamp_public_workflow_sdk.workflow_history.helpers.extract_node_id_from_event") as mock_extract:
             mock_extract.return_value = "workflow-node-1"
 
             result = extract_node_payloads(events)

@@ -95,11 +95,7 @@ class ActionsHub:
     @classmethod
     def register_action_list(cls, action_list: list[ActionConnectionsMapping]):
         cls._action_list = [
-            (
-                ActionConnectionsMapping(**action)
-                if not isinstance(action, ActionConnectionsMapping)
-                else action
-            )
+            (ActionConnectionsMapping(**action) if not isinstance(action, ActionConnectionsMapping) else action)
             for action in action_list
         ]
 
@@ -129,9 +125,7 @@ class ActionsHub:
         return action.__name__
 
     @classmethod
-    def _generate_node_id_for_action(
-        cls, action: str | Callable
-    ) -> tuple[str, str, str]:
+    def _generate_node_id_for_action(cls, action: str | Callable) -> tuple[str, str, str]:
         """
         Generate node_id for an action (activity or workflow) execution.
 
@@ -171,9 +165,7 @@ class ActionsHub:
             info = workflow.info()
             if info.headers and NODE_ID_HEADER_KEY in info.headers:
                 node_id_payload = info.headers[NODE_ID_HEADER_KEY]
-                parent_node_id = workflow.payload_converter().from_payload(
-                    node_id_payload, str
-                )
+                parent_node_id = workflow.payload_converter().from_payload(node_id_payload, str)
                 if parent_node_id:
                     tracking_key = f"{parent_node_id}.{action_name}"
                 else:
@@ -200,15 +192,11 @@ class ActionsHub:
 
         action_name = cls._get_action_name(action)
         if action_name and action_name in SKIP_SIMULATION_WORKFLOWS:
-            return SimulationResponse(
-                execution_type=ExecutionType.EXECUTE, execution_response=None
-            )
+            return SimulationResponse(execution_type=ExecutionType.EXECUTE, execution_response=None)
 
         simulation = cls.get_simulation_from_workflow_id(workflow_id)
         if not simulation:
-            return SimulationResponse(
-                execution_type=ExecutionType.EXECUTE, execution_response=None
-            )
+            return SimulationResponse(execution_type=ExecutionType.EXECUTE, execution_response=None)
 
         simulation_response = simulation.get_simulation_response(node_id)
         if simulation_response.execution_type == ExecutionType.MOCK:
@@ -254,9 +242,7 @@ class ActionsHub:
         return result
 
     @classmethod
-    async def init_simulation_for_workflow(
-        cls, simulation_config: SimulationConfig, workflow_id: str
-    ) -> None:
+    async def init_simulation_for_workflow(cls, simulation_config: SimulationConfig, workflow_id: str) -> None:
         """
         Initialize simulation for a workflow.
 
@@ -270,9 +256,7 @@ class ActionsHub:
         logger.info("Simulation initialized for workflow", workflow_id=workflow_id)
 
     @classmethod
-    def get_simulation_from_workflow_id(
-        cls, workflow_id: str
-    ) -> WorkflowSimulationService:
+    def get_simulation_from_workflow_id(cls, workflow_id: str) -> WorkflowSimulationService:
         return cls._workflow_id_to_simulation_map.get(workflow_id)
 
     @classmethod
@@ -308,10 +292,7 @@ class ActionsHub:
             The current node_id_tracker dictionary
         """
         with cls._node_id_lock:
-            return {
-                workflow_id: dict(action_counts)
-                for workflow_id, action_counts in cls._node_id_tracker.items()
-            }
+            return {workflow_id: dict(action_counts) for workflow_id, action_counts in cls._node_id_tracker.items()}
 
     @classmethod
     def clear_node_id_tracker(cls):
@@ -339,9 +320,7 @@ class ActionsHub:
         def decorator(func: Callable) -> Callable:
             activity_name = func.__name__
             if activity_name in cls._activities:
-                raise ValueError(
-                    f"Activity '{activity_name}' already registered. Please use a unique name."
-                )
+                raise ValueError(f"Activity '{activity_name}' already registered. Please use a unique name.")
 
             # Check if the function is async
             is_async = asyncio.iscoroutinefunction(func)
@@ -455,12 +434,8 @@ class ActionsHub:
 
         # Temporal execution mode
         # Convert ISO string to timedelta
-        retry_policy.initial_interval = convert_iso_to_timedelta(
-            retry_policy.initial_interval
-        )
-        retry_policy.maximum_interval = convert_iso_to_timedelta(
-            retry_policy.maximum_interval
-        )
+        retry_policy.initial_interval = convert_iso_to_timedelta(retry_policy.initial_interval)
+        retry_policy.maximum_interval = convert_iso_to_timedelta(retry_policy.maximum_interval)
 
         node_id_arg = {TEMPORAL_NODE_ID_KEY: node_id}
         args = (node_id_arg,) + args
@@ -572,9 +547,7 @@ class ActionsHub:
             return list(cls._workflows.values())
 
         for _workflow in cls._workflows.values():
-            if PLATFORM_WORKFLOW_LABEL in _workflow.labels or any(
-                label in _workflow.labels for label in labels
-            ):
+            if PLATFORM_WORKFLOW_LABEL in _workflow.labels or any(label in _workflow.labels for label in labels):
                 workflows.append(_workflow)
 
         return workflows
@@ -650,9 +623,7 @@ class ActionsHub:
                     raise ValueError(f"Workflow '{workflow_name}' not found")
                 workflow_obj = cls._workflows[workflow_name]
                 if not workflow_obj.func:
-                    raise ValueError(
-                        f"Workflow function not available for {workflow_name}"
-                    )
+                    raise ValueError(f"Workflow function not available for {workflow_name}")
                 return await workflow_obj.func(workflow_obj.class_type(), *args)
             else:
                 func = workflow_name
@@ -667,9 +638,7 @@ class ActionsHub:
                 return func(*args)
 
         # Generate node_id for this child workflow execution
-        child_workflow_name, workflow_id, node_id = cls._generate_node_id_for_action(
-            workflow_name
-        )
+        child_workflow_name, workflow_id, node_id = cls._generate_node_id_for_action(workflow_name)
 
         # Check for simulation result
         simulation_result = cls._get_simulation_response(
@@ -714,9 +683,7 @@ class ActionsHub:
         **kwargs,
     ):
         # Generate node_id for this child workflow execution
-        child_workflow_name, workflow_id, node_id = cls._generate_node_id_for_action(
-            workflow_name
-        )
+        child_workflow_name, workflow_id, node_id = cls._generate_node_id_for_action(workflow_name)
 
         # Check for simulation result
         simulation_result = cls._get_simulation_response(
@@ -834,9 +801,7 @@ class ActionsHub:
                 # schema["_connection_path"] = find_connection_id_path(schema["args"])
                 schema["args"] = remove_connection_id(schema["args"])
             else:
-                schema["connections"] = [
-                    conn.model_dump() for conn in action.connections
-                ]
+                schema["connections"] = [conn.model_dump() for conn in action.connections]
 
             schemas.append(schema)
 
@@ -872,11 +837,7 @@ class ActionsHub:
         action = actions[0]
         # Find the matching action mapping in the list
         action_mapping = next(
-            (
-                mapping
-                for mapping in cls._action_list
-                if mapping.action_name == action_name
-            ),
+            (mapping for mapping in cls._action_list if mapping.action_name == action_name),
             None,
         )
         connections = action_mapping.connections if action_mapping else []
@@ -910,9 +871,7 @@ class ActionsHub:
             )
 
     @classmethod
-    async def _dispatch_action(
-        cls, action: Action, activity_retry_policy: RetryPolicy, *args, **kwargs
-    ) -> Any:
+    async def _dispatch_action(cls, action: Action, activity_retry_policy: RetryPolicy, *args, **kwargs) -> Any:
         """Dispatch the action to its registered activity"""
 
         if action.action_type == ActionType.ACTIVITY:

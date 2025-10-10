@@ -10,15 +10,20 @@ from __future__ import annotations
 from typing import Any, Callable, Dict, Type
 
 from temporalio import activity, workflow
-from temporalio.worker import (ActivityInboundInterceptor,
-                               ExecuteActivityInput, ExecuteWorkflowInput,
-                               Interceptor, SignalChildWorkflowInput,
-                               SignalExternalWorkflowInput, StartActivityInput,
-                               StartChildWorkflowInput,
-                               StartLocalActivityInput,
-                               WorkflowInboundInterceptor,
-                               WorkflowInterceptorClassInput,
-                               WorkflowOutboundInterceptor)
+from temporalio.worker import (
+    ActivityInboundInterceptor,
+    ExecuteActivityInput,
+    ExecuteWorkflowInput,
+    Interceptor,
+    SignalChildWorkflowInput,
+    SignalExternalWorkflowInput,
+    StartActivityInput,
+    StartChildWorkflowInput,
+    StartLocalActivityInput,
+    WorkflowInboundInterceptor,
+    WorkflowInterceptorClassInput,
+    WorkflowOutboundInterceptor,
+)
 
 # Constant for the metadata context field name
 METADATA_CONTEXT_FIELD = "zamp_metadata_context"
@@ -52,18 +57,14 @@ class MetadataContextActivityInterceptor(ActivityInboundInterceptor):
             if hasattr(arg, METADATA_CONTEXT_FIELD):
                 metadata_obj = getattr(arg, METADATA_CONTEXT_FIELD)
                 # Convert Pydantic model to dict
-                if hasattr(metadata_obj, "dict") and callable(
-                    getattr(metadata_obj, "dict")
-                ):
+                if hasattr(metadata_obj, "dict") and callable(getattr(metadata_obj, "dict")):
                     metadata = metadata_obj.dict()
                     # Bind each key-value pair to context
                     for key, value in metadata.items():
                         try:
                             self.context_bind_fn(**{key: value})
                         except Exception as e:
-                            self.logger.error(
-                                f"Error binding metadata context variable {key}: {str(e)}"
-                            )
+                            self.logger.error(f"Error binding metadata context variable {key}: {str(e)}")
                     break  # Found metadata, no need to check other args
 
     def _bind_metadata_from_headers(self, headers: dict) -> None:
@@ -77,9 +78,7 @@ class MetadataContextActivityInterceptor(ActivityInboundInterceptor):
                     try:
                         self.context_bind_fn(**{key: value})
                     except Exception as e:
-                        self.logger.error(
-                            f"Error binding metadata context variable {key}: {str(e)}"
-                        )
+                        self.logger.error(f"Error binding metadata context variable {key}: {str(e)}")
             except Exception as e:
                 self.logger.error(f"Error extracting metadata from headers: {str(e)}")
 
@@ -98,9 +97,7 @@ class MetadataContextWorkflowInboundInterceptor(WorkflowInboundInterceptor):
         self._current_metadata = {}
 
     def init(self, outbound: WorkflowOutboundInterceptor) -> None:
-        self.next.init(
-            MetadataContextWorkflowOutboundInterceptor(outbound, self.get_metadata)
-        )
+        self.next.init(MetadataContextWorkflowOutboundInterceptor(outbound, self.get_metadata))
 
     def get_metadata(self) -> dict[str, Any]:
         """Get the current metadata context."""
@@ -120,9 +117,7 @@ class MetadataContextWorkflowInboundInterceptor(WorkflowInboundInterceptor):
                     for key, value in self._current_metadata.items():
                         self.context_bind_fn(**{key: value})
                 except Exception as e:
-                    self.logger.error(
-                        f"Error setting metadata context variables: {str(e)}"
-                    )
+                    self.logger.error(f"Error setting metadata context variables: {str(e)}")
 
         return await self.next.execute_workflow(input)
 
@@ -133,9 +128,7 @@ class MetadataContextWorkflowInboundInterceptor(WorkflowInboundInterceptor):
             if hasattr(arg, METADATA_CONTEXT_FIELD):
                 metadata_obj = getattr(arg, METADATA_CONTEXT_FIELD)
                 # Handle both Pydantic model and plain dict
-                if hasattr(metadata_obj, "dict") and callable(
-                    getattr(metadata_obj, "dict")
-                ):
+                if hasattr(metadata_obj, "dict") and callable(getattr(metadata_obj, "dict")):
                     # It's a Pydantic model
                     metadata = metadata_obj.dict()
                     self._current_metadata = metadata
@@ -154,9 +147,7 @@ class MetadataContextWorkflowInboundInterceptor(WorkflowInboundInterceptor):
                 # Only use headers if we don't already have metadata from args
                 if not self._current_metadata:
                     self._current_metadata = metadata
-                    self.logger.debug(
-                        "Found metadata context in workflow headers", metadata=metadata
-                    )
+                    self.logger.debug("Found metadata context in workflow headers", metadata=metadata)
             except Exception as e:
                 self.logger.error(f"Error extracting metadata from headers: {str(e)}")
 
@@ -198,9 +189,7 @@ class MetadataContextWorkflowOutboundInterceptor(WorkflowOutboundInterceptor):
         self._add_metadata_to_headers(input.headers)
         return await self.next.signal_child_workflow(input)
 
-    async def signal_external_workflow(
-        self, input: SignalExternalWorkflowInput
-    ) -> None:
+    async def signal_external_workflow(self, input: SignalExternalWorkflowInput) -> None:
         # Add metadata context to signal headers
         self._add_metadata_to_headers(input.headers)
         return await self.next.signal_external_workflow(input)
@@ -241,19 +230,11 @@ class MetadataContextInterceptor(Interceptor):
         self.logger = logger_module.get_logger(__name__)
         self.context_bind_fn = context_bind_fn
 
-    def intercept_activity(
-        self, next: ActivityInboundInterceptor
-    ) -> ActivityInboundInterceptor:
-        return MetadataContextActivityInterceptor(
-            next, self.context_bind_fn, self.logger
-        )
+    def intercept_activity(self, next: ActivityInboundInterceptor) -> ActivityInboundInterceptor:
+        return MetadataContextActivityInterceptor(next, self.context_bind_fn, self.logger)
 
-    def workflow_interceptor_class(
-        self, input: WorkflowInterceptorClassInput
-    ) -> type[WorkflowInboundInterceptor]:
+    def workflow_interceptor_class(self, input: WorkflowInterceptorClassInput) -> type[WorkflowInboundInterceptor]:
         def interceptor_creator(next_interceptor):
-            return MetadataContextWorkflowInboundInterceptor(
-                next_interceptor, self.context_bind_fn, self.logger
-            )
+            return MetadataContextWorkflowInboundInterceptor(next_interceptor, self.context_bind_fn, self.logger)
 
         return interceptor_creator

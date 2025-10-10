@@ -17,12 +17,18 @@ import pytest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 from temporalio import workflow
-from temporalio.worker import (StartActivityInput, StartChildWorkflowInput,
-                               WorkflowInboundInterceptor,
-                               WorkflowOutboundInterceptor)
+from temporalio.worker import (
+    StartActivityInput,
+    StartChildWorkflowInput,
+    WorkflowInboundInterceptor,
+    WorkflowOutboundInterceptor,
+)
 
 from zamp_public_workflow_sdk.temporal.interceptors.node_id_interceptor import (
-    NODE_ID_HEADER_KEY, NodeIdInterceptor, NodeIdWorkflowOutboundInterceptor)
+    NODE_ID_HEADER_KEY,
+    NodeIdInterceptor,
+    NodeIdWorkflowOutboundInterceptor,
+)
 
 
 class TestNodeIdInterceptorIntegration:
@@ -72,10 +78,7 @@ class TestNodeIdInterceptorIntegration:
             # Verify the complete flow
             # 1. Node ID should be extracted and added to headers
             assert NODE_ID_HEADER_KEY in activity_input.headers
-            assert (
-                activity_input.headers[NODE_ID_HEADER_KEY]
-                == f"payload:{self.sample_node_id}"
-            )
+            assert activity_input.headers[NODE_ID_HEADER_KEY] == f"payload:{self.sample_node_id}"
 
             # 2. Node ID dict should be removed from args
             assert activity_input.args == ("param1", "param2")
@@ -123,10 +126,7 @@ class TestNodeIdInterceptorIntegration:
             # Verify the complete flow
             # 1. Node ID should be extracted and added to headers
             assert NODE_ID_HEADER_KEY in child_input.headers
-            assert (
-                child_input.headers[NODE_ID_HEADER_KEY]
-                == f"payload:{self.sample_node_id}"
-            )
+            assert child_input.headers[NODE_ID_HEADER_KEY] == f"payload:{self.sample_node_id}"
 
             # 2. Node ID dict should be removed from args
             assert child_input.args == ("workflow_param1", "workflow_param2")
@@ -153,9 +153,7 @@ class TestNodeIdInterceptorIntegration:
         mock_next_inbound.init.assert_called_once()
         created_outbound = mock_next_inbound.init.call_args[0][0]
         assert isinstance(created_outbound, NodeIdWorkflowOutboundInterceptor)
-        assert (
-            created_outbound.node_id_header_key == NODE_ID_HEADER_KEY
-        )  # Should use constant, not custom
+        assert created_outbound.node_id_header_key == NODE_ID_HEADER_KEY  # Should use constant, not custom
         assert created_outbound.next == mock_outbound
 
     def test_multiple_activities_in_sequence(self):
@@ -179,10 +177,7 @@ class TestNodeIdInterceptorIntegration:
 
             outbound_interceptor.start_activity(activity1_input)
 
-            assert (
-                activity1_input.headers[NODE_ID_HEADER_KEY]
-                == "payload:action1#instance1"
-            )
+            assert activity1_input.headers[NODE_ID_HEADER_KEY] == "payload:action1#instance1"
             assert activity1_input.args == ()
 
             # Second activity
@@ -195,10 +190,7 @@ class TestNodeIdInterceptorIntegration:
 
             outbound_interceptor.start_activity(activity2_input)
 
-            assert (
-                activity2_input.headers[NODE_ID_HEADER_KEY]
-                == "payload:action2#instance2"
-            )
+            assert activity2_input.headers[NODE_ID_HEADER_KEY] == "payload:action2#instance2"
             assert activity2_input.args == ("param",)
 
     def test_mixed_activities_and_child_workflows(self):

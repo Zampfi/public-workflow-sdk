@@ -5,11 +5,16 @@ from typing import List, Optional
 from pydantic import BaseModel
 
 from zamp_public_workflow_sdk.temporal.data_converters.pydantic_payload_converter import (
-    BytesIOTransformer, BytesTransformer, DateTransformer, ListTransformer,
-    PydanticModelMetaclassTransformer, PydanticTypeTransformer,
-    TupleTransformer, UnionTransformer)
-from zamp_public_workflow_sdk.temporal.data_converters.transformers.transformer import \
-    Transformer
+    BytesIOTransformer,
+    BytesTransformer,
+    DateTransformer,
+    ListTransformer,
+    PydanticModelMetaclassTransformer,
+    PydanticTypeTransformer,
+    TupleTransformer,
+    UnionTransformer,
+)
+from zamp_public_workflow_sdk.temporal.data_converters.transformers.transformer import Transformer
 
 
 class Model(BaseModel):

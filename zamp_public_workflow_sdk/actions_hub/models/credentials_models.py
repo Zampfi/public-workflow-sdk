@@ -15,18 +15,10 @@ from .decorators import external
 class ConnectionIdentifier(BaseModel):
     """Connection identifier model."""
 
-    connection_id: str | None = Field(
-        default=None, description="Connection id from Application Platform"
-    )
-    credential_id: str | None = Field(
-        default=None, description="Credential id from Application Platform"
-    )
-    organization_id: str | None = Field(
-        default=None, description="Organization id from Application Platform"
-    )
-    user_id: str | None = Field(
-        default=None, description="User id from Application Platform"
-    )
+    connection_id: str | None = Field(default=None, description="Connection id from Application Platform")
+    credential_id: str | None = Field(default=None, description="Credential id from Application Platform")
+    organization_id: str | None = Field(default=None, description="Organization id from Application Platform")
+    user_id: str | None = Field(default=None, description="User id from Application Platform")
 
 
 @external
@@ -63,9 +55,7 @@ class Credential(BaseModel):
 class CredentialsResponse(BaseModel):
     """Response model for credentials list."""
 
-    data: list[Credential] | None = Field(
-        default_factory=list, description="List of credentials, can be empty or null"
-    )
+    data: list[Credential] | None = Field(default_factory=list, description="List of credentials, can be empty or null")
 
 
 class CreatedCredential(BaseModel):

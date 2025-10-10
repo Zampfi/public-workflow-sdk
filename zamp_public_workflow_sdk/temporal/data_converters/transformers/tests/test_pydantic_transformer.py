@@ -6,7 +6,9 @@ from typing import Any, Dict
 from pydantic import BaseModel
 
 from zamp_public_workflow_sdk.temporal.data_converters.pydantic_payload_converter import (
-    DEFAULT_CONVERTER_METADATA_KEY, PydanticJSONPayloadConverter)
+    DEFAULT_CONVERTER_METADATA_KEY,
+    PydanticJSONPayloadConverter,
+)
 
 
 class Basic(BaseModel):
@@ -65,20 +67,12 @@ def test_generic_case():
 
     class ExecutionResult(BaseModel, Generic[T]):
         success: bool = Field(..., description="Whether the execution was successful")
-        result: T | None = Field(
-            None, description="Result of the function execution if successful"
-        )
-        error: str | None = Field(
-            None, description="Error message if execution failed"
-        )
-        execution_time: float = Field(
-            ..., description="Time taken for execution in seconds"
-        )
+        result: T | None = Field(None, description="Result of the function execution if successful")
+        error: str | None = Field(None, description="Error message if execution failed")
+        execution_time: float = Field(..., description="Time taken for execution in seconds")
 
     converter = PydanticJSONPayloadConverter()
-    execution_result = ExecutionResult(
-        success=True, result=Basic(string="test"), error=None, execution_time=1.0
-    )
+    execution_result = ExecutionResult(success=True, result=Basic(string="test"), error=None, execution_time=1.0)
     payload = converter.to_payload(execution_result)
     assert DEFAULT_CONVERTER_METADATA_KEY not in payload.metadata
 

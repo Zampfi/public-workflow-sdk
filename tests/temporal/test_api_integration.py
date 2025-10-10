@@ -6,8 +6,13 @@ import pytest
 
 from sample.api import API, create_workflow, execute_workflow, list_workflows
 from zamp_public_workflow_sdk.temporal.models.temporal_models import (
-    CancelWorkflowParams, GetWorkflowDetailsParams, QueryWorkflowParams,
-    SignalWorkflowParams, TerminateWorkflowParams, WorkflowExecutionStatus)
+    CancelWorkflowParams,
+    GetWorkflowDetailsParams,
+    QueryWorkflowParams,
+    SignalWorkflowParams,
+    TerminateWorkflowParams,
+    WorkflowExecutionStatus,
+)
 
 
 @pytest.mark.asyncio
@@ -48,9 +53,7 @@ async def test_get_workflow_details():
 
     # Get API handle and get details directly
     api = await API.get_api_handle()
-    details = await api.get_workflow_details(
-        GetWorkflowDetailsParams(workflow_id=workflow_id, run_id=run_id)
-    )
+    details = await api.get_workflow_details(GetWorkflowDetailsParams(workflow_id=workflow_id, run_id=run_id))
 
     assert details.error is None
     assert details.details is not None
@@ -129,18 +132,14 @@ async def test_cancel_workflow():
 
     # Cancel the specific workflow
     api = await API.get_api_handle()
-    cancel_result = await api.cancel_workflow(
-        CancelWorkflowParams(workflow_id=workflow_id, run_id=run_id)
-    )
+    cancel_result = await api.cancel_workflow(CancelWorkflowParams(workflow_id=workflow_id, run_id=run_id))
 
     assert cancel_result.error is None
     print(f"✓ Canceled workflow: {workflow_id}")
 
     # Verify cancellation
     await asyncio.sleep(2)
-    details = await api.get_workflow_details(
-        GetWorkflowDetailsParams(workflow_id=workflow_id, run_id=run_id)
-    )
+    details = await api.get_workflow_details(GetWorkflowDetailsParams(workflow_id=workflow_id, run_id=run_id))
     assert details.details.status == WorkflowExecutionStatus.CANCELED
 
 
@@ -154,9 +153,7 @@ async def test_terminate_workflow():
     # Terminate the specific workflow
     api = await API.get_api_handle()
     terminate_result = await api.terminate_workflow(
-        TerminateWorkflowParams(
-            workflow_id=workflow_id, run_id=run_id, reason="Testing terminate workflow"
-        )
+        TerminateWorkflowParams(workflow_id=workflow_id, run_id=run_id, reason="Testing terminate workflow")
     )
 
     assert terminate_result.error is None
@@ -164,9 +161,7 @@ async def test_terminate_workflow():
 
     # Verify termination
     await asyncio.sleep(2)
-    details = await api.get_workflow_details(
-        GetWorkflowDetailsParams(workflow_id=workflow_id, run_id=run_id)
-    )
+    details = await api.get_workflow_details(GetWorkflowDetailsParams(workflow_id=workflow_id, run_id=run_id))
     assert details.details.status == WorkflowExecutionStatus.TERMINATED
 
 
@@ -208,16 +203,12 @@ async def test_full_workflow_lifecycle():
 
     # 5. Terminate workflow
     await api.terminate_workflow(
-        TerminateWorkflowParams(
-            workflow_id=workflow_id, run_id=run_id, reason="Lifecycle test complete"
-        )
+        TerminateWorkflowParams(workflow_id=workflow_id, run_id=run_id, reason="Lifecycle test complete")
     )
 
     # 6. Verify final state
     await asyncio.sleep(2)
-    details = await api.get_workflow_details(
-        GetWorkflowDetailsParams(workflow_id=workflow_id, run_id=run_id)
-    )
+    details = await api.get_workflow_details(GetWorkflowDetailsParams(workflow_id=workflow_id, run_id=run_id))
     assert details.details.status == WorkflowExecutionStatus.TERMINATED
 
 

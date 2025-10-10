@@ -4,8 +4,7 @@ from typing import Any
 
 from pydantic._internal._model_construction import ModelMetaclass
 
-from zamp_public_workflow_sdk.temporal.data_converters.transformers.base import \
-    BaseTransformer
+from zamp_public_workflow_sdk.temporal.data_converters.transformers.base import BaseTransformer
 
 
 class PydanticModelMetaclassTransformer(BaseTransformer):

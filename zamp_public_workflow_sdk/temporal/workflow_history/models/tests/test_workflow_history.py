@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from zamp_public_workflow_sdk.workflow_history.models.workflow_history import \
-    WorkflowHistory
+from zamp_public_workflow_sdk.workflow_history.models.workflow_history import WorkflowHistory
 
 
 class TestWorkflowHistory:
@@ -116,9 +115,7 @@ class TestWorkflowHistory:
         assert result["node-1"].output_payload is None
         assert len(result["node-1"].node_events) == 1
 
-    def test_get_all_node_payloads_without_target_node_ids(
-        self, sample_workflow_history
-    ):
+    def test_get_all_node_payloads_without_target_node_ids(self, sample_workflow_history):
         """Test getting all node payloads without target node IDs"""
         result = sample_workflow_history.get_nodes_data()
 
@@ -129,9 +126,7 @@ class TestWorkflowHistory:
         assert result["node-1"].output_payload is None
         assert len(result["node-1"].node_events) == 1
 
-    def test_get_all_node_payloads_with_empty_target_node_ids(
-        self, sample_workflow_history
-    ):
+    def test_get_all_node_payloads_with_empty_target_node_ids(self, sample_workflow_history):
         """Test getting all node payloads with empty target node IDs list"""
         result = sample_workflow_history.get_nodes_data([])
 

@@ -9,9 +9,7 @@ from zamp_public_workflow_sdk.temporal.workflow_history.models.workflow_history 
 
 
 class ParseWorkflowHistoryProtoInput(BaseModel):
-    proto_file: File = Field(
-        ..., description="File object containing the proto bytes file"
-    )
+    proto_file: File = Field(..., description="File object containing the proto bytes file")
 
 
 class ParseWorkflowHistoryProtoOutput(BaseModel):

@@ -2,6 +2,8 @@
 Abstract base class for simulation strategies.
 """
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from typing import List, Optional
 
@@ -26,8 +28,8 @@ class BaseStrategy(ABC):
     @abstractmethod
     async def execute(
         self,
-        node_ids: List[str],
-        temporal_history: Optional[WorkflowHistory] = None,
+        node_ids: list[str],
+        temporal_history: WorkflowHistory | None = None,
     ) -> SimulationStrategyOutput:
         """
         Execute the simulation strategy for multiple nodes.

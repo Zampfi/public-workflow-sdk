@@ -60,9 +60,7 @@ class Serializer:
             result.append(
                 cls.get_individual_schema(
                     name,
-                    get_fqn(field.annotation)
-                    if field.annotation is not None
-                    else "None",
+                    get_fqn(field.annotation) if field.annotation is not None else "None",
                     field.description,
                 )
             )
@@ -140,14 +138,10 @@ class Serializer:
                 # Check if the inner schema is enum values (list) or properties (dict/list of dicts)
                 if isinstance(inner_schema, list) and isinstance(value, Enum):
                     # Handle enum case
-                    current_result = cls.get_individual_schema(
-                        key, get_fqn(type(value)), enum=inner_schema
-                    )
+                    current_result = cls.get_individual_schema(key, get_fqn(type(value)), enum=inner_schema)
                 else:
                     # Handle other cases (BaseModel, dict, etc.)
-                    current_result = cls.get_individual_schema(
-                        key, get_fqn(type(value)), properties=inner_schema
-                    )
+                    current_result = cls.get_individual_schema(key, get_fqn(type(value)), properties=inner_schema)
             except ValueError:
                 # Fallback for unsupported types
                 current_result = cls.get_individual_schema(key, get_fqn(type(value)))
@@ -157,9 +151,7 @@ class Serializer:
         return result
 
     @classmethod
-    def get_individual_schema(
-        cls, name, type, description="", properties=None, enum=None
-    ):
+    def get_individual_schema(cls, name, type, description="", properties=None, enum=None):
         """
         Create an individual schema entry.
 

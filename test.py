@@ -2,9 +2,15 @@ from __future__ import annotations
 
 import asyncio
 
-from sample.api import (cancel_workflow, get_workflow_details, list_workflows,
-                        query_workflow, run_workflow, signal_workflow,
-                        terminate_workflow)
+from sample.api import (
+    cancel_workflow,
+    get_workflow_details,
+    list_workflows,
+    query_workflow,
+    run_workflow,
+    signal_workflow,
+    terminate_workflow,
+)
 
 
 async def main():

@@ -7,10 +7,9 @@ from typing import Generic, TypeVar
 from pydantic import BaseModel
 
 # Define TypeVar for generic types
-T = TypeVar('T', bound=BaseModel)
+T = TypeVar("T", bound=BaseModel)
 
-from zamp_public_workflow_sdk.temporal.data_converters.type_utils import \
-    is_serialize_by_default_serializer
+from zamp_public_workflow_sdk.temporal.data_converters.type_utils import is_serialize_by_default_serializer
 
 
 def test_simple_pydantic_model():
@@ -68,9 +67,7 @@ def test_pydantic_model_with_pydantic_object2():
 
     test = PydanticModelWithTypeProperty(
         optional_base_model=PydanticModelWithTypeProperty(
-            optional_type_base_model=PydanticModelWithTypeProperty(
-                optional_type_base_model=None
-            )
+            optional_type_base_model=PydanticModelWithTypeProperty(optional_type_base_model=None)
         ),
         optional_type_base_model=None,
     )

@@ -110,15 +110,9 @@ class Action(BaseModel):
 
 
 class ActionFilter(BaseModel):
-    name: str | None = Field(
-        default="", description="The name of the action to filter by"
-    )
-    labels: list[str] | None = Field(
-        default=[], description="The labels of the action to filter by"
-    )
-    resticted_action_set: list[str] | None = Field(
-        default=[], description="The action set to filter by"
-    )
+    name: str | None = Field(default="", description="The name of the action to filter by")
+    labels: list[str] | None = Field(default=[], description="The labels of the action to filter by")
+    resticted_action_set: list[str] | None = Field(default=[], description="The action set to filter by")
 
     def filter_actions(self, actions: list[Action]) -> list[Action]:
         filtered_actions = []
@@ -184,9 +178,5 @@ class CodeExecutorConfig(BaseModel):
 
 class ExecuteCodeParams(BaseModel):
     function: Any = Field(..., description="Callable function to execute")
-    args: tuple = Field(
-        default=(), description="Positional arguments to pass to the function"
-    )
-    kwargs: dict[str, Any] = Field(
-        default_factory=dict, description="Keyword arguments to pass to the function"
-    )
+    args: tuple = Field(default=(), description="Positional arguments to pass to the function")
+    kwargs: dict[str, Any] = Field(default_factory=dict, description="Keyword arguments to pass to the function")

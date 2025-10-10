@@ -2,9 +2,11 @@
 Temporal History simulation strategy implementation.
 """
 
-from typing import Dict, List
+from __future__ import annotations
+
+from typing import Any, Dict, List, Optional
+
 import structlog
-from typing import Any, Optional
 
 from zamp_public_workflow_sdk.simulation.models.simulation_response import (
     SimulationStrategyOutput,
@@ -17,7 +19,6 @@ from zamp_public_workflow_sdk.temporal.workflow_history.models.fetch_temporal_wo
     FetchTemporalWorkflowHistoryInput,
     FetchTemporalWorkflowHistoryOutput,
 )
-
 
 logger = structlog.get_logger(__name__)
 
@@ -40,8 +41,8 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
 
     async def execute(
         self,
-        node_ids: List[str],
-        temporal_history: Optional[WorkflowHistory] = None,
+        node_ids: list[str],
+        temporal_history: WorkflowHistory | None = None,
     ) -> SimulationStrategyOutput:
         """
         Execute Temporal History strategy.
@@ -72,9 +73,7 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
             )
             return SimulationStrategyOutput()
 
-    async def _fetch_temporal_history(
-        self, node_ids: List[str]
-    ) -> Optional[WorkflowHistory]:
+    async def _fetch_temporal_history(self, node_ids: list[str]) -> WorkflowHistory | None:
         """
         Fetch temporal workflow history for reference workflow.
 
@@ -106,8 +105,8 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
             return None
 
     async def _extract_node_output(
-        self, temporal_history: WorkflowHistory, node_ids: List[str]
-    ) -> Dict[str, Optional[Any]]:
+        self, temporal_history: WorkflowHistory, node_ids: list[str]
+    ) -> dict[str, Any | None]:
         """
         Extract output for specific nodes from temporal history.
 

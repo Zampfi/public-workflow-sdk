@@ -84,9 +84,7 @@ def get_reference_from_fqn(fqn: str) -> type:
 
             # Do not split if it's a dict[int, int] where there is a comma between [ ]
             args = fqn[fqn.index("[") + 1 : fqn.rindex("]")]
-            args_types = [
-                get_reference_from_fqn(arg.strip()) for arg in get_split_args(args)
-            ]
+            args_types = [get_reference_from_fqn(arg.strip()) for arg in get_split_args(args)]
 
             if hasattr(cls, "__origin__"):
                 return cls.__origin__[tuple(args_types)]
@@ -135,16 +133,10 @@ def is_pydantic_model(type_hint: Any) -> bool:
 
 
 def is_union_type(type_hint) -> bool:
-    if (
-        getattr(type_hint, "__origin__", None) is typing.Union
-        or getattr(type_hint, "__class__", None) is typing.Union
-    ):
+    if getattr(type_hint, "__origin__", None) is typing.Union or getattr(type_hint, "__class__", None) is typing.Union:
         return True
 
-    if (
-        getattr(type_hint, "__origin__", None) is UnionType
-        or getattr(type_hint, "__class__", None) is UnionType
-    ):
+    if getattr(type_hint, "__origin__", None) is UnionType or getattr(type_hint, "__class__", None) is UnionType:
         return True
 
 

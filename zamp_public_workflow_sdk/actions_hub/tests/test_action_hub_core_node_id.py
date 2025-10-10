@@ -13,8 +13,7 @@ import pytest
 
 from zamp_public_workflow_sdk.actions_hub.action_hub_core import ActionsHub
 from zamp_public_workflow_sdk.actions_hub.constants import ExecutionMode
-from zamp_public_workflow_sdk.temporal.interceptors.node_id_interceptor import \
-    NODE_ID_HEADER_KEY
+from zamp_public_workflow_sdk.temporal.interceptors.node_id_interceptor import NODE_ID_HEADER_KEY
 
 
 # Global test classes for workflow tests
@@ -102,12 +101,8 @@ class TestActionsHubNodeIdGeneration:
         assert result == "TestActionsHubNodeIdGeneration"
 
     @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.info")
-    @patch(
-        "zamp_public_workflow_sdk.actions_hub.action_hub_core.get_execution_mode_from_context"
-    )
-    def test_get_current_workflow_id_workflow_mode(
-        self, mock_get_mode, mock_workflow_info
-    ):
+    @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.get_execution_mode_from_context")
+    def test_get_current_workflow_id_workflow_mode(self, mock_get_mode, mock_workflow_info):
         """Test _get_current_workflow_id in workflow mode."""
         mock_get_mode.return_value = ExecutionMode.TEMPORAL
         mock_workflow_info.return_value = Mock(workflow_id="test-workflow-123")
@@ -115,12 +110,8 @@ class TestActionsHubNodeIdGeneration:
         result = ActionsHub._get_current_workflow_id()
         assert result == "test-workflow-123"
 
-    @patch(
-        "zamp_public_workflow_sdk.actions_hub.action_hub_core.get_execution_mode_from_context"
-    )
-    @patch(
-        "zamp_public_workflow_sdk.actions_hub.action_hub_core.get_variable_from_context"
-    )
+    @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.get_execution_mode_from_context")
+    @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.get_variable_from_context")
     def test_get_current_workflow_id_api_mode(self, mock_get_variable, mock_get_mode):
         """Test _get_current_workflow_id in API mode."""
         mock_get_mode.return_value = ExecutionMode.API
@@ -130,12 +121,8 @@ class TestActionsHubNodeIdGeneration:
         assert result == "test-request-456"
 
     @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.info")
-    @patch(
-        "zamp_public_workflow_sdk.actions_hub.action_hub_core.get_execution_mode_from_context"
-    )
-    def test_get_current_workflow_id_workflow_exception(
-        self, mock_get_mode, mock_workflow_info
-    ):
+    @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.get_execution_mode_from_context")
+    def test_get_current_workflow_id_workflow_exception(self, mock_get_mode, mock_workflow_info):
         """Test _get_current_workflow_id when workflow.info() raises exception."""
         mock_get_mode.return_value = ExecutionMode.TEMPORAL
         mock_workflow_info.side_effect = Exception("Workflow not available")
@@ -155,22 +142,16 @@ class TestActionsHubNodeIdGeneration:
         result2 = ActionsHub._get_node_id("test-workflow", "TestActivity")
         assert result2 == "TestActivity#2"
 
-    @patch(
-        "zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.payload_converter"
-    )
+    @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.payload_converter")
     @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.info")
-    def test_get_node_id_with_parent_node_id(
-        self, mock_workflow_info, mock_payload_converter
-    ):
+    def test_get_node_id_with_parent_node_id(self, mock_workflow_info, mock_payload_converter):
         """Test node ID generation with parent node ID."""
         # Mock the payload converter
         mock_converter = Mock()
         mock_converter.from_payload.return_value = "ParentWorkflow#1"
         mock_payload_converter.return_value = mock_converter
 
-        mock_workflow_info.return_value = Mock(
-            headers={NODE_ID_HEADER_KEY: "mock_payload"}
-        )
+        mock_workflow_info.return_value = Mock(headers={NODE_ID_HEADER_KEY: "mock_payload"})
 
         result = ActionsHub._get_node_id("test-workflow", "TestActivity")
         assert result == "ParentWorkflow#1.TestActivity#1"
@@ -204,9 +185,7 @@ class TestActionsHubNodeIdGeneration:
     def test_get_node_id_tracker_state(self):
         """Test getting node ID tracker state."""
         # Generate some node IDs to populate the tracker
-        with patch(
-            "zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.info"
-        ) as mock_workflow_info:
+        with patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.info") as mock_workflow_info:
             mock_workflow_info.return_value = Mock(headers=None)
 
             ActionsHub._get_node_id("workflow1", "Activity1")
@@ -223,9 +202,7 @@ class TestActionsHubNodeIdGeneration:
     def test_clear_node_id_tracker(self):
         """Test clearing the node ID tracker."""
         # Generate some node IDs to populate the tracker
-        with patch(
-            "zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.info"
-        ) as mock_workflow_info:
+        with patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.info") as mock_workflow_info:
             mock_workflow_info.return_value = Mock(headers=None)
 
             ActionsHub._get_node_id("workflow1", "Activity1")
@@ -241,36 +218,22 @@ class TestActionsHubNodeIdGeneration:
         state = ActionsHub.get_node_id_tracker_state()
         assert len(state) == 0
 
-    @patch(
-        "zamp_public_workflow_sdk.actions_hub.action_hub_core.ActionsHub._get_current_workflow_id"
-    )
-    @patch(
-        "zamp_public_workflow_sdk.actions_hub.action_hub_core.ActionsHub._get_node_id"
-    )
-    def test_generate_node_id_for_action_success(
-        self, mock_get_node_id, mock_get_workflow_id
-    ):
+    @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.ActionsHub._get_current_workflow_id")
+    @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.ActionsHub._get_node_id")
+    def test_generate_node_id_for_action_success(self, mock_get_node_id, mock_get_workflow_id):
         """Test successful node ID generation for action."""
         mock_get_workflow_id.return_value = "test-workflow"
         mock_get_node_id.return_value = "TestActivity#1"
 
-        action_name, workflow_id, node_id = ActionsHub._generate_node_id_for_action(
-            "test_activity"
-        )
+        action_name, workflow_id, node_id = ActionsHub._generate_node_id_for_action("test_activity")
 
         assert action_name == "test_activity"
         assert workflow_id == "test-workflow"
         assert node_id == "TestActivity#1"
 
-    @patch(
-        "zamp_public_workflow_sdk.actions_hub.action_hub_core.ActionsHub._get_current_workflow_id"
-    )
-    @patch(
-        "zamp_public_workflow_sdk.actions_hub.action_hub_core.ActionsHub._get_node_id"
-    )
-    def test_generate_node_id_for_action_with_function(
-        self, mock_get_node_id, mock_get_workflow_id
-    ):
+    @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.ActionsHub._get_current_workflow_id")
+    @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.ActionsHub._get_node_id")
+    def test_generate_node_id_for_action_with_function(self, mock_get_node_id, mock_get_workflow_id):
         """Test node ID generation for action with function input."""
 
         def test_function():
@@ -279,17 +242,13 @@ class TestActionsHubNodeIdGeneration:
         mock_get_workflow_id.return_value = "test-workflow"
         mock_get_node_id.return_value = "TestActionsHubNodeIdGeneration#1"
 
-        action_name, workflow_id, node_id = ActionsHub._generate_node_id_for_action(
-            test_function
-        )
+        action_name, workflow_id, node_id = ActionsHub._generate_node_id_for_action(test_function)
 
         assert action_name == "TestActionsHubNodeIdGeneration"
         assert workflow_id == "test-workflow"
         assert node_id == "TestActionsHubNodeIdGeneration#1"
 
-    @patch(
-        "zamp_public_workflow_sdk.actions_hub.action_hub_core.ActionsHub._get_current_workflow_id"
-    )
+    @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.ActionsHub._get_current_workflow_id")
     def test_generate_node_id_for_action_exception(self, mock_get_workflow_id):
         """Test node ID generation when exception occurs."""
         mock_get_workflow_id.side_effect = Exception("Test exception")
@@ -312,21 +271,13 @@ class TestActionsHubNodeIdIntegration:
         ActionsHub.clear_node_id_tracker()
 
     @pytest.mark.asyncio
-    @patch(
-        "zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.execute_activity"
-    )
-    @patch(
-        "zamp_public_workflow_sdk.actions_hub.action_hub_core.get_execution_mode_from_context"
-    )
+    @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.execute_activity")
+    @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.get_execution_mode_from_context")
     @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.info")
-    async def test_execute_activity_with_node_id(
-        self, mock_workflow_info, mock_get_mode, mock_execute_activity
-    ):
+    async def test_execute_activity_with_node_id(self, mock_workflow_info, mock_get_mode, mock_execute_activity):
         """Test execute_activity generates and uses node ID."""
         mock_get_mode.return_value = ExecutionMode.TEMPORAL
-        mock_workflow_info.return_value = Mock(
-            workflow_id="test-workflow", headers=None
-        )
+        mock_workflow_info.return_value = Mock(workflow_id="test-workflow", headers=None)
         mock_execute_activity.return_value = "activity_result"
 
         # Register a test activity
@@ -347,21 +298,13 @@ class TestActionsHubNodeIdIntegration:
         assert node_id_arg["__temporal_node_id"].startswith("test_activity#")
 
     @pytest.mark.asyncio
-    @patch(
-        "zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.execute_child_workflow"
-    )
-    @patch(
-        "zamp_public_workflow_sdk.actions_hub.action_hub_core.get_execution_mode_from_context"
-    )
+    @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.execute_child_workflow")
+    @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.get_execution_mode_from_context")
     @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.info")
-    async def test_execute_child_workflow_with_node_id(
-        self, mock_workflow_info, mock_get_mode, mock_execute_child
-    ):
+    async def test_execute_child_workflow_with_node_id(self, mock_workflow_info, mock_get_mode, mock_execute_child):
         """Test execute_child_workflow generates and uses node ID."""
         mock_get_mode.return_value = ExecutionMode.TEMPORAL
-        mock_workflow_info.return_value = Mock(
-            workflow_id="test-workflow", headers=None
-        )
+        mock_workflow_info.return_value = Mock(workflow_id="test-workflow", headers=None)
         mock_execute_child.return_value = "workflow_result"
 
         result = await ActionsHub.execute_child_workflow("TestWorkflow")
@@ -377,16 +320,12 @@ class TestActionsHubNodeIdIntegration:
         assert node_id_arg["__temporal_node_id"].startswith("TestWorkflow#")
 
     @pytest.mark.asyncio
-    @patch(
-        "zamp_public_workflow_sdk.actions_hub.action_hub_core.get_execution_mode_from_context"
-    )
+    @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.get_execution_mode_from_context")
     @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.info")
     async def test_execute_activity_api_mode(self, mock_workflow_info, mock_get_mode):
         """Test execute_activity in API mode bypasses Temporal."""
         mock_get_mode.return_value = ExecutionMode.API
-        mock_workflow_info.return_value = Mock(
-            workflow_id="test-workflow", headers=None
-        )
+        mock_workflow_info.return_value = Mock(workflow_id="test-workflow", headers=None)
 
         # Register a test activity
         @ActionsHub.register_activity("Test activity")
@@ -399,18 +338,12 @@ class TestActionsHubNodeIdIntegration:
         assert result == "test_result"
 
     @pytest.mark.asyncio
-    @patch(
-        "zamp_public_workflow_sdk.actions_hub.action_hub_core.get_execution_mode_from_context"
-    )
+    @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.get_execution_mode_from_context")
     @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.info")
-    async def test_execute_child_workflow_api_mode(
-        self, mock_workflow_info, mock_get_mode
-    ):
+    async def test_execute_child_workflow_api_mode(self, mock_workflow_info, mock_get_mode):
         """Test execute_child_workflow in API mode bypasses Temporal."""
         mock_get_mode.return_value = ExecutionMode.API
-        mock_workflow_info.return_value = Mock(
-            workflow_id="test-workflow", headers=None
-        )
+        mock_workflow_info.return_value = Mock(workflow_id="test-workflow", headers=None)
 
         # Mock the workflow function
         async def mock_workflow_func(*args, **kwargs):
@@ -421,8 +354,7 @@ class TestActionsHubNodeIdIntegration:
             pass
 
         # Register the workflow manually
-        from zamp_public_workflow_sdk.actions_hub.models.workflow_models import \
-            Workflow
+        from zamp_public_workflow_sdk.actions_hub.models.workflow_models import Workflow
 
         ActionsHub._workflows["TestWorkflow"] = Workflow(
             name="TestWorkflow",
@@ -439,19 +371,18 @@ class TestActionsHubNodeIdIntegration:
 
     def test_node_id_hierarchy_generation(self):
         """Test hierarchical node ID generation for nested workflows."""
-        with patch(
-            "zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.payload_converter"
-        ) as mock_payload_converter, patch(
-            "zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.info"
-        ) as mock_workflow_info:
+        with (
+            patch(
+                "zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.payload_converter"
+            ) as mock_payload_converter,
+            patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.info") as mock_workflow_info,
+        ):
             # Mock parent workflow with node ID
             mock_converter = Mock()
             mock_converter.from_payload.return_value = "ParentWorkflow#1"
             mock_payload_converter.return_value = mock_converter
 
-            mock_workflow_info.return_value = Mock(
-                headers={NODE_ID_HEADER_KEY: "mock_payload"}
-            )
+            mock_workflow_info.return_value = Mock(headers={NODE_ID_HEADER_KEY: "mock_payload"})
 
             # Generate node ID for child activity
             result = ActionsHub._get_node_id("test-workflow", "ChildActivity")
@@ -463,9 +394,7 @@ class TestActionsHubNodeIdIntegration:
 
     def test_multiple_workflows_node_id_tracking(self):
         """Test node ID tracking across multiple workflows."""
-        with patch(
-            "zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.info"
-        ) as mock_workflow_info:
+        with patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.info") as mock_workflow_info:
             mock_workflow_info.return_value = Mock(headers=None)
 
             # Generate node IDs for different workflows
@@ -497,21 +426,15 @@ class TestActionsHubNodeIdEdgeCases:
         """Clean up after each test method."""
         ActionsHub.clear_node_id_tracker()
 
-    @patch(
-        "zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.payload_converter"
-    )
+    @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.payload_converter")
     @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.info")
-    def test_get_node_id_with_empty_parent_node_id(
-        self, mock_workflow_info, mock_payload_converter
-    ):
+    def test_get_node_id_with_empty_parent_node_id(self, mock_workflow_info, mock_payload_converter):
         """Test node ID generation when parent node ID is empty."""
         mock_converter = Mock()
         mock_converter.from_payload.return_value = None
         mock_payload_converter.return_value = mock_converter
 
-        mock_workflow_info.return_value = Mock(
-            headers={NODE_ID_HEADER_KEY: "mock_payload"}
-        )
+        mock_workflow_info.return_value = Mock(headers={NODE_ID_HEADER_KEY: "mock_payload"})
 
         result = ActionsHub._get_node_id("test-workflow", "TestActivity")
         assert result == "TestActivity#1"
@@ -597,9 +520,7 @@ class TestActionsHubNodeIdEdgeCases:
 
     def test_node_id_tracker_persistence_across_calls(self):
         """Test that node ID tracker persists state across multiple calls."""
-        with patch(
-            "zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.info"
-        ) as mock_workflow_info:
+        with patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.info") as mock_workflow_info:
             mock_workflow_info.return_value = Mock(headers=None)
 
             # First call

@@ -7,8 +7,7 @@ from temporalio import workflow
 # Import activity, passing it through the sandbox without reloading the module
 with workflow.unsafe.imports_passed_through():
     from sample.activity import final_activity, generate_joke, human_approval
-    from sample.params import (FinalActivityInput, HumanApprovalActivityInput,
-                               JokeActivityInput, WorkflowInput)
+    from sample.params import FinalActivityInput, HumanApprovalActivityInput, JokeActivityInput, WorkflowInput
 
 
 @workflow.defn
@@ -43,9 +42,7 @@ class JokeWorkflow:
 
         final_output = await workflow.execute_activity(
             final_activity,
-            FinalActivityInput(
-                joke=joke.joke, human_approved=human_approved.human_approved
-            ),
+            FinalActivityInput(joke=joke.joke, human_approved=human_approved.human_approved),
             start_to_close_timeout=timedelta(seconds=10),
         )
 
@@ -79,9 +76,7 @@ class TestWorkflow:
 
         final_output = await workflow.execute_activity(
             final_activity,
-            FinalActivityInput(
-                joke=joke.joke, human_approved=human_approved.human_approved
-            ),
+            FinalActivityInput(joke=joke.joke, human_approved=human_approved.human_approved),
             start_to_close_timeout=timedelta(seconds=5),
         )
 

@@ -2,8 +2,11 @@
 Custom Output simulation strategy implementation.
 """
 
-import structlog
+from __future__ import annotations
+
 from typing import Any, List, Optional
+
+import structlog
 
 from zamp_public_workflow_sdk.simulation.models.simulation_response import (
     SimulationStrategyOutput,
@@ -32,8 +35,8 @@ class CustomOutputStrategyHandler(BaseStrategy):
 
     async def execute(
         self,
-        node_ids: List[str],
-        temporal_history: Optional[WorkflowHistory] = None,
+        node_ids: list[str],
+        temporal_history: WorkflowHistory | None = None,
     ) -> SimulationStrategyOutput:
         """
         Execute Custom Output strategy.

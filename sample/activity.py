@@ -2,10 +2,15 @@ from __future__ import annotations
 
 from temporalio import activity
 
-from sample.params import (FinalActivityInput, FinalActivityOutput,
-                           HumanApprovalActivityInput,
-                           HumanApprovalActivityOutput, JokeActivityInput,
-                           JokeActivityOutput, YourParams)
+from sample.params import (
+    FinalActivityInput,
+    FinalActivityOutput,
+    HumanApprovalActivityInput,
+    HumanApprovalActivityOutput,
+    JokeActivityInput,
+    JokeActivityOutput,
+    YourParams,
+)
 
 
 @activity.defn
@@ -15,9 +20,7 @@ async def say_hello(params: YourParams) -> str:
 
 @activity.defn
 async def generate_joke(params: JokeActivityInput) -> JokeActivityOutput:
-    return JokeActivityOutput(
-        context=params.context, joke="Why did the chicken cross the road?"
-    )
+    return JokeActivityOutput(context=params.context, joke="Why did the chicken cross the road?")
 
 
 # human in the loop

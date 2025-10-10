@@ -6,18 +6,23 @@ from typing import Optional
 
 from pydantic import BaseModel
 
-from zamp_public_workflow_sdk.temporal.data_converters.pydantic_payload_converter import \
-    PydanticJSONPayloadConverter
+from zamp_public_workflow_sdk.temporal.data_converters.pydantic_payload_converter import PydanticJSONPayloadConverter
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.tests.test_models import (
-    TestModelCompositeModel, TestModelWithAny, TestModelWithGenericDictionary,
-    TestModelWithGenericTypeVar, TestModelWithInteger,
-    TestModelWithListOfIntegers, TestModelWithOptionalAny,
-    TestModelWithPydanticType, TestModelWithString, TestModelWithTuple,
-    TestModelWithUnion, TestModelWithUnionAndOptional)
-from zamp_public_workflow_sdk.temporal.data_converters.transformers.transformer import \
-    Transformer
-from zamp_public_workflow_sdk.temporal.data_converters.type_utils import \
-    get_fqn
+    TestModelCompositeModel,
+    TestModelWithAny,
+    TestModelWithGenericDictionary,
+    TestModelWithGenericTypeVar,
+    TestModelWithInteger,
+    TestModelWithListOfIntegers,
+    TestModelWithOptionalAny,
+    TestModelWithPydanticType,
+    TestModelWithString,
+    TestModelWithTuple,
+    TestModelWithUnion,
+    TestModelWithUnionAndOptional,
+)
+from zamp_public_workflow_sdk.temporal.data_converters.transformers.transformer import Transformer
+from zamp_public_workflow_sdk.temporal.data_converters.type_utils import get_fqn
 
 
 def test_pydantic_transformer_basic():
@@ -108,9 +113,7 @@ def test_pydantic_transformer_generic_type_var():
 
 def test_pydantic_transformer_generic_dictionary():
     test_model = TestModelWithInteger(integer=1)
-    model = TestModelWithGenericDictionary(
-        generic_dict={"key": 1, "key2": test_model, "key3": [test_model]}
-    )
+    model = TestModelWithGenericDictionary(generic_dict={"key": 1, "key2": test_model, "key3": [test_model]})
     serialized = Transformer.serialize(model).serialized_value
     assert serialized["generic_dict"]["key"] == 1
     assert serialized["generic_dict"]["key2"] == {"integer": 1, "__integer_type": "int"}
@@ -135,9 +138,7 @@ def test_pydantic_transformer_union():
 
 
 def test_pydantic_transformer_tuple():
-    model = TestModelWithTuple(
-        tuple=(1, "str", TestModelWithInteger(integer=3), {"key": "value"})
-    )
+    model = TestModelWithTuple(tuple=(1, "str", TestModelWithInteger(integer=3), {"key": "value"}))
     serialized = Transformer.serialize(model).serialized_value
     assert serialized["tuple"][0] == 1
     assert serialized["tuple"][1] == "str"
@@ -267,9 +268,7 @@ def test_pydantic_transformer_optional_any():
     deserialized = Transformer.deserialize(serialized, TestModelWithOptionalAny)
     assert deserialized.optional_any == TestModelWithInteger(integer=1)
 
-    model = TestModelWithOptionalAny(
-        optional_any={"key": 1, "key2": TestModelWithInteger(integer=2)}
-    )
+    model = TestModelWithOptionalAny(optional_any={"key": 1, "key2": TestModelWithInteger(integer=2)})
     serialized = Transformer.serialize(model).serialized_value
     assert serialized["optional_any"]["key"] == 1
     assert serialized["optional_any"]["key2"] == {"integer": 2, "__integer_type": "int"}
