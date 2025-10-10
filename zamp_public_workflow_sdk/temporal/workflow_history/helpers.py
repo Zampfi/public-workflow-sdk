@@ -3,8 +3,9 @@ Helper functions for temporal workflow history operations.
 """
 
 import base64
+from typing import Dict, List, Optional, Tuple
+
 import structlog
-from typing import List, Optional, Dict
 
 from zamp_public_workflow_sdk.temporal.workflow_history.constants import (
     EventType,
@@ -15,6 +16,9 @@ from zamp_public_workflow_sdk.temporal.workflow_history.constants import (
 
 from zamp_public_workflow_sdk.temporal.workflow_history.models.node_payload_data import (
     NodePayloadData,
+)
+from zamp_public_workflow_sdk.temporal.workflow_history.constants.constants import (
+    WorkflowExecutionField
 )
 
 logger = structlog.get_logger(__name__)
@@ -228,6 +232,27 @@ def _track_event_with_node_id(
         )
 
 
+def _add_event_to_node_events(
+    node_id: str,
+    event: dict,
+    event_type: str,
+    node_ids: Optional[List[str]],
+    node_payloads: Dict[str, "NodePayloadData"],
+) -> None:
+    """Add event to node's event list if node_id matches filter."""
+    if node_id and _should_include_node_id(node_id, node_ids):
+        if node_id not in node_payloads:
+            node_payloads[node_id] = NodePayloadData(
+                node_id=node_id, node_events=[]
+            )
+        node_payloads[node_id].node_events.append(event)
+        logger.info(
+            "Added event to node",
+            node_id=node_id,
+            event_type=event_type,
+        )
+
+
 def _add_event_and_payload(
     node_id: str,
     event: dict,
@@ -333,6 +358,9 @@ def extract_node_payloads(
             event_id=event_id,
         )
 
+        node_id = None
+        payload_field = None
+
         # Handle workflow execution started
         if event_type == EventType.WORKFLOW_EXECUTION_STARTED.value:
             result = _process_event_with_input_payload(
@@ -342,6 +370,16 @@ def extract_node_payloads(
                 continue
             node_id, payload_field = result
             workflow_node_id = node_id
+        
+        # Handle child workflow execution started (contains workflow_id and run_id)
+        if event_type == EventType.CHILD_WORKFLOW_EXECUTION_STARTED.value:
+            # extracting child workflow execution info (workflow_id, run_id)
+            extracted_node_id = extract_node_id_from_event(event)
+            _add_event_to_node_events(
+                extracted_node_id, event, event_type, node_ids, node_payloads
+            )
+            # Don't process further for this event type
+            continue
 
         # Handle workflow execution completed
         if event_type == EventType.WORKFLOW_EXECUTION_COMPLETED.value:
@@ -398,6 +436,10 @@ def extract_node_payloads(
                 continue
             node_id, payload_field = result
 
+        # Skip if we didn't extract a node_id for this event
+        if not node_id or not payload_field:
+            continue
+
         # Skip if node_id is not in target list
         if not _should_include_node_id(node_id, node_ids):
             continue
@@ -413,3 +455,60 @@ def extract_node_payloads(
         child_workflow_initiated_count=len(child_workflow_initiated_events),
     )
     return node_payloads
+
+
+def get_child_workflow_workflow_id_run_id(
+    events: List[dict], node_id: str
+) -> Optional[Tuple[str, str]]:
+    """
+    Get child workflow's workflow_id and run_id from CHILD_WORKFLOW_EXECUTION_STARTED event.
+
+    Args:
+        events: List of workflow events
+        node_id: The node ID of the child workflow (e.g., "ChildWorkflow#1")
+
+    Returns:
+        Tuple of (workflow_id, run_id) if found, None otherwise
+    """
+    logger.info(
+        "Getting child workflow workflow_id and run_id",
+        node_id=node_id,
+        event_count=len(events),
+    )
+
+    # Get node data for the specified child workflow
+    node_data = get_node_data_from_node_id(events, node_id)
+    if not node_data or node_id not in node_data:
+        logger.info("No node data found", node_id=node_id)
+        return None
+
+    node_payload_data = node_data[node_id]
+
+    # Find the CHILD_WORKFLOW_EXECUTION_STARTED event which contains workflow_id and run_id
+    for event in node_payload_data.node_events:
+        event_type = event.get(EventField.EVENT_TYPE.value)
+
+        if event_type != EventType.CHILD_WORKFLOW_EXECUTION_STARTED.value:
+            continue
+
+        # Extract attributes from the event
+        attrs_key = EventTypeToAttributesKey.CHILD_WORKFLOW_EXECUTION_STARTED.value
+        attrs = event.get(attrs_key)
+        if not attrs:
+            continue
+
+        # Extract workflow execution details
+        workflow_execution = attrs.get(
+            WorkflowExecutionField.WORKFLOW_EXECUTION.value, {}
+        )
+        child_workflow_id = workflow_execution.get(
+            WorkflowExecutionField.WORKFLOW_ID.value
+        )
+        child_run_id = workflow_execution.get(WorkflowExecutionField.RUN_ID.value)
+
+        # Validate both IDs are present before returning
+        if child_workflow_id and child_run_id:
+            return (child_workflow_id, child_run_id)
+
+    logger.info("No child workflow workflow_id and run_id found", node_id=node_id)
+    return None
