@@ -20,7 +20,6 @@ from zamp_public_workflow_sdk.temporal.workflow_history.models.fetch_temporal_wo
 )
 logger = structlog.get_logger(__name__)
 
-# Constants
 MAIN_WORKFLOW_IDENTIFIER = "main_workflow"  # Identifier for top-level workflow nodes
 
 
@@ -77,7 +76,6 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
             if temporal_history is not None:
                 output = await self._extract_node_output(temporal_history, node_ids)
                 simulation_strategy_output = SimulationStrategyOutput(node_outputs=output)
-                logger.info("Extracted node outputs", node_outputs=simulation_strategy_output.model_dump_json())
                 return simulation_strategy_output
 
             return SimulationStrategyOutput()
@@ -160,8 +158,6 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
             nodes_by_parent = self._group_nodes_by_parent_workflow(node_ids)
             all_node_outputs = {}
             
-            # Shared cache for workflow histories to avoid duplicate fetches
-            # Also pre-collect all node_ids needed from each workflow path
             cached_histories = {}
             workflow_nodes_needed = self._collect_nodes_per_workflow(node_ids)
 

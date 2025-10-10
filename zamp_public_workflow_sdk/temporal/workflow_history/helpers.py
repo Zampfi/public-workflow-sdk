@@ -394,11 +394,12 @@ def extract_node_payloads(
                 EventField.SCHEDULED_EVENT_ID,
                 activity_scheduled_events,
             )
-            if result:
-                node_id, payload_field = result
+            if not result:
+                continue
+            node_id, payload_field = result
 
         # Handle activity task scheduled
-        elif event_type == EventType.ACTIVITY_TASK_SCHEDULED.value:
+        if event_type == EventType.ACTIVITY_TASK_SCHEDULED.value:
             result = _process_event_with_input_payload(
                 event, EventType.ACTIVITY_TASK_SCHEDULED
             )
