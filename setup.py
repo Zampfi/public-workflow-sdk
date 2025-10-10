@@ -4,7 +4,7 @@ from setuptools import setup
 
 setup(
     name="zamp_public_workflow_sdk",
-    version="0.0.118",
+    version="0.0.124",
     description="Workflow Manager",
     url="https://github.com/zamp-engineering/workflow_manager",
     author="Zamp Engineering",
@@ -15,6 +15,11 @@ setup(
         "zamp_public_workflow_sdk.actions_hub",
         "zamp_public_workflow_sdk.actions_hub.models",
         "zamp_public_workflow_sdk.actions_hub.utils",
+        "zamp_public_workflow_sdk.simulation",
+        "zamp_public_workflow_sdk.simulation.constants",
+        "zamp_public_workflow_sdk.simulation.models",
+        "zamp_public_workflow_sdk.simulation.strategies",
+        "zamp_public_workflow_sdk.simulation.workflows",
         "zamp_public_workflow_sdk.temporal",
         "zamp_public_workflow_sdk.temporal.models",
         "zamp_public_workflow_sdk.temporal.codec",
@@ -22,6 +27,9 @@ setup(
         "zamp_public_workflow_sdk.temporal.data_converters.transformers",
         "zamp_public_workflow_sdk.temporal.data_converters.transformers.collections",
         "zamp_public_workflow_sdk.temporal.interceptors",
+        "zamp_public_workflow_sdk.temporal.workflow_history",
+        "zamp_public_workflow_sdk.temporal.workflow_history.constants",
+        "zamp_public_workflow_sdk.temporal.workflow_history.models",
     ],
     install_requires=[
         "pydantic",

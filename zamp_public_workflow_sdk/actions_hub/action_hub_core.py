@@ -13,38 +13,60 @@ from collections import defaultdict
 
 from temporalio import activity, workflow
 
-from zamp_public_workflow_sdk.temporal.interceptors.node_id_interceptor import \
-    NODE_ID_HEADER_KEY
+from zamp_public_workflow_sdk.temporal.interceptors.node_id_interceptor import (
+    NODE_ID_HEADER_KEY,
+)
 
-from .constants import DEFAULT_MODE
+from .constants import DEFAULT_MODE, SKIP_SIMULATION_WORKFLOWS
 from .models.mcp_models import MCPConfig
 
 with workflow.unsafe.imports_passed_through():
     from datetime import timedelta
     from functools import wraps
     from pathlib import Path
-    from typing import Any, Callable, Dict, List, Optional, Union
+    from typing import Any, Callable
 
     import structlog
 
-    from zamp_public_workflow_sdk.temporal.data_converters.type_utils import \
-        get_fqn
-    from zamp_public_workflow_sdk.temporal.interceptors.node_id_interceptor import \
-        TEMPORAL_NODE_ID_KEY
+    from zamp_public_workflow_sdk.simulation.models import (
+        ExecutionType,
+        SimulationConfig,
+        SimulationResponse,
+    )
+    from zamp_public_workflow_sdk.simulation.workflow_simulation_service import (
+        WorkflowSimulationService,
+    )
+    from zamp_public_workflow_sdk.temporal.data_converters.type_utils import get_fqn
+    from zamp_public_workflow_sdk.temporal.interceptors.node_id_interceptor import (
+        TEMPORAL_NODE_ID_KEY,
+    )
 
     from .constants import ActionType, ExecutionMode
-    from .helper import (find_connection_id_path, inject_connection_id,
-                         remove_connection_id)
+    from .helper import (
+        find_connection_id_path,
+        inject_connection_id,
+        remove_connection_id,
+    )
     from .models.activity_models import Activity
     from .models.business_logic_models import BusinessLogic
-    from .models.core_models import (Action, ActionFilter, CodeExecutorConfig,
-                                     ExecuteCodeParams, RetryPolicy)
+    from .models.core_models import (
+        Action,
+        ActionFilter,
+        CodeExecutorConfig,
+        ExecuteCodeParams,
+        RetryPolicy,
+    )
     from .models.credentials_models import ActionConnectionsMapping
     from .models.decorators import external
-    from .models.workflow_models import (PLATFORM_WORKFLOW_LABEL, Workflow,
-                                         WorkflowCoordinates)
-    from .utils.context_utils import (get_execution_mode_from_context,
-                                      get_variable_from_context)
+    from .models.workflow_models import (
+        PLATFORM_WORKFLOW_LABEL,
+        Workflow,
+        WorkflowCoordinates,
+    )
+    from .utils.context_utils import (
+        get_execution_mode_from_context,
+        get_variable_from_context,
+    )
     from .utils.datetime_utils import convert_iso_to_timedelta
 
     logger = structlog.get_logger(__name__)
@@ -66,6 +88,9 @@ class ActionsHub:
 
     # Thread lock for thread-safe access to _node_id_tracker
     _node_id_lock = threading.Lock()
+
+    # Simulation
+    _workflow_id_to_simulation_map: dict[str, WorkflowSimulationService] = {}
 
     @classmethod
     def register_action_list(cls, action_list: list[ActionConnectionsMapping]):
@@ -162,6 +187,93 @@ class ActionsHub:
             node_id = f"{tracking_key}#{count}"
 
         return node_id
+
+    @classmethod
+    def _get_simulation_response(
+        cls,
+        workflow_id: str,
+        node_id: str,
+        action: str | Callable = None,
+        return_type: type | None = None,
+    ) -> SimulationResponse:
+        """Get simulation response for a workflow execution and handle return type conversion."""
+
+        action_name = cls._get_action_name(action)
+        if action_name and action_name in SKIP_SIMULATION_WORKFLOWS:
+            return SimulationResponse(
+                execution_type=ExecutionType.EXECUTE, execution_response=None
+            )
+
+        simulation = cls.get_simulation_from_workflow_id(workflow_id)
+        if not simulation:
+            return SimulationResponse(
+                execution_type=ExecutionType.EXECUTE, execution_response=None
+            )
+
+        simulation_response = simulation.get_simulation_response(node_id)
+        if simulation_response.execution_type == ExecutionType.MOCK:
+            if return_type is None and action:
+                return_type = cls._get_action_return_type(action)
+
+            simulation_response.execution_response = cls._convert_result_to_model(
+                result=simulation_response.execution_response, return_type=return_type
+            )
+
+        return simulation_response
+
+    @classmethod
+    def _get_action_return_type(cls, action_name: str | Callable) -> type | None:
+        """Get the return type from action using unified Action interface."""
+        if isinstance(action_name, str):
+            name = action_name
+        else:
+            name = action_name.__name__
+        actions = cls.get_available_actions(ActionFilter(name=name))
+        if actions:
+            return actions[0].returns
+
+        return None
+
+    @classmethod
+    def _convert_result_to_model(cls, result: Any, return_type: type | None) -> Any:
+        """Convert result to Pydantic model if return_type is specified and result is a dict."""
+        if not return_type or result is None:
+            return result
+
+        if hasattr(return_type, "model_validate") and isinstance(result, dict):
+            try:
+                return return_type.model_validate(result)
+            except Exception as e:
+                logger.warning(
+                    "Failed to convert simulation result to Pydantic model %s: %s",
+                    return_type.__name__,
+                    e,
+                )
+                return result
+
+        return result
+
+    @classmethod
+    async def init_simulation_for_workflow(
+        cls, simulation_config: SimulationConfig, workflow_id: str
+    ) -> None:
+        """
+        Initialize simulation for a workflow.
+
+        Args:
+            simulation_config: Simulation configuration
+            workflow_id: Workflow ID to associate with simulation
+        """
+        simulation_service = WorkflowSimulationService(simulation_config)
+        cls._workflow_id_to_simulation_map[workflow_id] = simulation_service
+        await simulation_service._initialize_simulation_data()
+        logger.info("Simulation initialized for workflow", workflow_id=workflow_id)
+
+    @classmethod
+    def get_simulation_from_workflow_id(
+        cls, workflow_id: str
+    ) -> WorkflowSimulationService:
+        return cls._workflow_id_to_simulation_map.get(workflow_id)
 
     @classmethod
     def _get_current_workflow_id(cls) -> str:
@@ -298,36 +410,15 @@ class ActionsHub:
         task_queue: str | None = None,
         **kwargs,
     ):
-        # Generate node_id for this activity execution
-        activity_name, workflow_id, node_id = cls._generate_node_id_for_action(activity)
-
-        # Note: retry_policy.initial_interval and maximum_interval are already timedelta objects
-
-        # Convert ISO string to timedelta
-        retry_policy.initial_interval = convert_iso_to_timedelta(
-            retry_policy.initial_interval
-        )
-        retry_policy.maximum_interval = convert_iso_to_timedelta(
-            retry_policy.maximum_interval
-        )
         # Check if execution_mode is set to "API" in context variables
         if execution_mode is None:
             execution_mode = get_execution_mode_from_context()
-
-        logger.info(
-            "Executing activity",
-            execution_mode=execution_mode,
-            activity_name=activity_name,
-            node_id=node_id,
-            workflow_id=workflow_id,
-        )
 
         if execution_mode == ExecutionMode.API:
             # Direct function execution mode - bypass Temporal
             logger.info(
                 "Executing activity in API mode, bypassing Temporal",
-                activity_name=activity_name,
-                node_id=node_id,
+                activity_name=cls._get_action_name(activity),
             )
 
             # Get the activity function
@@ -345,8 +436,42 @@ class ActionsHub:
             else:
                 return func(*args)
 
+        # Generate node_id for this activity execution
+        activity_name, workflow_id, node_id = cls._generate_node_id_for_action(activity)
+
+        # Check for simulation result
+        simulation_result = cls._get_simulation_response(
+            workflow_id=workflow_id,
+            node_id=node_id,
+            action=activity,
+            return_type=return_type,
+        )
+        if simulation_result.execution_type == ExecutionType.MOCK:
+            logger.info(
+                "Activity mocked",
+                node_id=node_id,
+            )
+            return simulation_result.execution_response
+
+        # Temporal execution mode
+        # Convert ISO string to timedelta
+        retry_policy.initial_interval = convert_iso_to_timedelta(
+            retry_policy.initial_interval
+        )
+        retry_policy.maximum_interval = convert_iso_to_timedelta(
+            retry_policy.maximum_interval
+        )
+
         node_id_arg = {TEMPORAL_NODE_ID_KEY: node_id}
         args = (node_id_arg,) + args
+
+        # Executing in temporal mode
+        logger.info(
+            "Executing activity",
+            activity_name=activity_name,
+            node_id=node_id,
+            workflow_id=workflow_id,
+        )
 
         return await workflow.execute_activity(
             activity,
@@ -511,26 +636,12 @@ class ActionsHub:
         result_type: type | None = None,
         **kwargs,
     ):
-        # Generate node_id for this child workflow execution
-        child_workflow_name, workflow_id, node_id = cls._generate_node_id_for_action(
-            workflow_name
-        )
-
         execution_mode = get_execution_mode_from_context()
-        logger.info(
-            "Executing child workflow",
-            execution_mode=execution_mode,
-            workflow_name=child_workflow_name,
-            node_id=node_id,
-            workflow_id=workflow_id,
-        )
-
         if execution_mode == ExecutionMode.API:
             # Direct function execution mode - bypass Temporal
             logger.info(
                 "Executing child workflow in API mode, bypassing Temporal",
-                workflow_name=child_workflow_name,
-                node_id=node_id,
+                workflow_name=cls._get_action_name(workflow_name),
             )
 
             # Get the workflow function
@@ -555,8 +666,37 @@ class ActionsHub:
             else:
                 return func(*args)
 
+        # Generate node_id for this child workflow execution
+        child_workflow_name, workflow_id, node_id = cls._generate_node_id_for_action(
+            workflow_name
+        )
+
+        # Check for simulation result
+        simulation_result = cls._get_simulation_response(
+            workflow_id=workflow_id,
+            node_id=node_id,
+            action=workflow_name,
+            return_type=result_type,
+        )
+
+        if simulation_result.execution_type == ExecutionType.MOCK:
+            logger.info(
+                "Child workflow mocked",
+                node_id=node_id,
+            )
+            return simulation_result.execution_response
+
+        # Temporal execution mode
         node_id_arg = {TEMPORAL_NODE_ID_KEY: node_id}
         args = (node_id_arg,) + args
+
+        # Executing in temporal mode
+        logger.info(
+            "Executing child workflow",
+            workflow_name=child_workflow_name,
+            node_id=node_id,
+            workflow_id=workflow_id,
+        )
 
         return await workflow.execute_child_workflow(
             workflow_name,
@@ -577,6 +717,21 @@ class ActionsHub:
         child_workflow_name, workflow_id, node_id = cls._generate_node_id_for_action(
             workflow_name
         )
+
+        # Check for simulation result
+        simulation_result = cls._get_simulation_response(
+            workflow_id=workflow_id,
+            node_id=node_id,
+            action=workflow_name,
+            return_type=result_type,
+        )
+        if simulation_result.execution_type == ExecutionType.MOCK:
+            logger.info(
+                "Child workflow mocked",
+                activity_name=workflow_name,
+                node_id=node_id,
+            )
+            return simulation_result.execution_response
 
         logger.info(
             "Starting child workflow",

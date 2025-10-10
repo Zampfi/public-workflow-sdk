@@ -4,7 +4,7 @@ Data models for credential management - independent of Pantheon platform.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -15,7 +15,12 @@ from .decorators import external
 class ConnectionIdentifier(BaseModel):
     """Connection identifier model."""
 
-    connection_id: str = Field(description="Connection id from Application Platform")
+    connection_id: str | None = Field(
+        default=None, description="Connection id from Application Platform"
+    )
+    credential_id: str | None = Field(
+        default=None, description="Credential id from Application Platform"
+    )
     organization_id: str | None = Field(
         default=None, description="Organization id from Application Platform"
     )

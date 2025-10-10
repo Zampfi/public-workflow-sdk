@@ -4,14 +4,17 @@ Helper functions for temporal workflow history operations.
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional
-
 import structlog
 
 from zamp_public_workflow_sdk.temporal.workflow_history.constants import (
-    EventField, EventType, EventTypeToAttributesKey, PayloadField)
-from zamp_public_workflow_sdk.temporal.workflow_history.models.node_payload_data import \
-    NodePayloadData
+    EventField,
+    EventType,
+    EventTypeToAttributesKey,
+    PayloadField,
+)
+from zamp_public_workflow_sdk.temporal.workflow_history.models.node_payload_data import (
+    NodePayloadData,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -320,6 +323,8 @@ def extract_node_payloads(
     for event_index, event in enumerate(events):
         event_type = event.get(EventField.EVENT_TYPE.value)
         event_id = event.get(EventField.EVENT_ID.value)
+        node_id = None
+        payload_field = None
         logger.info(
             "Processing event",
             event_index=event_index,
