@@ -7,15 +7,10 @@ repos:
     rev: v4.1.0
     hooks:
       - id: check-added-large-files
-        types: [python]
       - id: check-case-conflict
-        types: [python]
       - id: check-merge-conflict
-        types: [python]
       - id: check-symlinks
-        types: [python]
       - id: check-yaml
-        types: [python]
       - id: debug-statements
         language_version: python3.12
         types: [python]
@@ -24,7 +19,6 @@ repos:
       - id: mixed-line-ending
         types: [python]
       - id: requirements-txt-fixer
-        types: [python]
       - id: trailing-whitespace
         types: [python]
 
@@ -57,18 +51,14 @@ repos:
       - id: python-use-type-annotations
         types: [python]
       - id: rst-backticks
-        types: [python]
       - id: rst-directive-colons
-        types: [python]
       - id: rst-inline-touching-normal
-        types: [python]
 
   - repo: https://github.com/mgedmin/check-manifest
     rev: "0.47"
     hooks:
       - id: check-manifest
         stages: [manual]
-        types: [python]
 
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.10.0
