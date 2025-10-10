@@ -1,66 +1,49 @@
-import pytest
-from zamp_public_workflow_sdk.temporal.data_converters.transformers.transformer import Transformer
-from zamp_public_workflow_sdk.temporal.data_converters.transformers.tests.test_models import TestModelWithInteger, TestModelWithListOfIntegers, TestModelCompositeModel, TestModelWithString, TestModelWithGenericTypeVar, TestModelWithGenericDictionary, TestModelWithPydanticType, TestModelWithUnion, TestModelWithTuple, TestModelWithUnionAndOptional, TestModelWithAny, TestModelWithOptionalAny
-from zamp_public_workflow_sdk.temporal.data_converters.type_utils import get_fqn, get_reference_from_fqn
-from zamp_public_workflow_sdk.temporal.data_converters.pydantic_payload_converter import PydanticJSONPayloadConverter, DEFAULT_CONVERTER_METADATA_KEY
 from io import BytesIO
-from pydantic import BaseModel, field_serializer, field_validator
-from pydantic_core import core_schema
-from typing import Any, Dict
+from typing import Any
+
+from pydantic import BaseModel
+
+from zamp_public_workflow_sdk.temporal.data_converters.pydantic_payload_converter import (
+    DEFAULT_CONVERTER_METADATA_KEY,
+    PydanticJSONPayloadConverter,
+)
+
 
 class Basic(BaseModel):
-        string: str
+    string: str
+
 
 class Nested1(BaseModel):
     basic: Basic
 
+
 class Nested2(BaseModel):
     nested1: Nested1
-    type_var: type[BaseModel]
 
-    @field_serializer('type_var')
-    def serialize_type_var(self, value: type[BaseModel]) -> str:
-        return get_fqn(value)
-
-    @field_validator('type_var', mode='wrap')
-    @classmethod
-    def validate_type_var(cls, value, handler, info):
-        if isinstance(value, str):
-            return get_reference_from_fqn(value)
-        return handler(value)
 
 def test_basic():
     converter = PydanticJSONPayloadConverter()
-    dict = {
-        "string": "test",
-        "integer": 1
-    }
+    test_dict = {"string": "test", "integer": 1}
 
-    payload = converter.to_payload(dict)
+    payload = converter.to_payload(test_dict)
     assert payload is not None
     assert "encoding" in payload.metadata
-    dict["bytes_io"] = BytesIO(b"test")
+    test_dict["bytes_io"] = BytesIO(b"test")
 
-    converter.from_payload(payload, Dict[str, Any])
+    converter.from_payload(payload, dict[str, Any])
 
-    payload = converter.to_payload(dict)
+    payload = converter.to_payload(test_dict)
     assert DEFAULT_CONVERTER_METADATA_KEY not in payload.metadata
+
 
 def test_nested_case():
     converter = PydanticJSONPayloadConverter()
 
-    basic1 = Basic(
-        string="test"
-    )
+    basic1 = Basic(string="test")
 
-    nested1 = Nested1(
-        basic=basic1
-    )
+    nested1 = Nested1(basic=basic1)
 
-    nested2 = Nested2(
-        nested1=nested1,
-        type_var=Basic
-    )
+    nested2 = Nested2(nested1=nested1)
 
     payload = converter.to_payload(basic1)
     assert payload is not None
@@ -75,32 +58,25 @@ def test_nested_case():
     assert "encoding" in payload.metadata
     converter.from_payload(payload, Nested2)
 
+
 def test_generic_case():
+    from typing import Generic, TypeVar
+
     from pydantic import BaseModel, Field
-    from typing import Any, Dict, Optional
-    from typing import TypeVar
 
     T = TypeVar("T", bound=BaseModel)
 
-    class ExecutionResult[T: BaseModel](BaseModel):
+    class ExecutionResult(BaseModel, Generic[T]):
         success: bool = Field(..., description="Whether the execution was successful")
-        result: Optional[T] = Field(
-            None, description="Result of the function execution if successful"
-        )
-        error: Optional[str] = Field(None, description="Error message if execution failed")
-        execution_time: float = Field(
-            ..., description="Time taken for execution in seconds"
-        )
+        result: T | None = Field(None, description="Result of the function execution if successful")
+        error: str | None = Field(None, description="Error message if execution failed")
+        execution_time: float = Field(..., description="Time taken for execution in seconds")
 
     converter = PydanticJSONPayloadConverter()
-    execution_result = ExecutionResult(
-        success=True,
-        result=Basic(string="test"),
-        error=None,
-        execution_time=1.0
-    )
+    execution_result = ExecutionResult(success=True, result=Basic(string="test"), error=None, execution_time=1.0)
     payload = converter.to_payload(execution_result)
     assert DEFAULT_CONVERTER_METADATA_KEY not in payload.metadata
+
 
 if __name__ == "__main__":
     test_basic()

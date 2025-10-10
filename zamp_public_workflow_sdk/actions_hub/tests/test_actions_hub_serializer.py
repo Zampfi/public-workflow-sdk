@@ -2,9 +2,10 @@
 Tests for ActionsHub serializer
 """
 
-import pytest
-from io import BytesIO
 from enum import Enum
+from io import BytesIO
+
+import pytest
 from pydantic import BaseModel, Field
 
 from zamp_public_workflow_sdk.actions_hub.utils.serializer import Serializer
@@ -24,9 +25,7 @@ class SampleModel(BaseModel):
     name: str = Field(default="", description="The name of the model")
     age: int = Field(default=0, description="The age of the model")
     this_is_a_type: type[BaseModel] = Field(description="The type of the model")
-    brr: SubModel = Field(
-        default=SubModel(name="", age=0), description="The submodel of the model"
-    )
+    brr: SubModel = Field(default=SubModel(name="", age=0), description="The submodel of the model")
     enum: SampleEnum = Field(default=SampleEnum.A, description="The enum of the model")
     bytesIO: BytesIO = Field(default=BytesIO(), description="The bytesio of the model")
 
@@ -42,7 +41,7 @@ class TestSerializer:
         extracted_value = Serializer.get_schema_from_object(
             {
                 "a": 1,
-                "b": BytesIO("alskejfsl".encode()),
+                "b": BytesIO(b"alskejfsl"),
                 "c": {"d": SubModel(name="", age=0), "e": 4},
             }
         )
@@ -110,7 +109,7 @@ class TestSerializer:
         extracted_value = Serializer.get_schema_from_object(
             {
                 "a": 1,
-                "b": BytesIO("alskejfsl".encode()),
+                "b": BytesIO(b"alskejfsl"),
                 "c": {"d": SubModel(name="", age=0), "e": 4},
             }
         )

@@ -1,12 +1,13 @@
 from temporalio import workflow
 
 with workflow.unsafe.imports_passed_through():
+    import structlog
+
     from zamp_public_workflow_sdk.actions_hub import ActionsHub
     from zamp_public_workflow_sdk.simulation.models.simulation_workflow import (
         SimulationWorkflowInput,
         SimulationWorkflowOutput,
     )
-    import structlog
 
 
 logger = structlog.get_logger(__name__)

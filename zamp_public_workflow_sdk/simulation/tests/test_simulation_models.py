@@ -6,15 +6,15 @@ import pytest
 from pydantic import ValidationError
 
 from zamp_public_workflow_sdk.simulation.models import (
-    StrategyType,
-    ExecutionType,
-    SimulationResponse,
-    TemporalHistoryConfig,
     CustomOutputConfig,
-    SimulationStrategyConfig,
-    NodeStrategy,
+    ExecutionType,
     NodeMockConfig,
+    NodeStrategy,
     SimulationConfig,
+    SimulationResponse,
+    SimulationStrategyConfig,
+    StrategyType,
+    TemporalHistoryConfig,
 )
 
 
@@ -53,18 +53,14 @@ class TestSimulationResponse:
 
     def test_simulation_response_mock(self):
         """Test creating simulation response with MOCK execution type."""
-        response = SimulationResponse(
-            execution_type=ExecutionType.MOCK, execution_response="test_output"
-        )
+        response = SimulationResponse(execution_type=ExecutionType.MOCK, execution_response="test_output")
 
         assert response.execution_type == ExecutionType.MOCK
         assert response.execution_response == "test_output"
 
     def test_simulation_response_execute(self):
         """Test creating simulation response with EXECUTE execution type."""
-        response = SimulationResponse(
-            execution_type=ExecutionType.EXECUTE, execution_response=None
-        )
+        response = SimulationResponse(execution_type=ExecutionType.EXECUTE, execution_response=None)
 
         assert response.execution_type == ExecutionType.EXECUTE
         assert response.execution_response is None
@@ -83,9 +79,7 @@ class TestTemporalHistoryConfig:
 
     def test_temporal_history_config_valid(self):
         """Test creating valid temporal history config."""
-        config = TemporalHistoryConfig(
-            reference_workflow_id="workflow-123", reference_workflow_run_id="run-456"
-        )
+        config = TemporalHistoryConfig(reference_workflow_id="workflow-123", reference_workflow_run_id="run-456")
 
         assert config.reference_workflow_id == "workflow-123"
         assert config.reference_workflow_run_id == "run-456"
@@ -135,9 +129,7 @@ class TestSimulationStrategyConfig:
             reference_workflow_id="workflow-123", reference_workflow_run_id="run-456"
         )
 
-        strategy = SimulationStrategyConfig(
-            type=StrategyType.TEMPORAL_HISTORY, config=temporal_config
-        )
+        strategy = SimulationStrategyConfig(type=StrategyType.TEMPORAL_HISTORY, config=temporal_config)
 
         assert strategy.type == StrategyType.TEMPORAL_HISTORY
         assert isinstance(strategy.config, TemporalHistoryConfig)
@@ -147,9 +139,7 @@ class TestSimulationStrategyConfig:
         """Test creating custom output strategy config."""
         custom_config = CustomOutputConfig(output_value="test_output")
 
-        strategy = SimulationStrategyConfig(
-            type=StrategyType.CUSTOM_OUTPUT, config=custom_config
-        )
+        strategy = SimulationStrategyConfig(type=StrategyType.CUSTOM_OUTPUT, config=custom_config)
 
         assert strategy.type == StrategyType.CUSTOM_OUTPUT
         assert isinstance(strategy.config, CustomOutputConfig)
@@ -227,10 +217,7 @@ class TestNodeMockConfig:
 
         assert len(mock_config.node_strategies) == 2
         assert mock_config.node_strategies[0].nodes == ["node1#1", "node2#1"]
-        assert (
-            mock_config.node_strategies[1].strategy.type
-            == StrategyType.TEMPORAL_HISTORY
-        )
+        assert mock_config.node_strategies[1].strategy.type == StrategyType.TEMPORAL_HISTORY
 
     def test_mock_config_validation(self):
         """Test that mock config validates required fields."""

@@ -2,28 +2,29 @@
 Integration tests for simulation workflows and services.
 """
 
-import pytest
-from unittest.mock import Mock, patch, AsyncMock
+from unittest.mock import AsyncMock, Mock, patch
 
-from zamp_public_workflow_sdk.simulation.workflows.simulation_workflow import (
-    SimulationWorkflow,
-)
+import pytest
+
 from zamp_public_workflow_sdk.simulation.models import (
-    SimulationConfig,
+    CustomOutputConfig,
     NodeMockConfig,
     NodeStrategy,
+    SimulationConfig,
     SimulationStrategyConfig,
-    StrategyType,
-    CustomOutputConfig,
-    TemporalHistoryConfig,
     SimulationWorkflowInput,
     SimulationWorkflowOutput,
+    StrategyType,
+    TemporalHistoryConfig,
 )
 from zamp_public_workflow_sdk.simulation.models.simulation_response import (
     SimulationStrategyOutput,
 )
 from zamp_public_workflow_sdk.simulation.workflow_simulation_service import (
     WorkflowSimulationService,
+)
+from zamp_public_workflow_sdk.simulation.workflows.simulation_workflow import (
+    SimulationWorkflow,
 )
 
 
@@ -69,9 +70,7 @@ class TestSimulationWorkflowIntegration:
         # Create a mock node strategy with unknown type
         mock_node_strategy = Mock()
         mock_node_strategy.strategy.type = "UNKNOWN_TYPE"
-        mock_node_strategy.strategy.config = CustomOutputConfig(
-            output_value="test_output"
-        )
+        mock_node_strategy.strategy.config = CustomOutputConfig(output_value="test_output")
 
         with pytest.raises(ValueError, match="Unknown strategy type: UNKNOWN_TYPE"):
             WorkflowSimulationService.get_strategy(mock_node_strategy)
@@ -192,9 +191,7 @@ class TestSimulationWorkflowIntegration:
         ) as mock_handler_class:
             mock_strategy = Mock()
             mock_strategy.execute = AsyncMock(
-                return_value=SimulationStrategyOutput(
-                    node_outputs={"node2#1": "history_output"}
-                )
+                return_value=SimulationStrategyOutput(node_outputs={"node2#1": "history_output"})
             )
             mock_handler_class.return_value = mock_strategy
 
@@ -263,9 +260,7 @@ class TestSimulationWorkflowIntegration:
             "zamp_public_workflow_sdk.simulation.workflow_simulation_service.CustomOutputStrategyHandler"
         ) as mock_handler_class:
             mock_strategy = Mock()
-            mock_strategy.execute = AsyncMock(
-                return_value=SimulationStrategyOutput(node_outputs={})
-            )
+            mock_strategy.execute = AsyncMock(return_value=SimulationStrategyOutput(node_outputs={}))
             mock_handler_class.return_value = mock_strategy
 
             result = await workflow.execute(input_data)
@@ -298,9 +293,7 @@ class TestSimulationWorkflowIntegration:
             "zamp_public_workflow_sdk.simulation.workflow_simulation_service.CustomOutputStrategyHandler"
         ) as mock_handler_class:
             mock_strategy = Mock()
-            mock_strategy.execute = AsyncMock(
-                return_value=SimulationStrategyOutput(node_outputs={})
-            )
+            mock_strategy.execute = AsyncMock(return_value=SimulationStrategyOutput(node_outputs={}))
             mock_handler_class.return_value = mock_strategy
 
             result = await workflow.execute(input_data)
@@ -324,9 +317,7 @@ class TestSimulationServiceIntegration:
                 NodeStrategy(
                     strategy=SimulationStrategyConfig(
                         type=StrategyType.CUSTOM_OUTPUT,
-                        config=CustomOutputConfig(
-                            output_value="integration_test_output"
-                        ),
+                        config=CustomOutputConfig(output_value="integration_test_output"),
                     ),
                     nodes=["integration_node#1"],
                 ),
@@ -338,25 +329,16 @@ class TestSimulationServiceIntegration:
 
         # Mock the workflow execution
         mock_workflow_result = Mock()
-        mock_workflow_result.node_id_to_response_map = {
-            "integration_node#1": "integration_test_output"
-        }
+        mock_workflow_result.node_id_to_response_map = {"integration_node#1": "integration_test_output"}
 
-        with patch(
-            "zamp_public_workflow_sdk.actions_hub.ActionsHub"
-        ) as mock_actions_hub:
-            mock_actions_hub.execute_child_workflow = AsyncMock(
-                return_value=mock_workflow_result
-            )
+        with patch("zamp_public_workflow_sdk.actions_hub.ActionsHub") as mock_actions_hub:
+            mock_actions_hub.execute_child_workflow = AsyncMock(return_value=mock_workflow_result)
             mock_actions_hub.clear_node_id_tracker = Mock()
 
             await service._initialize_simulation_data()
 
             assert len(service.node_id_to_response_map) == 1
-            assert (
-                service.node_id_to_response_map["integration_node#1"]
-                == "integration_test_output"
-            )
+            assert service.node_id_to_response_map["integration_node#1"] == "integration_test_output"
 
             # Test that simulation response works
             response = service.get_simulation_response("integration_node#1")
