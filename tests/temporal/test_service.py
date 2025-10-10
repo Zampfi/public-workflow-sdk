@@ -22,7 +22,7 @@ def service_config():
 @pytest.mark.asyncio
 async def test_service_initialization(temporal_service):
     assert isinstance(temporal_service, TemporalService)
-    assert temporal_service.zamp_public_workflow_sdk is not None
+    assert temporal_service.workflow_manager is not None
 
 
 @pytest.mark.asyncio

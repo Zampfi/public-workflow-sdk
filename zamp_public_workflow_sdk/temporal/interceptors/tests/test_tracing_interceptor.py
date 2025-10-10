@@ -291,6 +291,8 @@ class TestTraceWorkflowOutboundInterceptor:
             # Create input for starting child workflow
             input_obj = MagicMock(spec=StartChildWorkflowInput)
             input_obj.headers = {}
+            input_obj.memo = None  # Add memo attribute to prevent AttributeError
+            input_obj.parent_close_policy = workflow.ParentClosePolicy.TERMINATE
 
             # Execute
             await interceptor.start_child_workflow(input_obj)

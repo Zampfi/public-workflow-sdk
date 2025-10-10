@@ -130,9 +130,8 @@ class TestNodeIdInterceptorIntegration:
 
     def test_interceptor_chain_creation(self):
         """Test that the interceptor chain is created correctly."""
-        # Create main interceptor with custom header key
-        custom_header_key = "custom_node_id_key"
-        main_interceptor = NodeIdInterceptor(node_id_header_key=custom_header_key)
+        # Create main interceptor
+        main_interceptor = NodeIdInterceptor()
 
         # Create the interceptor chain
         interceptor_class = main_interceptor.workflow_interceptor_class(MagicMock())
@@ -147,18 +146,13 @@ class TestNodeIdInterceptorIntegration:
         mock_next_inbound.init.assert_called_once()
         created_outbound = mock_next_inbound.init.call_args[0][0]
         assert isinstance(created_outbound, NodeIdWorkflowOutboundInterceptor)
-        assert created_outbound.node_id_header_key == NODE_ID_HEADER_KEY  # Should use constant, not custom
         assert created_outbound.next == mock_outbound
 
     def test_multiple_activities_in_sequence(self):
         """Test handling multiple activities with different node_ids."""
-        main_interceptor = NodeIdInterceptor()
-
         # Create outbound interceptor directly for testing
         mock_next_outbound = MagicMock(spec=WorkflowOutboundInterceptor)
-        outbound_interceptor = NodeIdWorkflowOutboundInterceptor(
-            mock_next_outbound, main_interceptor.node_id_header_key
-        )
+        outbound_interceptor = NodeIdWorkflowOutboundInterceptor(mock_next_outbound)
 
         mock_converter = MagicMock()
         mock_converter.to_payload.side_effect = lambda x: f"payload:{x}"
@@ -189,14 +183,11 @@ class TestNodeIdInterceptorIntegration:
 
     def test_mixed_activities_and_child_workflows(self):
         """Test handling both activities and child workflows."""
-        main_interceptor = NodeIdInterceptor()
         mock_next_outbound = MagicMock(spec=WorkflowOutboundInterceptor)
         mock_next_outbound.start_activity = MagicMock()
         mock_next_outbound.start_child_workflow = AsyncMock()
 
-        outbound_interceptor = NodeIdWorkflowOutboundInterceptor(
-            mock_next_outbound, main_interceptor.node_id_header_key
-        )
+        outbound_interceptor = NodeIdWorkflowOutboundInterceptor(mock_next_outbound)
 
         mock_converter = MagicMock()
         mock_converter.to_payload.side_effect = lambda x: f"payload:{x}"
@@ -244,12 +235,9 @@ class TestNodeIdInterceptorIntegration:
 
     def test_no_node_id_handling(self):
         """Test that requests without node_id are handled normally."""
-        main_interceptor = NodeIdInterceptor()
         mock_next_outbound = MagicMock(spec=WorkflowOutboundInterceptor)
 
-        outbound_interceptor = NodeIdWorkflowOutboundInterceptor(
-            mock_next_outbound, main_interceptor.node_id_header_key
-        )
+        outbound_interceptor = NodeIdWorkflowOutboundInterceptor(mock_next_outbound)
 
         # Activity without node_id
         activity_input = MagicMock(spec=StartActivityInput)
@@ -266,12 +254,9 @@ class TestNodeIdInterceptorIntegration:
 
     def test_malformed_node_id_dict(self):
         """Test handling of malformed node_id dictionaries."""
-        main_interceptor = NodeIdInterceptor()
         mock_next_outbound = MagicMock(spec=WorkflowOutboundInterceptor)
 
-        outbound_interceptor = NodeIdWorkflowOutboundInterceptor(
-            mock_next_outbound, main_interceptor.node_id_header_key
-        )
+        outbound_interceptor = NodeIdWorkflowOutboundInterceptor(mock_next_outbound)
 
         # Dict with extra keys (should be ignored)
         activity_input = MagicMock(spec=StartActivityInput)
@@ -297,6 +282,6 @@ class TestNodeIdInterceptorIntegration:
         """Test that the NODE_ID_HEADER_KEY constant is correct."""
         assert NODE_ID_HEADER_KEY == "node_id"
 
-        # Test that interceptor uses the constant
+        # Test that interceptor can be created
         interceptor = NodeIdInterceptor()
-        assert interceptor.node_id_header_key == NODE_ID_HEADER_KEY
+        assert interceptor.logger_module is None

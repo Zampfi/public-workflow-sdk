@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+import pytest
 
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.bytes_transformer import BytesTransformer
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.bytesio_transformer import BytesIOTransformer
@@ -17,15 +17,14 @@ from zamp_public_workflow_sdk.temporal.data_converters.transformers.transformer 
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.union_transformer import UnionTransformer
 
 
-class Model(BaseModel):
-    test: str
+@pytest.fixture(scope="session", autouse=True)
+def register_transformers():
+    """Register all transformers before running tests."""
+    # Clear any existing transformers
+    Transformer._transformers = []
+    Transformer._collection_transformers = []
 
-
-class SampleModel(BaseModel):
-    files: list[Model] | None
-
-
-if __name__ == "__main__":
+    # Register transformers
     Transformer.register_transformer(PydanticTypeTransformer())
     Transformer.register_transformer(PydanticModelMetaclassTransformer())
     Transformer.register_transformer(BytesTransformer())
@@ -33,15 +32,12 @@ if __name__ == "__main__":
     Transformer.register_transformer(DateTransformer())
     Transformer.register_transformer(UnionTransformer())
 
+    # Register collection transformers
     Transformer.register_collection_transformer(TupleTransformer())
     Transformer.register_collection_transformer(ListTransformer())
 
-    obj = Transformer.deserialize(
-        {
-            # "__files_type": "list[__main__.Model]",
-            "files": [{"test": "test"}]
-        },
-        SampleModel,
-    )
+    yield
 
-    print(type(obj.files[0]))
+    # Clean up after tests
+    Transformer._transformers = []
+    Transformer._collection_transformers = []
