@@ -51,7 +51,7 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
         """
         self.reference_workflow_id = reference_workflow_id
         self.reference_workflow_run_id = reference_workflow_run_id
-        self.cached_histories: dict[str, WorkflowHistory] = {}
+        self.workflow_histories_map: dict[str, WorkflowHistory] = {}
 
     async def execute(
         self,
@@ -84,8 +84,7 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
                 f"run_id={self.reference_workflow_run_id}"
             )
 
-        # Store main workflow history in cache
-        self.cached_histories[MAIN_WORKFLOW_IDENTIFIER] = temporal_history
+        self.workflow_histories_map[MAIN_WORKFLOW_IDENTIFIER] = temporal_history
 
         output = await self._extract_node_output(node_ids)
         return SimulationStrategyOutput(node_outputs=output)
@@ -159,7 +158,7 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
         all_node_outputs = {}
 
         workflow_nodes_needed = self._collect_nodes_per_workflow(node_ids)
-        temporal_history = self.cached_histories[MAIN_WORKFLOW_IDENTIFIER]
+        temporal_history = self.workflow_histories_map[MAIN_WORKFLOW_IDENTIFIER]
 
         for parent_workflow_id, workflow_nodes in node_groups.items():
             if parent_workflow_id == MAIN_WORKFLOW_IDENTIFIER:
@@ -241,7 +240,7 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
 
         if not child_history:
             raise Exception(
-                f"Failed to fetch child workflow history for path={full_child_path}, "
+                f"Failed to fetch child workflow history for child_node_id={full_child_path}, "
                 f"child_workflow_id={child_workflow_id}, node_ids={node_ids}"
             )
 
@@ -277,8 +276,8 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
         for depth_level in range(len(path_parts)):
             current_path = ".".join(path_parts[: depth_level + 1])
 
-            if current_path in self.cached_histories:
-                current_history = self.cached_histories[current_path]
+            if current_path in self.workflow_histories_map:
+                current_history = self.workflow_histories_map[current_path]
                 logger.info("Using cached history", current_path=current_path)
                 continue
 
@@ -312,7 +311,7 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
             if not current_history:
                 return None
 
-            self.cached_histories[current_path] = current_history
+            self.workflow_histories_map[current_path] = current_history
 
         return current_history
 
@@ -339,7 +338,7 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
             return ".".join(parts[: child_index + 1])
         except ValueError:
             logger.error(
-                "Child workflow ID not found in node path, using fallback",
+                "Child workflow ID not found in node path",
                 node_id=node_id,
                 child_workflow_id=child_workflow_id,
             )
