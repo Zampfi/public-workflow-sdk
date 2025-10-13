@@ -1,24 +1,21 @@
-from typing import List, Optional, Dict, Tuple
 from pydantic import BaseModel, Field
 
-from zamp_public_workflow_sdk.temporal.workflow_history.models.node_payload_data import (
-    NodePayloadData,
-)
 from zamp_public_workflow_sdk.temporal.workflow_history.helpers import (
     get_input_from_node_id,
-    get_output_from_node_id,
     get_node_data_from_node_id,
     extract_node_payloads,
     get_child_workflow_workflow_id_run_id,
+    get_output_from_node_id,
 )
+from zamp_public_workflow_sdk.temporal.workflow_history.models.node_payload_data import NodePayloadData
 
 
 class WorkflowHistory(BaseModel):
     workflow_id: str = Field(..., description="Unique identifier for the workflow")
     run_id: str = Field(..., description="Unique identifier for the workflow run")
-    events: List[dict] = Field(..., description="List of workflow events")
+    events: list[dict] = Field(..., description="List of workflow events")
 
-    def get_node_input(self, node_id: str) -> Optional[dict]:
+    def get_node_input(self, node_id: str) -> dict | None:
         """
         Get input payload for a specific node ID.
 
@@ -30,7 +27,7 @@ class WorkflowHistory(BaseModel):
         """
         return get_input_from_node_id(self.events, node_id)
 
-    def get_node_output(self, node_id: str) -> Optional[dict]:
+    def get_node_output(self, node_id: str) -> dict | None:
         """
         Get output payload for a specific node ID.
 
@@ -42,7 +39,7 @@ class WorkflowHistory(BaseModel):
         """
         return get_output_from_node_id(self.events, node_id)
 
-    def get_node_data(self, node_id: str) -> Dict[str, "NodePayloadData"]:
+    def get_node_data(self, node_id: str) -> dict[str, NodePayloadData]:
         """
         Get all node data (including input/output payloads and all events) for a specific node ID.
 
@@ -54,9 +51,7 @@ class WorkflowHistory(BaseModel):
         """
         return get_node_data_from_node_id(self.events, node_id)
 
-    def get_nodes_data(
-        self, target_node_ids: Optional[List[str]] = None
-    ) -> Dict[str, "NodePayloadData"]:
+    def get_nodes_data(self, target_node_ids: list[str] | None = None) -> dict[str, NodePayloadData]:
         """
         Get all node data (including input/output payloads and all events) from the workflow events.
 
@@ -68,9 +63,7 @@ class WorkflowHistory(BaseModel):
         """
         return extract_node_payloads(self.events, target_node_ids)
 
-    def get_child_workflow_workflow_id_run_id(
-        self, node_id: str
-    ) -> Optional[Tuple[str, str]]:
+    def get_child_workflow_workflow_id_run_id(self, node_id: str) -> tuple[str, str] | None:
         """
         Get child workflow's workflow_id and run_id from CHILD_WORKFLOW_EXECUTION_STARTED event.
 

@@ -2,37 +2,35 @@
 Tests for models modules
 """
 
-import pytest
+import inspect
 from unittest.mock import Mock, patch
+import pytest
 import sys
 import os
-import inspect
 
 # Add the parent directory to the path so we can import the modules
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
+from zamp_public_workflow_sdk.actions_hub.constants import ExecutionMode
 from zamp_public_workflow_sdk.actions_hub.models.activity_models import Activity
-from zamp_public_workflow_sdk.actions_hub.models.workflow_models import (
-    Workflow,
-    WorkflowParams,
-    WorkflowCoordinates,
-    PLATFORM_WORKFLOW_LABEL,
-)
 from zamp_public_workflow_sdk.actions_hub.models.business_logic_models import BusinessLogic
-from zamp_public_workflow_sdk.actions_hub.models.decorators import external
 from zamp_public_workflow_sdk.actions_hub.models.credentials_models import (
-    ConnectionIdentifier,
-    Connection,
     ActionConnectionsMapping,
+    Connection,
+    ConnectionIdentifier,
+)
+from zamp_public_workflow_sdk.actions_hub.models.decorators import external
+from zamp_public_workflow_sdk.actions_hub.models.workflow_models import (
+    PLATFORM_WORKFLOW_LABEL,
+    Workflow,
+    WorkflowCoordinates,
+    WorkflowParams,
 )
 from zamp_public_workflow_sdk.actions_hub.utils.context_utils import (
-    get_variable_from_context,
     get_execution_mode_from_context,
+    get_variable_from_context,
 )
-from zamp_public_workflow_sdk.actions_hub.constants import ExecutionMode
-from zamp_public_workflow_sdk.actions_hub.utils.datetime_utils import (
-    convert_iso_to_timedelta,
-)
+from zamp_public_workflow_sdk.actions_hub.utils.datetime_utils import convert_iso_to_timedelta
 
 
 class TestActivity:
@@ -41,9 +39,7 @@ class TestActivity:
     def test_activity_creation(self):
         """Test Activity creation."""
         mock_func = Mock()
-        activity = Activity(
-            name="test_activity", description="Test activity", func=mock_func
-        )
+        activity = Activity(name="test_activity", description="Test activity", func=mock_func)
 
         assert activity.name == "test_activity"
         assert activity.description == "Test activity"
@@ -57,9 +53,7 @@ class TestActivity:
         def test_func(param1: str, param2: int) -> bool:
             return True
 
-        activity = Activity(
-            name="test_activity", description="Test activity", func=test_func
-        )
+        activity = Activity(name="test_activity", description="Test activity", func=test_func)
 
         parameters = activity.parameters
         assert parameters == (str, int)
@@ -72,9 +66,7 @@ class TestActivity:
         def test_func() -> str:
             return "test"
 
-        activity = Activity(
-            name="test_activity", description="Test activity", func=test_func
-        )
+        activity = Activity(name="test_activity", description="Test activity", func=test_func)
 
         returns = activity.returns
         assert returns is str
@@ -87,9 +79,7 @@ class TestActivity:
         def test_func(self, param1: str) -> bool:
             return True
 
-        activity = Activity(
-            name="test_activity", description="Test activity", func=test_func
-        )
+        activity = Activity(name="test_activity", description="Test activity", func=test_func)
 
         # Now includes self parameter (which has no type annotation, so will raise error)
         # The test function has self parameter without type annotation, so this will fail
@@ -102,9 +92,7 @@ class TestActivity:
         def test_func(param1, param2: int) -> bool:
             return True
 
-        activity = Activity(
-            name="test_activity", description="Test activity", func=test_func
-        )
+        activity = Activity(name="test_activity", description="Test activity", func=test_func)
 
         with pytest.raises(ValueError, match="Parameter param1 has no type annotation"):
             activity.parameters
@@ -115,9 +103,7 @@ class TestActivity:
         def test_func():
             pass
 
-        activity = Activity(
-            name="test_activity", description="Test activity", func=test_func
-        )
+        activity = Activity(name="test_activity", description="Test activity", func=test_func)
 
         with pytest.raises(ValueError, match="Return type is not specified"):
             activity.returns
@@ -128,9 +114,7 @@ class TestActivity:
         def test_func(x: int) -> int:
             return x * 2
 
-        activity = Activity(
-            name="test_activity", description="Test activity", func=test_func
-        )
+        activity = Activity(name="test_activity", description="Test activity", func=test_func)
 
         result = activity(5)
         assert result == 10
@@ -424,9 +408,7 @@ class TestCredentialsModels:
 
     def test_connection_identifier(self):
         """Test ConnectionIdentifier model."""
-        conn_id = ConnectionIdentifier(
-            connection_id="test_conn_123", organization_id="org_123", user_id="user_123"
-        )
+        conn_id = ConnectionIdentifier(connection_id="test_conn_123", organization_id="org_123", user_id="user_123")
 
         assert conn_id.connection_id == "test_conn_123"
         assert conn_id.organization_id == "org_123"
@@ -434,9 +416,7 @@ class TestCredentialsModels:
 
     def test_connection(self):
         """Test Connection model."""
-        conn = Connection(
-            connection_id="test_conn_123", summary="Database connection for localhost"
-        )
+        conn = Connection(connection_id="test_conn_123", summary="Database connection for localhost")
 
         assert conn.connection_id == "test_conn_123"
         assert conn.summary == "Database connection for localhost"
@@ -446,9 +426,7 @@ class TestCredentialsModels:
         conn1 = Connection(connection_id="conn1", summary="Connection 1")
         conn2 = Connection(connection_id="conn2", summary="Connection 2")
 
-        mapping = ActionConnectionsMapping(
-            action_name="test_action", connections=[conn1, conn2]
-        )
+        mapping = ActionConnectionsMapping(action_name="test_action", connections=[conn1, conn2])
 
         assert mapping.action_name == "test_action"
         assert len(mapping.connections) == 2
@@ -459,9 +437,7 @@ class TestCredentialsModels:
 class TestContextUtils:
     """Test the context utilities."""
 
-    @patch(
-        "zamp_public_workflow_sdk.actions_hub.utils.context_utils.structlog.contextvars.get_contextvars"
-    )
+    @patch("zamp_public_workflow_sdk.actions_hub.utils.context_utils.structlog.contextvars.get_contextvars")
     def test_get_variable_from_context(self, mock_get_contextvars):
         """Test get_variable_from_context function."""
         mock_context = {"test_var": "test_value", "other_var": 42}

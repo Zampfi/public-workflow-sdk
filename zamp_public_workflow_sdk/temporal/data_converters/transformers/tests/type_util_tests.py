@@ -1,9 +1,12 @@
-from zamp_public_workflow_sdk.temporal.data_converters.type_utils import get_fqn, get_reference_from_fqn
-from zamp_public_workflow_sdk.temporal.data_converters.transformers.tests.test_models import TestModelWithListOfIntegers
+from typing import TypeVar
+
 from pydantic import BaseModel
-from typing import List, Dict, TypeVar, Type
+
+from zamp_public_workflow_sdk.temporal.data_converters.transformers.tests.test_models import TestModelWithListOfIntegers
+from zamp_public_workflow_sdk.temporal.data_converters.type_utils import get_fqn, get_reference_from_fqn
 
 T = TypeVar("T", bound=BaseModel)
+
 
 def test_get_fqn():
     assert get_fqn(int) == "int"
@@ -16,20 +19,30 @@ def test_get_fqn():
     assert get_fqn(list[list[str]]) == "list[list[str]]"
     assert get_fqn(dict[str, int]) == "dict[str, int]"
     assert get_fqn(list[dict[str, int]]) == "list[dict[str, int]]"
-    assert get_fqn(TestModelWithListOfIntegers) == "zamp_public_workflow_sdk.temporal.data_converters.transformers.tests.test_models.TestModelWithListOfIntegers"
-    assert get_fqn(Dict[str, int]) == "typing.Dict[str, int]"
+    assert (
+        get_fqn(TestModelWithListOfIntegers)
+        == "zamp_public_workflow_sdk.temporal.data_converters.transformers.tests.test_models.TestModelWithListOfIntegers"
+    )
+    assert get_fqn(dict[str, int]) == "typing.Dict[str, int]"
+
 
 def test_get_reference_from_fqn():
-    assert get_reference_from_fqn("int") == int
-    assert get_reference_from_fqn("str") == str
-    assert get_reference_from_fqn("float") == float
-    assert get_reference_from_fqn("bool") == bool
+    assert get_reference_from_fqn("int") is int
+    assert get_reference_from_fqn("str") is str
+    assert get_reference_from_fqn("float") is float
+    assert get_reference_from_fqn("bool") is bool
     assert get_reference_from_fqn("list[int]") == list[int]
     assert get_reference_from_fqn("list[list[str]]") == list[list[str]]
     assert get_reference_from_fqn("dict[str, int]") == dict[str, int]
     assert get_reference_from_fqn("list[dict[str, int]]") == list[dict[str, int]]
-    assert get_reference_from_fqn("zamp_public_workflow_sdk.temporal.data_converters.transformers.tests.test_models.TestModelWithListOfIntegers") == TestModelWithListOfIntegers
+    assert (
+        get_reference_from_fqn(
+            "zamp_public_workflow_sdk.temporal.data_converters.transformers.tests.test_models.TestModelWithListOfIntegers"
+        )
+        == TestModelWithListOfIntegers
+    )
     assert get_reference_from_fqn("typing.Dict[str, int]") == dict[str, int]
+
 
 if __name__ == "__main__":
     test_get_fqn()

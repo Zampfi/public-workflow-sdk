@@ -8,64 +8,62 @@ independent of the Pantheon platform.
 import asyncio
 import threading
 from collections import defaultdict
-from temporalio import workflow, activity
+
+from temporalio import activity, workflow
+
 from zamp_public_workflow_sdk.temporal.interceptors.node_id_interceptor import (
     NODE_ID_HEADER_KEY,
 )
 
-from .models.mcp_models import MCPConfig
 from .constants import DEFAULT_MODE, SKIP_SIMULATION_WORKFLOWS
+from .models.mcp_models import MCPConfig
 
 with workflow.unsafe.imports_passed_through():
-    from .constants import ExecutionMode
-    from .utils.context_utils import (
-        get_execution_mode_from_context,
-        get_variable_from_context,
-    )
-    from pathlib import Path
-    from functools import wraps
-    from typing import Callable, Dict, List, Any, Union, Optional
     from datetime import timedelta
+    from functools import wraps
+    from pathlib import Path
+    from typing import Any, Callable
 
-    from .models.workflow_models import (
-        Workflow,
-        WorkflowCoordinates,
-        PLATFORM_WORKFLOW_LABEL,
-    )
+    import structlog
 
     from zamp_public_workflow_sdk.simulation.models import (
         ExecutionType,
         SimulationConfig,
         SimulationResponse,
     )
+    from zamp_public_workflow_sdk.simulation.workflow_simulation_service import (
+        WorkflowSimulationService,
+    )
+    from zamp_public_workflow_sdk.temporal.data_converters.type_utils import get_fqn
+    from zamp_public_workflow_sdk.temporal.interceptors.node_id_interceptor import (
+        TEMPORAL_NODE_ID_KEY,
+    )
 
+    from .constants import ActionType, ExecutionMode
+    from .helper import (
+        find_connection_id_path,
+        inject_connection_id,
+        remove_connection_id,
+    )
+    from .models.activity_models import Activity
     from .models.business_logic_models import BusinessLogic
     from .models.core_models import (
         Action,
         ActionFilter,
-        RetryPolicy,
         CodeExecutorConfig,
         ExecuteCodeParams,
+        RetryPolicy,
     )
-    from .constants import ActionType
-    from .models.activity_models import Activity
-    from .helper import (
-        remove_connection_id,
-        find_connection_id_path,
-        inject_connection_id,
-    )
-    from zamp_public_workflow_sdk.temporal.data_converters.type_utils import get_fqn
-
-    import structlog
-
     from .models.credentials_models import ActionConnectionsMapping
     from .models.decorators import external
-
-    from zamp_public_workflow_sdk.temporal.interceptors.node_id_interceptor import (
-        TEMPORAL_NODE_ID_KEY,
+    from .models.workflow_models import (
+        PLATFORM_WORKFLOW_LABEL,
+        Workflow,
+        WorkflowCoordinates,
     )
-    from zamp_public_workflow_sdk.simulation.workflow_simulation_service import (
-        WorkflowSimulationService,
+    from .utils.context_utils import (
+        get_execution_mode_from_context,
+        get_variable_from_context,
     )
     from .utils.datetime_utils import convert_iso_to_timedelta
 
@@ -79,32 +77,28 @@ class ActionsHub:
     """
     Activities
     """
-    _activities: Dict[str, Activity] = {}
-    _action_list: List[ActionConnectionsMapping] = []
+    _activities: dict[str, Activity] = {}
+    _action_list: list[ActionConnectionsMapping] = []
 
     # Node ID tracking for unique identification of activities/workflows execution
     # Structure: {workflow_id: {action_name: count}}
-    _node_id_tracker: Dict[str, Dict[str, int]] = {}
+    _node_id_tracker: dict[str, dict[str, int]] = {}
 
     # Thread lock for thread-safe access to _node_id_tracker
     _node_id_lock = threading.Lock()
 
     # Simulation
-    _workflow_id_to_simulation_map: Dict[str, WorkflowSimulationService] = {}
+    _workflow_id_to_simulation_map: dict[str, WorkflowSimulationService] = {}
 
     @classmethod
-    def register_action_list(cls, action_list: List[ActionConnectionsMapping]):
+    def register_action_list(cls, action_list: list[ActionConnectionsMapping]):
         cls._action_list = [
-            (
-                ActionConnectionsMapping(**action)
-                if not isinstance(action, ActionConnectionsMapping)
-                else action
-            )
+            (ActionConnectionsMapping(**action) if not isinstance(action, ActionConnectionsMapping) else action)
             for action in action_list
         ]
 
     @classmethod
-    def _get_action_name(cls, action: Union[str, Callable]) -> str:
+    def _get_action_name(cls, action: str | Callable) -> str:
         """
         Resolve the action name from various action types.
 
@@ -129,9 +123,7 @@ class ActionsHub:
         return action.__name__
 
     @classmethod
-    def _generate_node_id_for_action(
-        cls, action: Union[str, Callable]
-    ) -> tuple[str, str, str]:
+    def _generate_node_id_for_action(cls, action: str | Callable) -> tuple[str, str, str]:
         """
         Generate node_id for an action (activity or workflow) execution.
 
@@ -171,9 +163,7 @@ class ActionsHub:
             info = workflow.info()
             if info.headers and NODE_ID_HEADER_KEY in info.headers:
                 node_id_payload = info.headers[NODE_ID_HEADER_KEY]
-                parent_node_id = workflow.payload_converter().from_payload(
-                    node_id_payload, str
-                )
+                parent_node_id = workflow.payload_converter().from_payload(node_id_payload, str)
                 if parent_node_id:
                     tracking_key = f"{parent_node_id}.{action_name}"
                 else:
@@ -193,22 +183,18 @@ class ActionsHub:
         cls,
         workflow_id: str,
         node_id: str,
-        action: Union[str, Callable] = None,
+        action: str | Callable = None,
         return_type: type | None = None,
     ) -> SimulationResponse:
         """Get simulation response for a workflow execution and handle return type conversion."""
 
         action_name = cls._get_action_name(action)
         if action_name and action_name in SKIP_SIMULATION_WORKFLOWS:
-            return SimulationResponse(
-                execution_type=ExecutionType.EXECUTE, execution_response=None
-            )
+            return SimulationResponse(execution_type=ExecutionType.EXECUTE, execution_response=None)
 
         simulation = cls.get_simulation_from_workflow_id(workflow_id)
         if not simulation:
-            return SimulationResponse(
-                execution_type=ExecutionType.EXECUTE, execution_response=None
-            )
+            return SimulationResponse(execution_type=ExecutionType.EXECUTE, execution_response=None)
 
         simulation_response = simulation.get_simulation_response(node_id)
         if simulation_response.execution_type == ExecutionType.MOCK:
@@ -254,9 +240,7 @@ class ActionsHub:
         return result
 
     @classmethod
-    async def init_simulation_for_workflow(
-        cls, simulation_config: SimulationConfig, workflow_id: str
-    ) -> None:
+    async def init_simulation_for_workflow(cls, simulation_config: SimulationConfig, workflow_id: str) -> None:
         """
         Initialize simulation for a workflow.
 
@@ -270,9 +254,7 @@ class ActionsHub:
         logger.info("Simulation initialized for workflow", workflow_id=workflow_id)
 
     @classmethod
-    def get_simulation_from_workflow_id(
-        cls, workflow_id: str
-    ) -> WorkflowSimulationService:
+    def get_simulation_from_workflow_id(cls, workflow_id: str) -> WorkflowSimulationService:
         return cls._workflow_id_to_simulation_map.get(workflow_id)
 
     @classmethod
@@ -300,7 +282,7 @@ class ActionsHub:
             return DEFAULT_MODE
 
     @classmethod
-    def get_node_id_tracker_state(cls) -> Dict[str, Dict[str, int]]:
+    def get_node_id_tracker_state(cls) -> dict[str, dict[str, int]]:
         """
         Get the current state of the node_id tracker for debugging and testing.
 
@@ -308,10 +290,7 @@ class ActionsHub:
             The current node_id_tracker dictionary
         """
         with cls._node_id_lock:
-            return {
-                workflow_id: dict(action_counts)
-                for workflow_id, action_counts in cls._node_id_tracker.items()
-            }
+            return {workflow_id: dict(action_counts) for workflow_id, action_counts in cls._node_id_tracker.items()}
 
     @classmethod
     def clear_node_id_tracker(cls):
@@ -325,8 +304,8 @@ class ActionsHub:
     def register_activity(
         cls,
         description: str,
-        labels: Optional[List[str]] = None,
-        mcp_config: Optional[MCPConfig] = None,
+        labels: list[str] | None = None,
+        mcp_config: MCPConfig | None = None,
     ):
         """
         Register an activity decorator with optional description, labels, and MCP access control
@@ -339,9 +318,7 @@ class ActionsHub:
         def decorator(func: Callable) -> Callable:
             activity_name = func.__name__
             if activity_name in cls._activities:
-                raise ValueError(
-                    f"Activity '{activity_name}' already registered. Please use a unique name."
-                )
+                raise ValueError(f"Activity '{activity_name}' already registered. Please use a unique name.")
 
             # Check if the function is async
             is_async = asyncio.iscoroutinefunction(func)
@@ -384,7 +361,7 @@ class ActionsHub:
         return cls._activities[activity_name]
 
     @classmethod
-    def get_activity_by_name(cls, name: str) -> Optional[Activity]:
+    def get_activity_by_name(cls, name: str) -> Activity | None:
         """
         Get activity by name for internal use.
         Args:
@@ -413,13 +390,12 @@ class ActionsHub:
         # Check if execution_mode is set to "API" in context variables
         if execution_mode is None:
             execution_mode = get_execution_mode_from_context()
-            
+
         if execution_mode == ExecutionMode.API:
             # Direct function execution mode - bypass Temporal
             logger.info(
                 "Executing activity in API mode, bypassing Temporal",
-                activity_name=activity_name,
-                node_id=node_id,
+                activity_name=cls._get_action_name(activity),
             )
 
             # Get the activity function
@@ -450,22 +426,25 @@ class ActionsHub:
         if simulation_result.execution_type == ExecutionType.MOCK:
             logger.info(
                 "Activity mocked",
-                activity_name=activity_name,
                 node_id=node_id,
             )
             return simulation_result.execution_response
-        
+
         # Temporal execution mode
         # Convert ISO string to timedelta
-        retry_policy.initial_interval = convert_iso_to_timedelta(
-            retry_policy.initial_interval
-        )
-        retry_policy.maximum_interval = convert_iso_to_timedelta(
-            retry_policy.maximum_interval
-        )
+        retry_policy.initial_interval = convert_iso_to_timedelta(retry_policy.initial_interval)
+        retry_policy.maximum_interval = convert_iso_to_timedelta(retry_policy.maximum_interval)
 
         node_id_arg = {TEMPORAL_NODE_ID_KEY: node_id}
         args = (node_id_arg,) + args
+
+        # Executing in temporal mode
+        logger.info(
+            "Executing activity",
+            activity_name=activity_name,
+            node_id=node_id,
+            workflow_id=workflow_id,
+        )
 
         return await workflow.execute_activity(
             activity,
@@ -480,7 +459,7 @@ class ActionsHub:
     """
     Workflows
     """
-    _workflows: Dict[str, Workflow] = {}
+    _workflows: dict[str, Workflow] = {}
 
     @classmethod
     def register_workflow_defn(cls, description: str, labels: list[str]):
@@ -566,9 +545,7 @@ class ActionsHub:
             return list(cls._workflows.values())
 
         for _workflow in cls._workflows.values():
-            if PLATFORM_WORKFLOW_LABEL in _workflow.labels or any(
-                label in _workflow.labels for label in labels
-            ):
+            if PLATFORM_WORKFLOW_LABEL in _workflow.labels or any(label in _workflow.labels for label in labels):
                 workflows.append(_workflow)
 
         return workflows
@@ -625,7 +602,7 @@ class ActionsHub:
     @classmethod
     async def execute_child_workflow(
         cls,
-        workflow_name: Union[str, Callable],
+        workflow_name: str | Callable,
         *args,
         result_type: type | None = None,
         **kwargs,
@@ -635,8 +612,7 @@ class ActionsHub:
             # Direct function execution mode - bypass Temporal
             logger.info(
                 "Executing child workflow in API mode, bypassing Temporal",
-                workflow_name=child_workflow_name,
-                node_id=node_id,
+                workflow_name=cls._get_action_name(workflow_name),
             )
 
             # Get the workflow function
@@ -645,9 +621,7 @@ class ActionsHub:
                     raise ValueError(f"Workflow '{workflow_name}' not found")
                 workflow_obj = cls._workflows[workflow_name]
                 if not workflow_obj.func:
-                    raise ValueError(
-                        f"Workflow function not available for {workflow_name}"
-                    )
+                    raise ValueError(f"Workflow function not available for {workflow_name}")
                 return await workflow_obj.func(workflow_obj.class_type(), *args)
             else:
                 func = workflow_name
@@ -662,9 +636,7 @@ class ActionsHub:
                 return func(*args)
 
         # Generate node_id for this child workflow execution
-        child_workflow_name, workflow_id, node_id = cls._generate_node_id_for_action(
-            workflow_name
-        )
+        child_workflow_name, workflow_id, node_id = cls._generate_node_id_for_action(workflow_name)
 
         # Check for simulation result
         simulation_result = cls._get_simulation_response(
@@ -677,14 +649,21 @@ class ActionsHub:
         if simulation_result.execution_type == ExecutionType.MOCK:
             logger.info(
                 "Child workflow mocked",
-                activity_name=workflow_name,
                 node_id=node_id,
             )
             return simulation_result.execution_response
-        
+
         # Temporal execution mode
         node_id_arg = {TEMPORAL_NODE_ID_KEY: node_id}
         args = (node_id_arg,) + args
+
+        # Executing in temporal mode
+        logger.info(
+            "Executing child workflow",
+            workflow_name=child_workflow_name,
+            node_id=node_id,
+            workflow_id=workflow_id,
+        )
 
         return await workflow.execute_child_workflow(
             workflow_name,
@@ -696,15 +675,13 @@ class ActionsHub:
     @classmethod
     async def start_child_workflow(
         cls,
-        workflow_name: Union[str, Callable],
+        workflow_name: str | Callable,
         *args,
         result_type: type | None = None,
         **kwargs,
     ):
         # Generate node_id for this child workflow execution
-        child_workflow_name, workflow_id, node_id = cls._generate_node_id_for_action(
-            workflow_name
-        )
+        child_workflow_name, workflow_id, node_id = cls._generate_node_id_for_action(workflow_name)
 
         # Check for simulation result
         simulation_result = cls._get_simulation_response(
@@ -745,7 +722,7 @@ class ActionsHub:
     """
     Business Logic
     """
-    _business_logic_methods: Dict[str, BusinessLogic] = {}
+    _business_logic_methods: dict[str, BusinessLogic] = {}
 
     @classmethod
     def register_business_logic(cls, description: str, labels: list[str]) -> Callable:
@@ -797,7 +774,7 @@ class ActionsHub:
         return filters.filter_actions(actions)
 
     @classmethod
-    def get_action_schemas(cls) -> List[Dict[str, Any]]:
+    def get_action_schemas(cls) -> list[dict[str, Any]]:
         """
         Process action schemas to handle credential selection appropriately.
 
@@ -822,16 +799,14 @@ class ActionsHub:
                 # schema["_connection_path"] = find_connection_id_path(schema["args"])
                 schema["args"] = remove_connection_id(schema["args"])
             else:
-                schema["connections"] = [
-                    conn.model_dump() for conn in action.connections
-                ]
+                schema["connections"] = [conn.model_dump() for conn in action.connections]
 
             schemas.append(schema)
 
         return schemas
 
     @classmethod
-    def _get_base_schema(cls, action: Action) -> Dict[str, Any]:
+    def _get_base_schema(cls, action: Action) -> dict[str, Any]:
         """
         Get the base schema for an action from its registered action.
 
@@ -849,8 +824,8 @@ class ActionsHub:
     async def execute_action(
         cls,
         action_name: str,
-        params: Dict[str, Any],
-        summary: Optional[str] = None,
+        params: dict[str, Any],
+        summary: str | None = None,
         activity_retry_policy: RetryPolicy = RetryPolicy.default(),
     ) -> Any:
         actions = cls.get_available_actions(ActionFilter(name=action_name))
@@ -860,11 +835,7 @@ class ActionsHub:
         action = actions[0]
         # Find the matching action mapping in the list
         action_mapping = next(
-            (
-                mapping
-                for mapping in cls._action_list
-                if mapping.action_name == action_name
-            ),
+            (mapping for mapping in cls._action_list if mapping.action_name == action_name),
             None,
         )
         connections = action_mapping.connections if action_mapping else []
@@ -898,9 +869,7 @@ class ActionsHub:
             )
 
     @classmethod
-    async def _dispatch_action(
-        cls, action: Action, activity_retry_policy: RetryPolicy, *args, **kwargs
-    ) -> Any:
+    async def _dispatch_action(cls, action: Action, activity_retry_policy: RetryPolicy, *args, **kwargs) -> Any:
         """Dispatch the action to its registered activity"""
 
         if action.action_type == ActionType.ACTIVITY:

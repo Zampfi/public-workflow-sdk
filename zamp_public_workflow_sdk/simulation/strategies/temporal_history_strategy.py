@@ -2,7 +2,7 @@
 Temporal History simulation strategy implementation.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import structlog
 
@@ -18,6 +18,7 @@ from zamp_public_workflow_sdk.temporal.workflow_history.models.fetch_temporal_wo
     FetchTemporalWorkflowHistoryInput,
     FetchTemporalWorkflowHistoryOutput,
 )
+
 logger = structlog.get_logger(__name__)
 
 # Constants
@@ -53,8 +54,8 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
 
     async def execute(
         self,
-        node_ids: List[str],
-        temporal_history: Optional[WorkflowHistory] = None,
+        node_ids: list[str],
+        temporal_history: WorkflowHistory | None = None,
     ) -> SimulationStrategyOutput:
         """
         Execute Temporal History strategy to extract node outputs.
@@ -90,8 +91,8 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
             return SimulationStrategyOutput()
 
     async def _fetch_temporal_history(
-        self, node_ids: List[str], workflow_id: Optional[str] = None, run_id: Optional[str] = None
-    ) -> Optional[WorkflowHistory]:
+        self, node_ids: list[str], workflow_id: str | None = None, run_id: str | None = None
+    ) -> WorkflowHistory | None:
         """
         Fetch temporal workflow history for a workflow (main or child).
 
@@ -136,8 +137,8 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
             return None
 
     async def _extract_node_output(
-        self, temporal_history: WorkflowHistory, node_ids: List[str]
-    ) -> Dict[str, Optional[Any]]:
+        self, temporal_history: WorkflowHistory, node_ids: list[str]
+    ) -> dict[str, Any | None]:
         """
         Extract output for specific nodes from temporal history.
 
@@ -167,12 +168,10 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
                     all_node_outputs.update(main_workflow_outputs)
                 else:
                     # Child workflow nodes - need to fetch child workflow history
-                    child_workflow_outputs = (
-                        await self._extract_child_workflow_node_outputs(
-                            temporal_history,
-                            parent_workflow_id,
-                            nodes_in_workflow,
-                        )
+                    child_workflow_outputs = await self._extract_child_workflow_node_outputs(
+                        temporal_history,
+                        parent_workflow_id,
+                        nodes_in_workflow,
                     )
                     all_node_outputs.update(child_workflow_outputs)
 
@@ -189,8 +188,8 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
             return {node_id: None for node_id in node_ids}
 
     def _extract_main_workflow_node_outputs(
-        self, temporal_history: WorkflowHistory, node_ids: List[str]
-    ) -> Dict[str, Optional[Any]]:
+        self, temporal_history: WorkflowHistory, node_ids: list[str]
+    ) -> dict[str, Any | None]:
         """
         Extract outputs for nodes that belong to the main workflow.
 
@@ -211,8 +210,8 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
         self,
         parent_history: WorkflowHistory,
         child_workflow_id: str,
-        node_ids: List[str],
-    ) -> Dict[str, Optional[Any]]:
+        node_ids: list[str],
+    ) -> dict[str, Any | None]:
         """
         Extract outputs for nodes that belong to a child workflow.
 
@@ -230,9 +229,7 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
             Dictionary mapping node IDs to their outputs (None if not found)
         """
         # Get child workflow's workflow_id and run_id from parent's history
-        workflow_id_run_id = parent_history.get_child_workflow_workflow_id_run_id(
-            child_workflow_id
-        )
+        workflow_id_run_id = parent_history.get_child_workflow_workflow_id_run_id(child_workflow_id)
 
         if not workflow_id_run_id:
             logger.warning(
@@ -278,9 +275,7 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
 
         return node_outputs
 
-    def _group_nodes_by_parent_workflow(
-        self, node_ids: List[str]
-    ) -> Dict[str, List[str]]:
+    def _group_nodes_by_parent_workflow(self, node_ids: list[str]) -> dict[str, list[str]]:
         """
         Group node IDs by their immediate parent workflow.
 

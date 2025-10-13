@@ -1,17 +1,27 @@
 from pydantic import BaseModel
-from typing import List, Optional
 
+from zamp_public_workflow_sdk.temporal.data_converters.pydantic_payload_converter import (
+    BytesIOTransformer,
+    BytesTransformer,
+    DateTransformer,
+    ListTransformer,
+    PydanticModelMetaclassTransformer,
+    PydanticTypeTransformer,
+    TupleTransformer,
+    UnionTransformer,
+)
 from zamp_public_workflow_sdk.temporal.data_converters.transformers.transformer import Transformer
-from zamp_public_workflow_sdk.temporal.data_converters.pydantic_payload_converter import PydanticTypeTransformer, PydanticModelMetaclassTransformer, BytesTransformer, BytesIOTransformer, DateTransformer, TupleTransformer, ListTransformer, UnionTransformer
+
 
 class Model(BaseModel):
     test: str
 
+
 class TestModel(BaseModel):
-    files: Optional[List[Model]]
+    files: list[Model] | None
+
 
 if __name__ == "__main__":
-
     Transformer.register_transformer(PydanticTypeTransformer())
     Transformer.register_transformer(PydanticModelMetaclassTransformer())
     Transformer.register_transformer(BytesTransformer())
@@ -24,15 +34,10 @@ if __name__ == "__main__":
 
     obj = Transformer.deserialize(
         {
-            #"__files_type": "list[__main__.Model]",
-            "files": [
-                {
-                    "test": "test"
-                }
-            ]
+            # "__files_type": "list[__main__.Model]",
+            "files": [{"test": "test"}]
         },
-        TestModel
+        TestModel,
     )
 
     print(type(obj.files[0]))
-

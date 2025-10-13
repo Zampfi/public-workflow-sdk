@@ -2,9 +2,10 @@
 Business logic models for ActionsHub - independent of Pantheon platform.
 """
 
-from pydantic import BaseModel
-from typing import Callable, Any
 import inspect
+from typing import Any, Callable
+
+from pydantic import BaseModel
 
 
 class BusinessLogic(BaseModel):

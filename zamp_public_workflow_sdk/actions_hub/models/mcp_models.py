@@ -5,7 +5,8 @@ This module defines models for MCP configuration and access control
 within the ActionsHub system.
 """
 
-from typing import List, Dict
+from __future__ import annotations
+
 from pydantic import BaseModel, Field
 from enum import Enum
 
@@ -27,22 +28,20 @@ class MCPAccessPattern(Enum):
 class MCPConfig(BaseModel):
     """MCP configuration for a service."""
 
-    service_name: str = Field(
-        ..., description="Name of the service (must match activity labels)"
-    )
-    accesses: List[MCPAction] = Field(
+    service_name: str = Field(..., description="Name of the service (must match activity labels)")
+    accesses: list[MCPAction] = Field(
         default_factory=list,
         description="List of access types like [MCPAction.READ.value, MCPAction.WRITE.value]",
     )
 
-    def to_mcp_labels(self) -> List[str]:
+    def to_mcp_labels(self) -> list[str]:
         """Convert to MCP label format for compatibility."""
         labels = [self.service_name]
         labels.extend([access.value for access in self.accesses])
         return labels
 
     @classmethod
-    def from_access_string(cls, service_name: str, access_str: str) -> "MCPConfig":
+    def from_access_string(cls, service_name: str, access_str: str) -> MCPConfig:
         """Create from service:access string format."""
         access_str = access_str.upper().strip()
 
@@ -58,20 +57,18 @@ class MCPConfig(BaseModel):
 class MCPServiceConfig(BaseModel):
     """MCP service configuration containing multiple services and their access controls."""
 
-    services: List[MCPConfig] = Field(
-        default_factory=list, description="List of service configurations"
-    )
+    services: list[MCPConfig] = Field(default_factory=list, description="List of service configurations")
 
     def add_service(self, service_name: str, access_str: str) -> None:
         """Add a service with access control."""
         access_control = MCPConfig.from_access_string(service_name, access_str)
         self.services.append(access_control)
 
-    def get_service_labels(self) -> List[str]:
+    def get_service_labels(self) -> list[str]:
         """Get all service names that have any access."""
         return [service.service_name for service in self.services]
 
-    def get_access_config(self) -> Dict[str, List[str]]:
+    def get_access_config(self) -> dict[str, list[str]]:
         """Get access configuration in the format expected by tool registry."""
         config = {}
         for service in self.services:

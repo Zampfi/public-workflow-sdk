@@ -4,35 +4,35 @@ Configurable Sentry interceptor for Temporal workflows and activities.
 This interceptor captures workflow and activity failures and reports them to Sentry.
 """
 
-import traceback
-import contextvars
-from typing import Any, Callable, Optional, Type, Dict
+from typing import Any, Callable
 
+from temporalio import workflow
 from temporalio.worker import (
     ActivityInboundInterceptor,
     ActivityOutboundInterceptor,
     ExecuteActivityInput,
     ExecuteWorkflowInput,
     Interceptor,
-    WorkflowInboundInterceptor,
-    WorkflowOutboundInterceptor,
-    WorkflowInterceptorClassInput,
     StartChildWorkflowInput,
+    WorkflowInboundInterceptor,
+    WorkflowInterceptorClassInput,
+    WorkflowOutboundInterceptor,
 )
-from temporalio import workflow
-import time
 
 with workflow.unsafe.imports_passed_through():
-    from sentry_sdk import capture_exception, push_scope, init
+    from sentry_sdk import capture_exception, init, push_scope
 
-def extract_context_from_contextvars(context_extraction_fn: Optional[Callable] = None) -> tuple[Dict[str, Any], Dict[str, Any]]:
+
+def extract_context_from_contextvars(
+    context_extraction_fn: Callable | None = None,
+) -> tuple[dict[str, Any], dict[str, Any]]:
     """
     Extract relevant context information from contextvars.
-    
+
     Args:
         context_extraction_fn: Optional function to extract context from contextvars.
                               If not provided, no context is extracted.
-    
+
     Returns:
         Tuple of (tags_dict, context_dict) where:
         - tags_dict: Key identifiers for filtering/searching
@@ -40,42 +40,42 @@ def extract_context_from_contextvars(context_extraction_fn: Optional[Callable] =
     """
     tags = {}
     context = {}
-    
+
     # If no context extraction function is provided, return empty dicts
     if not context_extraction_fn:
         return tags, context
-    
+
     try:
         # Use provided function to extract context
         context_vars = context_extraction_fn()
-        
+
         # Extract specific fields
         user_id = context_vars.get("user_id")
         organization_id = context_vars.get("organization_id")
         process_id = context_vars.get("process_id")
         pantheon_trace_id = context_vars.get("pantheon_trace_id")
-        
+
         # Add to tags and context if they exist
         if user_id:
             tags["user_id"] = user_id
             context["user_id"] = user_id
-            
+
         if organization_id:
             tags["organization_id"] = organization_id
             context["organization_id"] = organization_id
-            
+
         if process_id:
             tags["process_id"] = process_id
             context["process_id"] = process_id
-            
+
         if pantheon_trace_id:
             tags["pantheon_trace_id"] = pantheon_trace_id
             context["pantheon_trace_id"] = pantheon_trace_id
-            
+
     except Exception:
         # If contextvars access fails, return empty dicts
         pass
-    
+
     return tags, context
 
 
@@ -86,8 +86,8 @@ class SentryActivityInboundInterceptor(ActivityInboundInterceptor):
         self,
         next_interceptor: ActivityInboundInterceptor,
         logger: Any,
-        context_extraction_fn: Optional[Callable] = None,
-        additional_context_fn: Optional[Callable] = None,
+        context_extraction_fn: Callable | None = None,
+        additional_context_fn: Callable | None = None,
     ):
         self.next = next_interceptor
         self.logger = logger
@@ -105,17 +105,22 @@ class SentryActivityInboundInterceptor(ActivityInboundInterceptor):
                 scope.set_tag("activity.direction", "inbound")
                 scope.set_tag("activity_type", activity_name)
                 scope.set_tag("failure_level", "activity")
-                
+
                 # Set fingerprint for better Sentry grouping
-                scope.fingerprint = [f"activity_{activity_name}", str(type(e).__name__), str(e), "activity_failure"]
-                
+                scope.fingerprint = [
+                    f"activity_{activity_name}",
+                    str(type(e).__name__),
+                    str(e),
+                    "activity_failure",
+                ]
+
                 # Extract context using provided function
                 extracted_tags, extracted_context = extract_context_from_contextvars(self.context_extraction_fn)
-                
+
                 # Set tags for filtering/searching
                 for key, value in extracted_tags.items():
                     scope.set_tag(key, value)
-                
+
                 # Add detailed context
                 context = {
                     "name": activity_name,
@@ -130,7 +135,7 @@ class SentryActivityInboundInterceptor(ActivityInboundInterceptor):
                 if self.additional_context_fn:
                     additional_context = self.additional_context_fn(input)
                     context.update(additional_context)
-                
+
                 scope.set_context("activity_details", context)
                 try:
                     capture_exception(e)
@@ -150,8 +155,8 @@ class SentryActivityOutboundInterceptor(ActivityOutboundInterceptor):
         self,
         next_interceptor: ActivityOutboundInterceptor,
         logger: Any,
-        context_extraction_fn: Optional[Callable] = None,
-        additional_context_fn: Optional[Callable] = None,
+        context_extraction_fn: Callable | None = None,
+        additional_context_fn: Callable | None = None,
     ):
         self.next = next_interceptor
         self.logger = logger
@@ -169,17 +174,22 @@ class SentryActivityOutboundInterceptor(ActivityOutboundInterceptor):
                 scope.set_tag("activity.direction", "outbound")
                 scope.set_tag("activity_type", activity_name)
                 scope.set_tag("failure_level", "activity")
-                
+
                 # Set fingerprint for better Sentry grouping
-                scope.fingerprint = [f"activity_{activity_name}", str(type(e).__name__), str(e), "activity_failure"]
-                
+                scope.fingerprint = [
+                    f"activity_{activity_name}",
+                    str(type(e).__name__),
+                    str(e),
+                    "activity_failure",
+                ]
+
                 # Extract context using provided function
                 extracted_tags, extracted_context = extract_context_from_contextvars(self.context_extraction_fn)
-                
+
                 # Set tags for filtering/searching
                 for key, value in extracted_tags.items():
                     scope.set_tag(key, value)
-                
+
                 # Add detailed context
                 context = {
                     "name": activity_name,
@@ -194,7 +204,7 @@ class SentryActivityOutboundInterceptor(ActivityOutboundInterceptor):
                 if self.additional_context_fn:
                     additional_context = self.additional_context_fn(input)
                     context.update(additional_context)
-                
+
                 scope.set_context("activity_details", context)
                 try:
                     capture_exception(e)
@@ -214,8 +224,8 @@ class SentryWorkflowInboundInterceptor(WorkflowInboundInterceptor):
         self,
         next_interceptor: WorkflowInboundInterceptor,
         logger: Any,
-        context_extraction_fn: Optional[Callable] = None,
-        additional_context_fn: Optional[Callable] = None,
+        context_extraction_fn: Callable | None = None,
+        additional_context_fn: Callable | None = None,
     ):
         self.next = next_interceptor
         self.logger = logger
@@ -224,12 +234,14 @@ class SentryWorkflowInboundInterceptor(WorkflowInboundInterceptor):
 
     def init(self, outbound: WorkflowOutboundInterceptor) -> None:
         """Initialize with outbound interceptor."""
-        self.next.init(SentryWorkflowOutboundInterceptor(
-            outbound,
-            self.logger,
-            self.context_extraction_fn,
-            self.additional_context_fn,
-        ))
+        self.next.init(
+            SentryWorkflowOutboundInterceptor(
+                outbound,
+                self.logger,
+                self.context_extraction_fn,
+                self.additional_context_fn,
+            )
+        )
 
     async def execute_workflow(self, input: ExecuteWorkflowInput) -> Any:
         """Execute workflow and report failures to Sentry."""
@@ -242,17 +254,22 @@ class SentryWorkflowInboundInterceptor(WorkflowInboundInterceptor):
                 scope.set_tag("workflow.type", workflow_name)
                 scope.set_tag("workflow.direction", "inbound")
                 scope.set_tag("failure_level", "workflow")
-                
+
                 # Set fingerprint for better Sentry grouping
-                scope.fingerprint = [f"workflow_{workflow_name}", str(type(e).__name__), str(e), "workflow_failure"]
-                
+                scope.fingerprint = [
+                    f"workflow_{workflow_name}",
+                    str(type(e).__name__),
+                    str(e),
+                    "workflow_failure",
+                ]
+
                 # Extract context using provided function
                 extracted_tags, extracted_context = extract_context_from_contextvars(self.context_extraction_fn)
-                
+
                 # Set tags for filtering/searching
                 for key, value in extracted_tags.items():
                     scope.set_tag(key, value)
-                
+
                 # Add detailed context
                 context = {
                     "type": workflow_name,
@@ -266,7 +283,7 @@ class SentryWorkflowInboundInterceptor(WorkflowInboundInterceptor):
                 if self.additional_context_fn:
                     additional_context = self.additional_context_fn(input)
                     context.update(additional_context)
-                
+
                 scope.set_context("workflow_details", context)
                 try:
                     capture_exception(e)
@@ -288,17 +305,22 @@ class SentryWorkflowInboundInterceptor(WorkflowInboundInterceptor):
                 scope.set_tag("workflow.type", input.workflow)
                 scope.set_tag("workflow.direction", "child_inbound")
                 scope.set_tag("failure_level", "child_workflow")
-                
+
                 # Set fingerprint for better Sentry grouping
-                scope.fingerprint = [f"child_workflow_{input.workflow}", str(type(e).__name__), str(e), "child_workflow_failure"]
-                
+                scope.fingerprint = [
+                    f"child_workflow_{input.workflow}",
+                    str(type(e).__name__),
+                    str(e),
+                    "child_workflow_failure",
+                ]
+
                 # Extract context using provided function
                 extracted_tags, extracted_context = extract_context_from_contextvars(self.context_extraction_fn)
-                
+
                 # Set tags for filtering/searching
                 for key, value in extracted_tags.items():
                     scope.set_tag(key, value)
-                
+
                 # Add detailed context
                 context = {
                     "type": input.workflow,
@@ -317,7 +339,7 @@ class SentryWorkflowInboundInterceptor(WorkflowInboundInterceptor):
                 if self.additional_context_fn:
                     additional_context = self.additional_context_fn(input)
                     context.update(additional_context)
-                
+
                 scope.set_context("child_workflow_details", context)
                 try:
                     capture_exception(e)
@@ -336,8 +358,8 @@ class SentryWorkflowOutboundInterceptor(WorkflowOutboundInterceptor):
         self,
         next_interceptor: WorkflowOutboundInterceptor,
         logger: Any,
-        context_extraction_fn: Optional[Callable] = None,
-        additional_context_fn: Optional[Callable] = None,
+        context_extraction_fn: Callable | None = None,
+        additional_context_fn: Callable | None = None,
     ):
         self.next = next_interceptor
         self.logger = logger
@@ -355,17 +377,22 @@ class SentryWorkflowOutboundInterceptor(WorkflowOutboundInterceptor):
                 scope.set_tag("workflow.type", workflow_name)
                 scope.set_tag("workflow.direction", "outbound")
                 scope.set_tag("failure_level", "workflow")
-                
+
                 # Set fingerprint for better Sentry grouping
-                scope.fingerprint = [f"workflow_{workflow_name}", str(type(e).__name__), str(e), "workflow_failure"]
-                
+                scope.fingerprint = [
+                    f"workflow_{workflow_name}",
+                    str(type(e).__name__),
+                    str(e),
+                    "workflow_failure",
+                ]
+
                 # Extract context using provided function
                 extracted_tags, extracted_context = extract_context_from_contextvars(self.context_extraction_fn)
-                
+
                 # Set tags for filtering/searching
                 for key, value in extracted_tags.items():
                     scope.set_tag(key, value)
-                
+
                 # Add detailed context
                 context = {
                     "type": workflow_name,
@@ -379,7 +406,7 @@ class SentryWorkflowOutboundInterceptor(WorkflowOutboundInterceptor):
                 if self.additional_context_fn:
                     additional_context = self.additional_context_fn(input)
                     context.update(additional_context)
-                
+
                 scope.set_context("workflow_details", context)
                 try:
                     capture_exception(e)
@@ -401,17 +428,22 @@ class SentryWorkflowOutboundInterceptor(WorkflowOutboundInterceptor):
                 scope.set_tag("workflow.type", input.workflow)
                 scope.set_tag("workflow.direction", "child_outbound")
                 scope.set_tag("failure_level", "child_workflow")
-                
+
                 # Set fingerprint for better Sentry grouping
-                scope.fingerprint = [f"child_workflow_{input.workflow}", str(type(e).__name__), str(e), "child_workflow_failure"]
-                
+                scope.fingerprint = [
+                    f"child_workflow_{input.workflow}",
+                    str(type(e).__name__),
+                    str(e),
+                    "child_workflow_failure",
+                ]
+
                 # Extract context using provided function
                 extracted_tags, extracted_context = extract_context_from_contextvars(self.context_extraction_fn)
-                
+
                 # Set tags for filtering/searching
                 for key, value in extracted_tags.items():
                     scope.set_tag(key, value)
-                
+
                 # Add detailed context
                 context = {
                     "type": input.workflow,
@@ -430,7 +462,7 @@ class SentryWorkflowOutboundInterceptor(WorkflowOutboundInterceptor):
                 if self.additional_context_fn:
                     additional_context = self.additional_context_fn(input)
                     context.update(additional_context)
-                
+
                 scope.set_context("child_workflow_details", context)
                 try:
                     capture_exception(e)
@@ -445,23 +477,23 @@ class SentryWorkflowOutboundInterceptor(WorkflowOutboundInterceptor):
 class SentryInterceptor(Interceptor):
     """
     Configurable Sentry interceptor that captures and reports workflow and activity failures.
-    
+
     This interceptor can be configured with custom logging implementation and additional
     context functions, making it reusable across different codebases.
     """
-    
+
     def __init__(
         self,
         logger_module: Any,
-        context_extraction_fn: Optional[Callable] = None,
-        sentry_dsn: Optional[str] = None,
-        environment: Optional[str] = None,
-        additional_context_fn: Optional[Callable] = None,
+        context_extraction_fn: Callable | None = None,
+        sentry_dsn: str | None = None,
+        environment: str | None = None,
+        additional_context_fn: Callable | None = None,
         **sentry_options: Any,
     ):
         """
         Initialize the Sentry interceptor with configurable parameters.
-        
+
         Args:
             logger_module: Logger to use for logging (must support error method)
             context_extraction_fn: Optional function to extract context from contextvars
@@ -482,9 +514,7 @@ class SentryInterceptor(Interceptor):
                 **sentry_options,
             )
 
-    def intercept_activity(
-        self, next: ActivityInboundInterceptor
-    ) -> ActivityInboundInterceptor:
+    def intercept_activity(self, next: ActivityInboundInterceptor) -> ActivityInboundInterceptor:
         """Create activity inbound interceptor."""
         return SentryActivityInboundInterceptor(
             next,
@@ -493,10 +523,9 @@ class SentryInterceptor(Interceptor):
             self.additional_context_fn,
         )
 
-    def workflow_interceptor_class(
-        self, input: WorkflowInterceptorClassInput
-    ) -> Type[WorkflowInboundInterceptor]:
+    def workflow_interceptor_class(self, input: WorkflowInterceptorClassInput) -> type[WorkflowInboundInterceptor]:
         """Create workflow inbound interceptor class."""
+
         def interceptor_creator(next_interceptor):
             return SentryWorkflowInboundInterceptor(
                 next_interceptor,
@@ -504,4 +533,5 @@ class SentryInterceptor(Interceptor):
                 self.context_extraction_fn,
                 self.additional_context_fn,
             )
+
         return interceptor_creator
