@@ -302,6 +302,9 @@ def extract_node_payloads(events: list[dict], node_ids: list[str] | None = None)
             event_id=event_id,
         )
 
+        node_id = None
+        payload_field = None
+
         # Handle workflow execution started
         if event_type == EventType.WORKFLOW_EXECUTION_STARTED.value:
             result = _process_event_with_input_payload(event, EventType.WORKFLOW_EXECUTION_STARTED)
@@ -315,6 +318,7 @@ def extract_node_payloads(events: list[dict], node_ids: list[str] | None = None)
             # extracting child workflow execution info (workflow_id, run_id)
             extracted_node_id = extract_node_id_from_event(event)
             _add_event_to_node_events(extracted_node_id, event, event_type, node_ids, node_payloads)
+            continue
 
         # Handle workflow execution completed
         if event_type == EventType.WORKFLOW_EXECUTION_COMPLETED.value:
@@ -366,6 +370,10 @@ def extract_node_payloads(events: list[dict], node_ids: list[str] | None = None)
             if not result:
                 continue
             node_id, payload_field = result
+
+        # Skip if we didn't extract a node_id for this event
+        if not node_id or not payload_field:
+            continue
 
         # Skip if node_id is not in target list
         if not _should_include_node_id(node_id, node_ids):
