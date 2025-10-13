@@ -37,7 +37,6 @@ class CustomOutputStrategyHandler(BaseStrategy):
 
         Args:
             node_ids: List of node execution IDs
-            temporal_history: Optional workflow history (not used in this strategy)
 
         Returns:
             SimulationStrategyOutput with node_outputs for mocking

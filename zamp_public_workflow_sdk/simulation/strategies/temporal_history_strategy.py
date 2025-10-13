@@ -66,7 +66,6 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
         Args:
             node_ids: List of node execution IDs (supports hierarchical notation like
                      "ChildWorkflow#1.activity#1")
-            temporal_history: Optional workflow history (fetches from Temporal if not provided)
 
         Returns:
             SimulationStrategyOutput containing node outputs for mocking
