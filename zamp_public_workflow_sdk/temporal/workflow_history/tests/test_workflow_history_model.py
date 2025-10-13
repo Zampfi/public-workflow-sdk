@@ -55,6 +55,8 @@ class TestWorkflowHistory:
 
     def test_get_child_workflow_workflow_id_run_id_not_found(self):
         """Test get_child_workflow_workflow_id_run_id when child workflow not found."""
+        import pytest
+
         events = [
             {
                 "eventType": "EVENT_TYPE_WORKFLOW_EXECUTION_STARTED",
@@ -70,21 +72,21 @@ class TestWorkflowHistory:
             events=events,
         )
 
-        result = workflow_history.get_child_workflow_workflow_id_run_id("Child#1")
-
-        assert result is None
+        with pytest.raises(ValueError, match="No node data found for child workflow"):
+            workflow_history.get_child_workflow_workflow_id_run_id("Child#1")
 
     def test_get_child_workflow_workflow_id_run_id_empty_events(self):
         """Test get_child_workflow_workflow_id_run_id with empty events."""
+        import pytest
+
         workflow_history = WorkflowHistory(
             workflow_id="main-workflow-id",
             run_id="main-run-id",
             events=[],
         )
 
-        result = workflow_history.get_child_workflow_workflow_id_run_id("Child#1")
-
-        assert result is None
+        with pytest.raises(ValueError, match="No node data found for child workflow"):
+            workflow_history.get_child_workflow_workflow_id_run_id("Child#1")
 
     def test_get_node_input(self):
         """Test get_node_input method."""

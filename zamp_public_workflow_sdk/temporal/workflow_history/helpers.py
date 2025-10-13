@@ -392,7 +392,7 @@ def extract_node_payloads(events: list[dict], node_ids: list[str] | None = None)
     return node_payloads
 
 
-def get_child_workflow_workflow_id_run_id(events: list[dict], node_id: str) -> tuple[str, str] | None:
+def get_child_workflow_workflow_id_run_id(events: list[dict], node_id: str) -> tuple[str, str]:
     """
     Get child workflow's workflow_id and run_id from CHILD_WORKFLOW_EXECUTION_STARTED event.
 
@@ -401,7 +401,10 @@ def get_child_workflow_workflow_id_run_id(events: list[dict], node_id: str) -> t
         node_id: The node ID of the child workflow (e.g., "ChildWorkflow#1")
 
     Returns:
-        Tuple of (workflow_id, run_id) if found, None otherwise
+        Tuple of (workflow_id, run_id)
+
+    Raises:
+        ValueError: If node data is not found or workflow execution details are missing
     """
     logger.info(
         "Getting child workflow workflow_id and run_id",
@@ -412,8 +415,11 @@ def get_child_workflow_workflow_id_run_id(events: list[dict], node_id: str) -> t
     # Get node data for the specified child workflow
     node_data = get_node_data_from_node_id(events, node_id)
     if not node_data or node_id not in node_data:
-        logger.info("No node data found", node_id=node_id)
-        return None
+        logger.error("No node data found for child workflow", node_id=node_id)
+        raise ValueError(
+            f"No node data found for child workflow with node_id={node_id}. "
+            f"The child workflow may not have been executed or the node_id is invalid."
+        )
 
     node_payload_data = node_data[node_id]
 
@@ -439,5 +445,8 @@ def get_child_workflow_workflow_id_run_id(events: list[dict], node_id: str) -> t
         if child_workflow_id and child_run_id:
             return (child_workflow_id, child_run_id)
 
-    logger.info("No child workflow workflow_id and run_id found", node_id=node_id)
-    return None
+    logger.error("No child workflow workflow_id and run_id found in events", node_id=node_id)
+    raise ValueError(
+        f"No child workflow workflow_id and run_id found for node_id={node_id}. "
+        f"The CHILD_WORKFLOW_EXECUTION_STARTED event may be missing or incomplete."
+    )

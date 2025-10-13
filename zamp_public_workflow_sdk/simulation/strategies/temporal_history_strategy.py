@@ -2,6 +2,7 @@
 Temporal History simulation strategy implementation.
 """
 
+from collections import defaultdict
 from typing import Any
 
 import structlog
@@ -50,6 +51,7 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
         """
         self.reference_workflow_id = reference_workflow_id
         self.reference_workflow_run_id = reference_workflow_run_id
+        self.cached_histories: dict[str, WorkflowHistory] = {}
 
     async def execute(
         self,
@@ -68,27 +70,25 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
             temporal_history: Optional workflow history (fetches from Temporal if not provided)
 
         Returns:
-            SimulationStrategyOutput containing node outputs for mocking, or empty output on failure
+            SimulationStrategyOutput containing node outputs for mocking
+
+        Raises:
+            Exception: If temporal history cannot be fetched or node outputs cannot be extracted
         """
-        try:
-            if temporal_history is None:
-                temporal_history = await self._fetch_temporal_history(node_ids)
+        if temporal_history is None:
+            temporal_history = await self._fetch_temporal_history(node_ids)
 
-            if temporal_history is not None:
-                output = await self._extract_node_output(temporal_history, node_ids)
-                simulation_strategy_output = SimulationStrategyOutput(node_outputs=output)
-                return simulation_strategy_output
-
-            return SimulationStrategyOutput()
-
-        except Exception as e:
-            logger.error(
-                "TemporalHistoryStrategyHandler: Error executing strategy",
-                node_ids=node_ids,
-                error=str(e),
-                error_type=type(e).__name__,
+        if temporal_history is None:
+            raise Exception(
+                f"Failed to fetch temporal history for workflow_id={self.reference_workflow_id}, "
+                f"run_id={self.reference_workflow_run_id}"
             )
-            return SimulationStrategyOutput()
+
+        # Store main workflow history in cache
+        self.cached_histories[MAIN_WORKFLOW_IDENTIFIER] = temporal_history
+
+        output = await self._extract_node_output(node_ids)
+        return SimulationStrategyOutput(node_outputs=output)
 
     async def _fetch_temporal_history(
         self, node_ids: list[str], workflow_id: str | None = None, run_id: str | None = None
@@ -136,9 +136,7 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
             )
             return None
 
-    async def _extract_node_output(
-        self, temporal_history: WorkflowHistory, node_ids: list[str]
-    ) -> dict[str, Any | None]:
+    async def _extract_node_output(self, node_ids: list[str]) -> dict[str, Any | None]:
         """
         Extract output for specific nodes from temporal history.
 
@@ -146,51 +144,41 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
         For child workflow nodes, it recursively fetches their history and extracts outputs.
 
         Args:
-            temporal_history: The workflow history object (main workflow or parent workflow)
             node_ids: List of node execution IDs to extract output for
 
         Returns:
-            Dictionary mapping node IDs to their outputs (None if not found)
+            Dictionary mapping node IDs to their outputs
+
+        Raises:
+            Exception: If node outputs cannot be extracted
         """
-        try:
-            logger.info("Extracting node outputs", node_ids=node_ids)
+        logger.info("Extracting node outputs", node_ids=node_ids)
 
-            # Group nodes by their immediate parent workflow
-            nodes_by_parent = self._group_nodes_by_parent_workflow(node_ids)
-            all_node_outputs = {}
+        # Group nodes by their immediate parent workflow
+        node_groups = self._group_nodes_by_parent_workflow(node_ids)
+        all_node_outputs = {}
 
-            cached_histories = {}
-            workflow_nodes_needed = self._collect_nodes_per_workflow(node_ids)
+        workflow_nodes_needed = self._collect_nodes_per_workflow(node_ids)
+        temporal_history = self.cached_histories[MAIN_WORKFLOW_IDENTIFIER]
 
-            for parent_workflow_id, nodes_in_workflow in nodes_by_parent.items():
-                if parent_workflow_id == MAIN_WORKFLOW_IDENTIFIER:
-                    # Main workflow nodes - extract directly from current history
-                    main_workflow_outputs = self._extract_main_workflow_node_outputs(
-                        temporal_history, nodes_in_workflow
-                    )
-                    all_node_outputs.update(main_workflow_outputs)
-                else:
-                    # Child workflow nodes - need to fetch child workflow history
-                    child_workflow_outputs = await self._extract_child_workflow_node_outputs(
-                        temporal_history,
-                        parent_workflow_id,
-                        nodes_in_workflow,
-                        cached_histories,
-                        workflow_nodes_needed,
-                    )
-                    all_node_outputs.update(child_workflow_outputs)
+        for parent_workflow_id, workflow_nodes in node_groups.items():
+            if parent_workflow_id == MAIN_WORKFLOW_IDENTIFIER:
+                # Main workflow nodes - extract directly from current history
+                main_workflow_outputs = self._extract_main_workflow_node_outputs(
+                    temporal_history=temporal_history, node_ids=workflow_nodes
+                )
+                all_node_outputs.update(main_workflow_outputs)
+            else:
+                # Child workflow nodes - need to fetch child workflow history
+                child_workflow_outputs = await self._extract_child_workflow_node_outputs(
+                    temporal_history,
+                    parent_workflow_id,
+                    workflow_nodes,
+                    workflow_nodes_needed,
+                )
+                all_node_outputs.update(child_workflow_outputs)
 
-            return all_node_outputs
-
-        except Exception as e:
-            logger.error(
-                "Error extracting node outputs",
-                error=str(e),
-                error_type=type(e).__name__,
-                node_ids=node_ids,
-            )
-            # Return empty dict on error
-            return {node_id: None for node_id in node_ids}
+        return all_node_outputs
 
     def _extract_main_workflow_node_outputs(
         self, temporal_history: WorkflowHistory, node_ids: list[str]
@@ -216,7 +204,6 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
         parent_history: WorkflowHistory,
         child_workflow_id: str,
         node_ids: list[str],
-        cached_histories: dict[str, WorkflowHistory] = None,
         workflow_nodes_needed: dict[str, list[str]] = None,
     ) -> dict[str, Any | None]:
         """
@@ -231,27 +218,32 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
             parent_history: The parent workflow history object
             child_workflow_id: The child workflow identifier (e.g., "ChildWorkflow#1")
             node_ids: List of node IDs in the child workflow
-            cached_histories: Cache of already fetched workflow histories
             workflow_nodes_needed: Pre-collected map of workflow paths to their needed nodes
 
         Returns:
             Dictionary mapping node IDs to their outputs (None if not found)
         """
-        if cached_histories is None:
-            cached_histories = {}
         if workflow_nodes_needed is None:
             workflow_nodes_needed = {}
 
-        # Get full path (e.g., "Parent#1.Child#1.activity#1" + "Child#1" -> "Parent#1.Child#1")
+        # Extract the full path to the child workflow by finding where it appears in the node ID
+        # Given a node like "Parent#1.Child#1.activity#1" and child_workflow_id "Child#1",
+        # this returns "Parent#1.Child#1" (the path up to and including the child workflow)
         full_child_path = self._get_workflow_path_from_node(node_ids[0], child_workflow_id)
 
         # Fetch child workflow history (traverses nested paths if needed)
         child_history = await self._fetch_nested_child_workflow_history(
-            parent_history, full_child_path, node_ids, cached_histories, workflow_nodes_needed
+            parent_workflow_history=parent_history,
+            full_child_path=full_child_path,
+            node_ids=node_ids,
+            workflow_nodes_needed=workflow_nodes_needed,
         )
 
         if not child_history:
-            return {node_id: None for node_id in node_ids}
+            raise Exception(
+                f"Failed to fetch child workflow history for path={full_child_path}, "
+                f"child_workflow_id={child_workflow_id}, node_ids={node_ids}"
+            )
 
         # Extract outputs using full node IDs (workflow stores with prefix, e.g., "Parent#1.activity#1")
         child_nodes_data = child_history.get_nodes_data()
@@ -267,39 +259,41 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
 
     async def _fetch_nested_child_workflow_history(
         self,
-        parent_history: WorkflowHistory,
+        parent_workflow_history: WorkflowHistory,
         full_child_path: str,
         node_ids: list[str],
-        cached_histories: dict[str, WorkflowHistory] = None,
         workflow_nodes_needed: dict[str, list[str]] = None,
     ) -> WorkflowHistory | None:
         """
         Fetch nested child workflow by traversing the path.
         E.g., "Parent#1.Child#1" fetches Parent#1, then Child#1 from Parent#1.
         """
-        if cached_histories is None:
-            cached_histories = {}
         if workflow_nodes_needed is None:
             workflow_nodes_needed = {}
 
         path_parts = full_child_path.split(".")
-        current_history = parent_history
+        current_history = parent_workflow_history
 
         for depth_level in range(len(path_parts)):
             current_path = ".".join(path_parts[: depth_level + 1])
 
-            if current_path in cached_histories:
-                current_history = cached_histories[current_path]
+            if current_path in self.cached_histories:
+                current_history = self.cached_histories[current_path]
+                logger.info("Using cached history", current_path=current_path)
                 continue
 
             # Get workflow_id and run_id from parent using full prefixed node_id
-            workflow_id_run_id = current_history.get_child_workflow_workflow_id_run_id(current_path)
-            if not workflow_id_run_id:
-                return None
+            try:
+                workflow_id_run_id = current_history.get_child_workflow_workflow_id_run_id(current_path)
+                workflow_id, run_id = workflow_id_run_id
+            except ValueError as e:
+                raise Exception(
+                    f"Failed to get workflow_id and run_id for child workflow at path={current_path}. "
+                    f"Child workflow execution may not have started or node_id may be invalid. "
+                    f"Original error: {str(e)}"
+                ) from e
 
-            workflow_id, run_id = workflow_id_run_id
-
-            # Use pre-collected nodes or fallback
+            # Use pre-collected nodes
             if current_path in workflow_nodes_needed:
                 fetch_node_ids = workflow_nodes_needed[current_path]
             else:
@@ -318,20 +312,37 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
             if not current_history:
                 return None
 
-            cached_histories[current_path] = current_history
+            self.cached_histories[current_path] = current_history
 
         return current_history
 
     def _get_workflow_path_from_node(self, node_id: str, child_workflow_id: str) -> str:
         """
         Extract workflow path up to child_workflow_id from a node_id.
-        E.g., node_id="Parent#1.Child#1.activity#1", child_workflow_id="Child#1" -> "Parent#1.Child#1"
+
+        This finds where the child_workflow_id appears in the node_id path and returns
+        everything up to and including it.
+
+        Examples:
+            - node_id="Parent#1.Child#1.activity#1", child_workflow_id="Child#1"
+              -> "Parent#1.Child#1"
+            - node_id="Parent#1.Child#1.GrandChild#1.task#1", child_workflow_id="GrandChild#1"
+              -> "Parent#1.Child#1.GrandChild#1"
+            - node_id="Child#1.activity#1", child_workflow_id="Child#1"
+              -> "Child#1"
+            - node_id="activity#1", child_workflow_id="Parent#1" (not found)
+              -> "Parent#1" (returns the child_workflow_id itself as fallback)
         """
         parts = node_id.split(".")
         try:
             child_index = parts.index(child_workflow_id)
             return ".".join(parts[: child_index + 1])
         except ValueError:
+            logger.error(
+                "Child workflow ID not found in node path, using fallback",
+                node_id=node_id,
+                child_workflow_id=child_workflow_id,
+            )
             return child_workflow_id
 
     def _collect_nodes_per_workflow(self, node_ids: list[str]) -> dict[str, list[str]]:
@@ -348,15 +359,19 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
             parts = node_id.split(".")
 
             # For each level, collect what that workflow needs (with prefix)
-            for i in range(1, len(parts)):
-                workflow_path = ".".join(parts[:i])
-                node_with_prefix = ".".join(parts[: i + 1])
+            for depth_level in range(1, len(parts)):
+                workflow_path = ".".join(parts[:depth_level])
+                node_with_prefix = ".".join(parts[: depth_level + 1])
 
+                # Initialize workflow path if not seen before
                 if workflow_path not in workflow_nodes:
                     workflow_nodes[workflow_path] = []
 
-                if node_with_prefix not in workflow_nodes[workflow_path]:
-                    workflow_nodes[workflow_path].append(node_with_prefix)
+                # Skip if this node
+                if node_with_prefix in workflow_nodes[workflow_path]:
+                    continue
+
+                workflow_nodes[workflow_path].append(node_with_prefix)
 
         return workflow_nodes
 
@@ -367,7 +382,7 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
         - 'Child#1.activity#1' -> parent = 'Child#1'
         - 'Parent#1.Child#1.activity#1' -> parent = 'Child#1'
         """
-        nodes_by_parent = {}
+        node_groups = defaultdict(list)
 
         for node_id in node_ids:
             parts = node_id.split(".")
@@ -377,8 +392,6 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
             else:
                 parent = parts[-2]  # Immediate parent is second-to-last
 
-            if parent not in nodes_by_parent:
-                nodes_by_parent[parent] = []
-            nodes_by_parent[parent].append(node_id)
+            node_groups[parent].append(node_id)
 
-        return nodes_by_parent
+        return node_groups

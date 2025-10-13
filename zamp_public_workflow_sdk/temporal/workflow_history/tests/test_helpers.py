@@ -7,6 +7,7 @@ from zamp_public_workflow_sdk.temporal.workflow_history.helpers import (
     extract_node_payloads,
     get_child_workflow_workflow_id_run_id,
 )
+import pytest
 
 
 class TestHelpers:
@@ -383,6 +384,7 @@ class TestHelpers:
 
     def test_get_child_workflow_workflow_id_run_id_no_node_data(self):
         """Test get_child_workflow_workflow_id_run_id when no node data found."""
+
         events = [
             {
                 "eventType": "EVENT_TYPE_WORKFLOW_EXECUTION_STARTED",
@@ -392,12 +394,12 @@ class TestHelpers:
             }
         ]
 
-        result = get_child_workflow_workflow_id_run_id(events, "Child#1")
-
-        assert result is None
+        with pytest.raises(ValueError, match="No node data found for child workflow"):
+            get_child_workflow_workflow_id_run_id(events, "Child#1")
 
     def test_get_child_workflow_workflow_id_run_id_no_started_event(self):
         """Test get_child_workflow_workflow_id_run_id when no STARTED event found."""
+
         events = [
             {
                 "eventType": "EVENT_TYPE_CHILD_WORKFLOW_EXECUTION_INITIATED",
@@ -409,12 +411,12 @@ class TestHelpers:
             # Missing STARTED event
         ]
 
-        result = get_child_workflow_workflow_id_run_id(events, "Child#1")
-
-        assert result is None
+        with pytest.raises(ValueError, match="No node data found for child workflow"):
+            get_child_workflow_workflow_id_run_id(events, "Child#1")
 
     def test_get_child_workflow_workflow_id_run_id_no_attrs(self):
         """Test get_child_workflow_workflow_id_run_id when event has no attributes."""
+
         events = [
             {
                 "eventType": "EVENT_TYPE_CHILD_WORKFLOW_EXECUTION_INITIATED",
@@ -428,12 +430,12 @@ class TestHelpers:
             },
         ]
 
-        result = get_child_workflow_workflow_id_run_id(events, "Child#1")
-
-        assert result is None
+        with pytest.raises(ValueError, match="No node data found for child workflow"):
+            get_child_workflow_workflow_id_run_id(events, "Child#1")
 
     def test_get_child_workflow_workflow_id_run_id_no_workflow_execution(self):
         """Test get_child_workflow_workflow_id_run_id when no workflow execution field."""
+
         events = [
             {
                 "eventType": "EVENT_TYPE_CHILD_WORKFLOW_EXECUTION_INITIATED",
@@ -450,12 +452,12 @@ class TestHelpers:
             },
         ]
 
-        result = get_child_workflow_workflow_id_run_id(events, "Child#1")
-
-        assert result is None
+        with pytest.raises(ValueError, match="No node data found for child workflow"):
+            get_child_workflow_workflow_id_run_id(events, "Child#1")
 
     def test_get_child_workflow_workflow_id_run_id_partial_ids(self):
         """Test get_child_workflow_workflow_id_run_id when only one ID is present."""
+
         events = [
             {
                 "eventType": "EVENT_TYPE_CHILD_WORKFLOW_EXECUTION_INITIATED",
@@ -475,6 +477,5 @@ class TestHelpers:
             },
         ]
 
-        result = get_child_workflow_workflow_id_run_id(events, "Child#1")
-
-        assert result is None
+        with pytest.raises(ValueError, match="No node data found for child workflow"):
+            get_child_workflow_workflow_id_run_id(events, "Child#1")

@@ -63,7 +63,7 @@ class WorkflowHistory(BaseModel):
         """
         return extract_node_payloads(self.events, target_node_ids)
 
-    def get_child_workflow_workflow_id_run_id(self, node_id: str) -> tuple[str, str] | None:
+    def get_child_workflow_workflow_id_run_id(self, node_id: str) -> tuple[str, str]:
         """
         Get child workflow's workflow_id and run_id from CHILD_WORKFLOW_EXECUTION_STARTED event.
 
@@ -71,6 +71,9 @@ class WorkflowHistory(BaseModel):
             node_id: The node ID of the child workflow (e.g., "ChildWorkflow#1")
 
         Returns:
-            Tuple of (workflow_id, run_id) if found, None otherwise
+            Tuple of (workflow_id, run_id)
+
+        Raises:
+            ValueError: If node data is not found or workflow execution details are missing
         """
         return get_child_workflow_workflow_id_run_id(self.events, node_id)
