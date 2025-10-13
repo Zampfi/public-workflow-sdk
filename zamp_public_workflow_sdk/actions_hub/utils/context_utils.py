@@ -36,5 +36,6 @@ def get_log_mode_from_context():
     Get the log mode from the context data.
     """
     from ..constants import LogMode
+    from zamp_public_workflow_sdk.temporal import LOG_MODE_FIELD
 
-    return get_variable_from_context("log_mode", LogMode.INFO)
+    return get_variable_from_context(LOG_MODE_FIELD, LogMode.INFO)

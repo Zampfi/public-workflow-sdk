@@ -388,14 +388,7 @@ class ActionsHub:
         if get_log_mode_from_context() != LogMode.DEBUG:
             return
 
-        def get_action_type_str(action_type: ActionType) -> str:
-            if action_type == ActionType.ACTIVITY:
-                return "ACTIVITY"
-            elif action_type == ActionType.WORKFLOW:
-                return "WORKFLOW"
-            return "BUSINESS_LOGIC"
-
-        action_type_str = get_action_type_str(action_type)
+        action_type_str = action_type.name
 
         logger.info(
             message,
