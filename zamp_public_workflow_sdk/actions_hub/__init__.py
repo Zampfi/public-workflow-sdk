@@ -6,7 +6,7 @@ independent of the Pantheon platform.
 """
 
 from .action_hub_core import ActionsHub
-from .constants import ActionType, ExecutionMode
+from .constants import ActionType, ExecutionMode, LogMode
 from .models.core_models import Action, ActionFilter, RetryPolicy
 
 __all__ = [
@@ -16,4 +16,5 @@ __all__ = [
     "RetryPolicy",
     "ActionType",
     "ExecutionMode",
+    "LogMode",
 ]

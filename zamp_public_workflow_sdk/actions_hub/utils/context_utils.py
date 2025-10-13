@@ -6,6 +6,8 @@ from typing import Any
 
 import structlog
 
+logger = structlog.get_logger(__name__)
+
 
 def get_variable_from_context(variable_name: str, default_value: Any = None) -> Any:
     """
@@ -27,3 +29,13 @@ def get_execution_mode_from_context():
     from ..constants import ExecutionMode
 
     return get_variable_from_context("execution_mode", ExecutionMode.TEMPORAL)
+
+
+def get_log_mode_from_context():
+    """
+    Get the log mode from the context data.
+    """
+    from ..constants import LogMode
+    from zamp_public_workflow_sdk.temporal import LOG_MODE_FIELD
+
+    return get_variable_from_context(LOG_MODE_FIELD, LogMode.INFO)
