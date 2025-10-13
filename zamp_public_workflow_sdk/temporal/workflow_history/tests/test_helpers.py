@@ -160,7 +160,9 @@ class TestHelpers:
             }
         ]
 
-        with patch("zamp_public_workflow_sdk.workflow_history.helpers.extract_node_id_from_event") as mock_extract:
+        with patch(
+            "zamp_public_workflow_sdk.temporal.workflow_history.helpers.extract_node_id_from_event"
+        ) as mock_extract:
             mock_extract.return_value = "activity-node-1"
 
             result = extract_node_payloads(events)
@@ -187,7 +189,9 @@ class TestHelpers:
             },
         ]
 
-        with patch("zamp_public_workflow_sdk.workflow_history.helpers.extract_node_id_from_event") as mock_extract:
+        with patch(
+            "zamp_public_workflow_sdk.temporal.workflow_history.helpers.extract_node_id_from_event"
+        ) as mock_extract:
             mock_extract.side_effect = ["activity-node-1", None]
 
             result = extract_node_payloads(events)
@@ -224,7 +228,9 @@ class TestHelpers:
             }
         ]
 
-        with patch("zamp_public_workflow_sdk.workflow_history.helpers.extract_node_id_from_event") as mock_extract:
+        with patch(
+            "zamp_public_workflow_sdk.temporal.workflow_history.helpers.extract_node_id_from_event"
+        ) as mock_extract:
             mock_extract.return_value = "workflow-node-1"
 
             result = extract_node_payloads(events, ["other-node"])
@@ -277,7 +283,9 @@ class TestHelpers:
             }
         ]
 
-        with patch("zamp_public_workflow_sdk.workflow_history.helpers.extract_node_id_from_event") as mock_extract:
+        with patch(
+            "zamp_public_workflow_sdk.temporal.workflow_history.helpers.extract_node_id_from_event"
+        ) as mock_extract:
             mock_extract.return_value = "workflow-node-1"
 
             result = extract_node_payloads(events)
@@ -300,7 +308,9 @@ class TestHelpers:
             }
         ]
 
-        with patch("zamp_public_workflow_sdk.workflow_history.helpers.extract_node_id_from_event") as mock_extract:
+        with patch(
+            "zamp_public_workflow_sdk.temporal.workflow_history.helpers.extract_node_id_from_event"
+        ) as mock_extract:
             mock_extract.return_value = "workflow-node-1"
 
             result = extract_node_payloads(events)
@@ -330,7 +340,9 @@ class TestHelpers:
             }
         ]
 
-        with patch("zamp_public_workflow_sdk.workflow_history.helpers.extract_node_id_from_event") as mock_extract:
+        with patch(
+            "zamp_public_workflow_sdk.temporal.workflow_history.helpers.extract_node_id_from_event"
+        ) as mock_extract:
             mock_extract.return_value = "workflow-node-1"
 
             result = extract_node_payloads(events)
@@ -363,7 +375,8 @@ class TestHelpers:
             },
         ]
 
-        result = get_child_workflow_workflow_id_run_id(events, "Child#1")
+        # The helper function expects the base64 encoded node_id, not the decoded value
+        result = get_child_workflow_workflow_id_run_id(events, "eyJub2RlX2lkIjogIkNoaWxkIzEifQ==")
 
         assert result is not None
         assert result == ("child-workflow-id-123", "child-run-id-456")
