@@ -27,3 +27,12 @@ def get_execution_mode_from_context():
     from ..constants import ExecutionMode
 
     return get_variable_from_context("execution_mode", ExecutionMode.TEMPORAL)
+
+
+def get_log_mode_from_context():
+    """
+    Get the log mode from the context data.
+    """
+    from ..constants import LogMode
+
+    return get_variable_from_context("log_mode", LogMode.DEBUG)

@@ -41,6 +41,16 @@ class ExecutionMode(str, Enum):
     TEMPORAL = "TEMPORAL"
 
 
+class LogMode(str, Enum):
+    """
+    Log mode for the action hub activity and workflows
+    INFO: for INFO log mode, which logs the activity and workflow execution
+    DEBUG: for DEBUG log mode, which logs the activity and workflow execution in debug mode
+    """
+
+    DEBUG = "DEBUG"
+
+
 # Simulation constants
 SKIP_SIMULATION_WORKFLOWS = [
     "SimulationWorkflow",

@@ -15,7 +15,7 @@ from zamp_public_workflow_sdk.temporal.interceptors.node_id_interceptor import (
     NODE_ID_HEADER_KEY,
 )
 
-from .constants import DEFAULT_MODE, SKIP_SIMULATION_WORKFLOWS
+from .constants import DEFAULT_MODE, SKIP_SIMULATION_WORKFLOWS, LogMode
 from .models.mcp_models import MCPConfig
 
 with workflow.unsafe.imports_passed_through():
@@ -63,6 +63,7 @@ with workflow.unsafe.imports_passed_through():
     )
     from .utils.context_utils import (
         get_execution_mode_from_context,
+        get_log_mode_from_context,
         get_variable_from_context,
     )
     from .utils.datetime_utils import convert_iso_to_timedelta
@@ -376,6 +377,36 @@ class ActionsHub:
         return list(cls._activities.values())
 
     @classmethod
+    def _log_action_execution_response(
+        cls,
+        message: str,
+        action_name: str,
+        action_type: ActionType,
+        result: Any,
+        node_id: str | None = None,
+    ):
+        if get_log_mode_from_context() != LogMode.DEBUG:
+            return
+
+        def get_action_type_str(action_type: ActionType) -> str:
+            if action_type == ActionType.ACTIVITY:
+                return "ACTIVITY"
+            elif action_type == ActionType.WORKFLOW:
+                return "WORKFLOW"
+            return "BUSINESS_LOGIC"
+
+        action_type_str = get_action_type_str(action_type)
+
+        logger.info(
+            message,
+            action_name=action_name,
+            action_type=action_type_str,
+            result=result,
+            node_id=node_id if node_id else "N/A",
+            workflow_id=cls._get_current_workflow_id(),
+        )
+
+    @classmethod
     async def execute_activity(
         cls,
         activity: str | Callable,
@@ -393,9 +424,10 @@ class ActionsHub:
 
         if execution_mode == ExecutionMode.API:
             # Direct function execution mode - bypass Temporal
+            activity_name = cls._get_action_name(activity)
             logger.info(
                 "Executing activity in API mode, bypassing Temporal",
-                activity_name=cls._get_action_name(activity),
+                activity_name=activity_name,
             )
 
             # Get the activity function
@@ -408,10 +440,19 @@ class ActionsHub:
                 func = activity
 
             # Execute the function directly
+            result = None
             if asyncio.iscoroutinefunction(func):
-                return await func(*args)
+                result = await func(*args)
             else:
-                return func(*args)
+                result = func(*args)
+
+            cls._log_action_execution_response(
+                message="Activity executed",
+                action_name=activity_name,
+                action_type=ActionType.ACTIVITY,
+                result=result,
+            )
+            return result
 
         # Generate node_id for this activity execution
         activity_name, workflow_id, node_id = cls._generate_node_id_for_action(activity)
@@ -446,7 +487,7 @@ class ActionsHub:
             workflow_id=workflow_id,
         )
 
-        return await workflow.execute_activity(
+        result = await workflow.execute_activity(
             activity,
             args=args,
             result_type=return_type,
@@ -455,6 +496,16 @@ class ActionsHub:
             task_queue=task_queue,
             **kwargs,
         )
+
+        cls._log_action_execution_response(
+            message="Activity executed",
+            action_name=activity_name,
+            action_type=ActionType.ACTIVITY,
+            result=result,
+            node_id=node_id,
+        )
+
+        return result
 
     """
     Workflows
@@ -619,10 +670,18 @@ class ActionsHub:
             if isinstance(workflow_name, str):
                 if workflow_name not in cls._workflows:
                     raise ValueError(f"Workflow '{workflow_name}' not found")
+
                 workflow_obj = cls._workflows[workflow_name]
                 if not workflow_obj.func:
                     raise ValueError(f"Workflow function not available for {workflow_name}")
-                return await workflow_obj.func(workflow_obj.class_type(), *args)
+                result = await workflow_obj.func(workflow_obj.class_type(), *args)
+                cls._log_action_execution_response(
+                    message="Child workflow executed",
+                    action_name=cls._get_action_name(workflow_name),
+                    result=result,
+                    action_type=ActionType.WORKFLOW,
+                )
+                return result
             else:
                 func = workflow_name
 
@@ -630,10 +689,26 @@ class ActionsHub:
                 raise ValueError(f"Workflow function not available for {workflow_name}")
 
             # Execute the function directly
+            result = None
             if asyncio.iscoroutinefunction(func):
-                return await func(*args)
+                result = await func(*args)
+                cls._log_action_execution_response(
+                    message="Child workflow executed",
+                    action_name=cls._get_action_name(workflow_name),
+                    result=result,
+                    action_type=ActionType.WORKFLOW,
+                )
+                return result
             else:
-                return func(*args)
+                result = func(*args)
+                cls._log_action_execution_response(
+                    message="Child workflow executed",
+                    action_name=cls._get_action_name(workflow_name),
+                    result=result,
+                    action_type=ActionType.WORKFLOW,
+                )
+
+            return result
 
         # Generate node_id for this child workflow execution
         child_workflow_name, workflow_id, node_id = cls._generate_node_id_for_action(workflow_name)
@@ -665,12 +740,22 @@ class ActionsHub:
             workflow_id=workflow_id,
         )
 
-        return await workflow.execute_child_workflow(
+        result = await workflow.execute_child_workflow(
             workflow_name,
             result_type=result_type,
             args=args,
             **kwargs,
         )
+
+        cls._log_action_execution_response(
+            message="Child workflow executed",
+            action_name=child_workflow_name,
+            action_type=ActionType.WORKFLOW,
+            result=result,
+            node_id=node_id,
+        )
+
+        return result
 
     @classmethod
     async def start_child_workflow(
