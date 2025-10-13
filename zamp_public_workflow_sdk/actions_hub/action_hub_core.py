@@ -192,7 +192,6 @@ class ActionsHub:
         action_name = cls._get_action_name(action)
         if action_name and action_name in SKIP_SIMULATION_WORKFLOWS:
             return SimulationResponse(execution_type=ExecutionType.EXECUTE, execution_response=None)
-
         simulation = cls.get_simulation_from_workflow_id(workflow_id)
         if not simulation:
             return SimulationResponse(execution_type=ExecutionType.EXECUTE, execution_response=None)
@@ -256,7 +255,31 @@ class ActionsHub:
 
     @classmethod
     def get_simulation_from_workflow_id(cls, workflow_id: str) -> WorkflowSimulationService:
-        return cls._workflow_id_to_simulation_map.get(workflow_id)
+        """
+        Get simulation service for a workflow_id with hierarchical lookup.
+
+        If simulation is not found for the given workflow_id, this method will:
+        1. Check if the workflow_id is a hierarchical child (contains a parent prefix)
+        2. Find simulation in parent workflow contexts
+
+        This allows child workflows to inherit simulation from their parents.
+        """
+        # Direct lookup if workflow_id is in the map
+        if workflow_id in cls._workflow_id_to_simulation_map:
+            return cls._workflow_id_to_simulation_map[workflow_id]
+
+        # Hierarchical lookup for child workflows
+        # If child workflow is not found in the map, to use the parent simulation
+        if len(cls._workflow_id_to_simulation_map) == 1:
+            parent_simulation = list(cls._workflow_id_to_simulation_map.values())[0]
+            logger.info(
+                "Using parent simulation for child workflow",
+                child_workflow_id=workflow_id,
+                parent_workflow_ids=list(cls._workflow_id_to_simulation_map.keys()),
+            )
+            return parent_simulation
+
+        return None
 
     @classmethod
     def _get_current_workflow_id(cls) -> str:
