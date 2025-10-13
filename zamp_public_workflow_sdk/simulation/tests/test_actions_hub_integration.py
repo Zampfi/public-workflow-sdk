@@ -45,10 +45,13 @@ class TestActionsHubSimulationIntegration:
                 ) as mock_var:
                     mock_var.return_value = "test-workflow-id"
 
-                    result = await ActionsHub.execute_child_workflow(MockWorkflow, "arg1", "arg2")
+                    with patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.info") as mock_info:
+                        mock_info.return_value = Mock(workflow_id="test-workflow-id", headers={})
 
-                    assert result == "workflow_result"
-                    mock_execute.assert_called_once()
+                        result = await ActionsHub.execute_child_workflow(MockWorkflow, "arg1", "arg2")
+
+                        assert result == "workflow_result"
+                        mock_execute.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_execute_child_workflow_with_simulation_mock(self):
@@ -75,10 +78,14 @@ class TestActionsHubSimulationIntegration:
             ) as mock_execute:
                 mock_execute.return_value = "simulated_result"
 
-                result = await ActionsHub.execute_child_workflow(MockWorkflow, "arg1", "arg2")
+                # Mock workflow.info() to avoid workflow event loop error
+                with patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.info") as mock_info:
+                    mock_info.return_value = Mock(workflow_id=workflow_id, headers={})
 
-                assert result == "simulated_result"
-                mock_simulation.get_simulation_response.assert_called_once()
+                    result = await ActionsHub.execute_child_workflow(MockWorkflow, "arg1", "arg2")
+
+                    assert result == "simulated_result"
+                    mock_simulation.get_simulation_response.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_execute_child_workflow_with_simulation_execute(self):
@@ -113,10 +120,13 @@ class TestActionsHubSimulationIntegration:
                 ) as mock_var:
                     mock_var.return_value = workflow_id
 
-                    result = await ActionsHub.execute_child_workflow(MockWorkflow, "arg1", "arg2")
+                    with patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.info") as mock_info:
+                        mock_info.return_value = Mock(workflow_id=workflow_id, headers={})
 
-                    assert result == "workflow_result"
-                    mock_execute.assert_called_once()
+                        result = await ActionsHub.execute_child_workflow(MockWorkflow, "arg1", "arg2")
+
+                        assert result == "workflow_result"
+                        mock_execute.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_execute_child_workflow_with_result_type_conversion(self):
@@ -150,13 +160,16 @@ class TestActionsHubSimulationIntegration:
                 ) as mock_var:
                     mock_var.return_value = "test-workflow-id"
 
-                    result = await ActionsHub.execute_child_workflow(
-                        MockWorkflow, "arg1", "arg2", result_type=ResultModel
-                    )
+                    with patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.info") as mock_info:
+                        mock_info.return_value = Mock(workflow_id="test-workflow-id", headers={})
 
-                    # The current implementation returns the raw result, not converted to ResultModel
-                    assert isinstance(result, dict)
-                    assert result["value"] == "test"
+                        result = await ActionsHub.execute_child_workflow(
+                            MockWorkflow, "arg1", "arg2", result_type=ResultModel
+                        )
+
+                        # The current implementation returns the raw result, not converted to ResultModel
+                        assert isinstance(result, dict)
+                        assert result["value"] == "test"
 
     @pytest.mark.asyncio
     async def test_start_child_workflow_with_simulation_skip(self):
@@ -173,10 +186,13 @@ class TestActionsHubSimulationIntegration:
             with patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.get_variable_from_context") as mock_var:
                 mock_var.return_value = "test-workflow-id"
 
-                result = await ActionsHub.start_child_workflow(MockWorkflow, "arg1", "arg2")
+                with patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.info") as mock_info:
+                    mock_info.return_value = Mock(workflow_id="test-workflow-id", headers={})
 
-                assert result == "workflow_result"
-                mock_start.assert_called_once()
+                    result = await ActionsHub.start_child_workflow(MockWorkflow, "arg1", "arg2")
+
+                    assert result == "workflow_result"
+                    mock_start.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_start_child_workflow_with_simulation_mock(self):
@@ -203,10 +219,14 @@ class TestActionsHubSimulationIntegration:
             ) as mock_start:
                 mock_start.return_value = "simulated_result"
 
-                result = await ActionsHub.start_child_workflow(MockWorkflow, "arg1", "arg2")
+                # Mock workflow.info() to avoid workflow event loop error
+                with patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.info") as mock_info:
+                    mock_info.return_value = Mock(workflow_id=workflow_id, headers={})
 
-                assert result == "simulated_result"
-                mock_simulation.get_simulation_response.assert_called_once()
+                    result = await ActionsHub.start_child_workflow(MockWorkflow, "arg1", "arg2")
+
+                    assert result == "simulated_result"
+                    mock_simulation.get_simulation_response.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_execute_child_workflow_api_mode(self):

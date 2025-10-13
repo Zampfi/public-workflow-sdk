@@ -34,6 +34,14 @@ class PayloadField(Enum):
     FIELDS = "fields"
 
 
+class WorkflowExecutionField(Enum):
+    """Workflow execution field names."""
+
+    WORKFLOW_EXECUTION = "workflowExecution"
+    WORKFLOW_ID = "workflowId"
+    RUN_ID = "runId"
+
+
 class EventField(Enum):
     """Event field names."""
 
