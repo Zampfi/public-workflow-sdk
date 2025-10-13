@@ -267,28 +267,27 @@ class ActionsHub:
         Returns:
             WorkflowSimulationService if found (either direct or from parent), None otherwise
         """
-        # Direct lookup first
         simulation = cls._workflow_id_to_simulation_map.get(workflow_id)
         if simulation:
             return simulation
 
         try:
             info = workflow.info()
-
+            # Check if the workflow is a child workflow and if so, use the parent's simulation
             if hasattr(info, "parent") and info.parent:
                 parent_workflow_id = info.parent.workflow_id
                 parent_simulation = cls._workflow_id_to_simulation_map.get(parent_workflow_id)
-
                 if parent_simulation:
                     logger.info(
                         "Using parent workflow simulation for child workflow",
                         child_workflow_id=workflow_id,
                         parent_workflow_id=parent_workflow_id,
                     )
+                    # Copy the parent's simulation to the child workflow
                     cls._workflow_id_to_simulation_map[workflow_id] = parent_simulation
                     return parent_simulation
         except Exception as e:
-            logger.debug(
+            logger.info(
                 "Could not check for parent workflow simulation",
                 workflow_id=workflow_id,
                 error=str(e),
