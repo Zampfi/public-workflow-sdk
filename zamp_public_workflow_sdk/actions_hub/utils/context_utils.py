@@ -6,6 +6,8 @@ from typing import Any
 
 import structlog
 
+logger = structlog.get_logger(__name__)
+
 
 def get_variable_from_context(variable_name: str, default_value: Any = None) -> Any:
     """
@@ -35,4 +37,4 @@ def get_log_mode_from_context():
     """
     from ..constants import LogMode
 
-    return get_variable_from_context("log_mode", LogMode.DEBUG)
+    return get_variable_from_context("log_mode", LogMode.INFO)

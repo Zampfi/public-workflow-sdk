@@ -48,6 +48,7 @@ class LogMode(str, Enum):
     DEBUG: for DEBUG log mode, which logs the activity and workflow execution in debug mode
     """
 
+    INFO = "INFO"
     DEBUG = "DEBUG"
 
 
