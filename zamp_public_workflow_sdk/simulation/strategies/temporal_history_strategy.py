@@ -166,7 +166,7 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
                 main_workflow_outputs = self._extract_main_workflow_node_outputs(
                     temporal_history=temporal_history, node_ids=workflow_nodes
                 )
-                logger.info("main workflow outputs", main_workflow_outputs=main_workflow_outputs)
+                logger.info("main workflow outputs", length_of_outputs=len(main_workflow_outputs))
                 all_node_outputs.update(main_workflow_outputs)
             else:
                 # Child workflow nodes - need to fetch child workflow history
@@ -176,7 +176,7 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
                     workflow_nodes,
                     workflow_nodes_needed,
                 )
-                logger.info("child workflow outputs", child_workflow_outputs=child_workflow_outputs)
+                logger.info("child workflow outputs", length_of_outputs=len(child_workflow_outputs))
                 all_node_outputs.update(child_workflow_outputs)
 
         return all_node_outputs
@@ -240,7 +240,9 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
             node_ids=node_ids,
             workflow_nodes_needed=workflow_nodes_needed,
         )
-        logger.info("Child history present")
+        logger.info(
+            "Child history present with workflow_id and run_id", child_history.run_id, child_history.workflow_id
+        )
         if not child_history:
             raise Exception(
                 f"Failed to fetch child workflow history for child_node_id={full_child_path}, "
