@@ -383,10 +383,14 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
 
     def _group_nodes_by_parent_workflow(self, node_ids: list[str]) -> dict[str, list[str]]:
         """
-        Group node IDs by their immediate parent workflow.
+        Group node IDs by their immediate parent workflow using full path.
         - 'activity#1' -> parent = MAIN_WORKFLOW_IDENTIFIER
         - 'Child#1.activity#1' -> parent = 'Child#1'
-        - 'Parent#1.Child#1.activity#1' -> parent = 'Child#1'
+        - 'Parent#1.Child#1.activity#1' -> parent = 'Parent#1.Child#1'
+        - 'A#1.B#1.C#1.activity#1' -> parent = 'A#1.B#1.C#1'
+
+        This ensures that multiple instances of the same workflow name in different
+        parts of the hierarchy are grouped separately.
         """
         node_groups = defaultdict(list)
 
@@ -396,7 +400,8 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
             if len(parts) == 1:
                 parent = MAIN_WORKFLOW_IDENTIFIER
             else:
-                parent = parts[-2]  # Immediate parent is second-to-last
+                # Use full path up to (but not including) the last part
+                parent = ".".join(parts[:-1])
 
             node_groups[parent].append(node_id)
 

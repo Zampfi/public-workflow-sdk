@@ -258,26 +258,41 @@ class ActionsHub:
         """
         Get simulation service for a workflow_id with hierarchical lookup.
 
-        If simulation is not found for the given workflow_id, this method will:
-        1. Check if the workflow_id is a hierarchical child (contains a parent prefix)
-        2. Find simulation in parent workflow contexts
+        If simulation is not found for the current workflow_id, this method will
+        check if this is a child workflow and try to get the parent's simulation.
 
-        This allows child workflows to inherit simulation from their parents.
+        Args:
+            workflow_id: The workflow ID to look up
+
+        Returns:
+            WorkflowSimulationService if found (either direct or from parent), None otherwise
         """
-        # Direct lookup if workflow_id is in the map
-        if workflow_id in cls._workflow_id_to_simulation_map:
-            return cls._workflow_id_to_simulation_map[workflow_id]
+        # Direct lookup first
+        simulation = cls._workflow_id_to_simulation_map.get(workflow_id)
+        if simulation:
+            return simulation
 
-        # Hierarchical lookup for child workflows
-        # If child workflow is not found in the map, to use the parent simulation
-        if len(cls._workflow_id_to_simulation_map) == 1:
-            parent_simulation = list(cls._workflow_id_to_simulation_map.values())[0]
-            logger.info(
-                "Using parent simulation for child workflow",
-                child_workflow_id=workflow_id,
-                parent_workflow_ids=list(cls._workflow_id_to_simulation_map.keys()),
+        try:
+            info = workflow.info()
+
+            if hasattr(info, "parent") and info.parent:
+                parent_workflow_id = info.parent.workflow_id
+                parent_simulation = cls._workflow_id_to_simulation_map.get(parent_workflow_id)
+
+                if parent_simulation:
+                    logger.info(
+                        "Using parent workflow simulation for child workflow",
+                        child_workflow_id=workflow_id,
+                        parent_workflow_id=parent_workflow_id,
+                    )
+                    cls._workflow_id_to_simulation_map[workflow_id] = parent_simulation
+                    return parent_simulation
+        except Exception as e:
+            logger.debug(
+                "Could not check for parent workflow simulation",
+                workflow_id=workflow_id,
+                error=str(e),
             )
-            return parent_simulation
 
         return None
 
