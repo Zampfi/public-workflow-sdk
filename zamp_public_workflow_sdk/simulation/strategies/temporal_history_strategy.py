@@ -56,7 +56,6 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
     async def execute(
         self,
         node_ids: list[str],
-        temporal_history: WorkflowHistory | None = None,
     ) -> SimulationStrategyOutput:
         """
         Execute Temporal History strategy to extract node outputs.
@@ -75,14 +74,12 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
         Raises:
             Exception: If temporal history cannot be fetched or node outputs cannot be extracted
         """
-        if temporal_history is None:
+        try:
             temporal_history = await self._fetch_temporal_history(node_ids)
-
-        if temporal_history is None:
+        except Exception as e:
             raise Exception(
-                f"Failed to fetch temporal history for workflow_id={self.reference_workflow_id}, "
-                f"run_id={self.reference_workflow_run_id}"
-            )
+                f"Failed to fetch temporal history for workflow_id={self.reference_workflow_id}, run_id={self.reference_workflow_run_id}"
+            ) from e
 
         self.workflow_histories_map[MAIN_WORKFLOW_IDENTIFIER] = temporal_history
 
@@ -133,7 +130,9 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
                 reference_workflow_id=self.reference_workflow_id,
                 reference_workflow_run_id=self.reference_workflow_run_id,
             )
-            return None
+            raise Exception(
+                f"Failed to fetch temporal history for workflow_id={target_workflow_id}, run_id={target_run_id}"
+            ) from e
 
     async def _extract_node_output(self, node_ids: list[str]) -> dict[str, Any | None]:
         """
