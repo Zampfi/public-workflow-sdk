@@ -153,9 +153,11 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
 
         # Group nodes by their immediate parent workflow
         node_groups = self._group_nodes_by_parent_workflow(node_ids)
+        logger.info("Node groups", node_groups=node_groups)
         all_node_outputs = {}
 
         workflow_nodes_needed = self._collect_nodes_per_workflow(node_ids)
+        logger.info("Workflow nodes needed to mock", workflow_nodes_needed=workflow_nodes_needed)
         temporal_history = self.workflow_histories_map[MAIN_WORKFLOW_IDENTIFIER]
 
         for parent_workflow_id, workflow_nodes in node_groups.items():
@@ -164,6 +166,7 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
                 main_workflow_outputs = self._extract_main_workflow_node_outputs(
                     temporal_history=temporal_history, node_ids=workflow_nodes
                 )
+                logger.info("main workflow outputs", main_workflow_outputs=main_workflow_outputs)
                 all_node_outputs.update(main_workflow_outputs)
             else:
                 # Child workflow nodes - need to fetch child workflow history
@@ -173,6 +176,7 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
                     workflow_nodes,
                     workflow_nodes_needed,
                 )
+                logger.info("child workflow outputs", child_workflow_outputs=child_workflow_outputs)
                 all_node_outputs.update(child_workflow_outputs)
 
         return all_node_outputs
@@ -227,6 +231,7 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
         # Given a node like "Parent#1.Child#1.activity#1" and child_workflow_id "Child#1",
         # this returns "Parent#1.Child#1" (the path up to and including the child workflow)
         full_child_path = self._get_workflow_path_from_node(node_ids[0], child_workflow_id)
+        logger.info("full child path", full_child_path=full_child_path)
 
         # Fetch child workflow history (traverses nested paths if needed)
         child_history = await self._fetch_nested_child_workflow_history(
@@ -235,7 +240,7 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
             node_ids=node_ids,
             workflow_nodes_needed=workflow_nodes_needed,
         )
-
+        logger.info("Child history present")
         if not child_history:
             raise Exception(
                 f"Failed to fetch child workflow history for child_node_id={full_child_path}, "
