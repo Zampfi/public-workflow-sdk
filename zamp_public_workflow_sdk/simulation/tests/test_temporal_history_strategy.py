@@ -310,13 +310,11 @@ class TestTemporalHistoryStrategyHandler:
         with patch.object(handler, "_fetch_nested_child_workflow_history", new_callable=AsyncMock) as mock_fetch:
             mock_fetch.return_value = mock_child_history
 
-            # Patch logger to avoid string formatting issue
-            with patch("zamp_public_workflow_sdk.simulation.strategies.temporal_history_strategy.logger"):
-                result = await handler._extract_child_workflow_node_outputs(
-                    parent_history=mock_parent_history,
-                    child_workflow_id="Child#1",
-                    node_ids=["Child#1.activity#1"],
-                )
+            result = await handler._extract_child_workflow_node_outputs(
+                parent_history=mock_parent_history,
+                child_workflow_id="Child#1",
+                node_ids=["Child#1.activity#1"],
+            )
 
             assert result == {"Child#1.activity#1": {"result": "child-result"}}
 
@@ -361,13 +359,11 @@ class TestTemporalHistoryStrategyHandler:
         with patch.object(handler, "_fetch_nested_child_workflow_history", new_callable=AsyncMock) as mock_fetch:
             mock_fetch.return_value = mock_child_history
 
-            # Patch logger to avoid string formatting issue
-            with patch("zamp_public_workflow_sdk.simulation.strategies.temporal_history_strategy.logger"):
-                result = await handler._extract_child_workflow_node_outputs(
-                    parent_history=mock_parent_history,
-                    child_workflow_id="Child#1",
-                    node_ids=["Child#1.activity#1"],
-                )
+            result = await handler._extract_child_workflow_node_outputs(
+                parent_history=mock_parent_history,
+                child_workflow_id="Child#1",
+                node_ids=["Child#1.activity#1"],
+            )
 
             assert result == {"Child#1.activity#1": None}
 
