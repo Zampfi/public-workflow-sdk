@@ -5,6 +5,7 @@ from zamp_public_workflow_sdk.temporal.workflow_history.helpers import (
     _get_node_id_from_header,
     extract_node_id_from_event,
     extract_node_payloads,
+    get_child_workflow_workflow_id_run_id,
 )
 
 
@@ -339,3 +340,128 @@ class TestHelpers:
             assert result["workflow-node-1"].input_payload is None
             assert result["workflow-node-1"].output_payload is None
             assert len(result["workflow-node-1"].node_events) == 1
+
+    def test_get_child_workflow_workflow_id_run_id_success(self):
+        """Test get_child_workflow_workflow_id_run_id with valid event."""
+        events = [
+            {
+                "eventType": "EVENT_TYPE_CHILD_WORKFLOW_EXECUTION_INITIATED",
+                "childWorkflowExecutionInitiatedEventAttributes": {
+                    "header": {"fields": {"node_id": {"data": "eyJub2RlX2lkIjogIkNoaWxkIzEifQ=="}}},
+                    "workflowType": {"name": "ChildWorkflow"},
+                },
+            },
+            {
+                "eventType": "EVENT_TYPE_CHILD_WORKFLOW_EXECUTION_STARTED",
+                "childWorkflowExecutionStartedEventAttributes": {
+                    "header": {"fields": {"node_id": {"data": "eyJub2RlX2lkIjogIkNoaWxkIzEifQ=="}}},
+                    "workflowExecution": {
+                        "workflowId": "child-workflow-id-123",
+                        "runId": "child-run-id-456",
+                    },
+                },
+            },
+        ]
+
+        result = get_child_workflow_workflow_id_run_id(events, "Child#1")
+
+        assert result is not None
+        assert result == ("child-workflow-id-123", "child-run-id-456")
+
+    def test_get_child_workflow_workflow_id_run_id_no_node_data(self):
+        """Test get_child_workflow_workflow_id_run_id when no node data found."""
+        events = [
+            {
+                "eventType": "EVENT_TYPE_WORKFLOW_EXECUTION_STARTED",
+                "workflowExecutionStartedEventAttributes": {
+                    "header": {"fields": {"node_id": {"data": "eyJub2RlX2lkIjogIm1haW4ifQ=="}}},
+                },
+            }
+        ]
+
+        result = get_child_workflow_workflow_id_run_id(events, "Child#1")
+
+        assert result is None
+
+    def test_get_child_workflow_workflow_id_run_id_no_started_event(self):
+        """Test get_child_workflow_workflow_id_run_id when no STARTED event found."""
+        events = [
+            {
+                "eventType": "EVENT_TYPE_CHILD_WORKFLOW_EXECUTION_INITIATED",
+                "childWorkflowExecutionInitiatedEventAttributes": {
+                    "header": {"fields": {"node_id": {"data": "eyJub2RlX2lkIjogIkNoaWxkIzEifQ=="}}},
+                    "workflowType": {"name": "ChildWorkflow"},
+                },
+            },
+            # Missing STARTED event
+        ]
+
+        result = get_child_workflow_workflow_id_run_id(events, "Child#1")
+
+        assert result is None
+
+    def test_get_child_workflow_workflow_id_run_id_no_attrs(self):
+        """Test get_child_workflow_workflow_id_run_id when event has no attributes."""
+        events = [
+            {
+                "eventType": "EVENT_TYPE_CHILD_WORKFLOW_EXECUTION_INITIATED",
+                "childWorkflowExecutionInitiatedEventAttributes": {
+                    "header": {"fields": {"node_id": {"data": "eyJub2RlX2lkIjogIkNoaWxkIzEifQ=="}}},
+                },
+            },
+            {
+                "eventType": "EVENT_TYPE_CHILD_WORKFLOW_EXECUTION_STARTED",
+                # Missing attributes
+            },
+        ]
+
+        result = get_child_workflow_workflow_id_run_id(events, "Child#1")
+
+        assert result is None
+
+    def test_get_child_workflow_workflow_id_run_id_no_workflow_execution(self):
+        """Test get_child_workflow_workflow_id_run_id when no workflow execution field."""
+        events = [
+            {
+                "eventType": "EVENT_TYPE_CHILD_WORKFLOW_EXECUTION_INITIATED",
+                "childWorkflowExecutionInitiatedEventAttributes": {
+                    "header": {"fields": {"node_id": {"data": "eyJub2RlX2lkIjogIkNoaWxkIzEifQ=="}}},
+                },
+            },
+            {
+                "eventType": "EVENT_TYPE_CHILD_WORKFLOW_EXECUTION_STARTED",
+                "childWorkflowExecutionStartedEventAttributes": {
+                    "header": {"fields": {"node_id": {"data": "eyJub2RlX2lkIjogIkNoaWxkIzEifQ=="}}},
+                    # Missing workflowExecution
+                },
+            },
+        ]
+
+        result = get_child_workflow_workflow_id_run_id(events, "Child#1")
+
+        assert result is None
+
+    def test_get_child_workflow_workflow_id_run_id_partial_ids(self):
+        """Test get_child_workflow_workflow_id_run_id when only one ID is present."""
+        events = [
+            {
+                "eventType": "EVENT_TYPE_CHILD_WORKFLOW_EXECUTION_INITIATED",
+                "childWorkflowExecutionInitiatedEventAttributes": {
+                    "header": {"fields": {"node_id": {"data": "eyJub2RlX2lkIjogIkNoaWxkIzEifQ=="}}},
+                },
+            },
+            {
+                "eventType": "EVENT_TYPE_CHILD_WORKFLOW_EXECUTION_STARTED",
+                "childWorkflowExecutionStartedEventAttributes": {
+                    "header": {"fields": {"node_id": {"data": "eyJub2RlX2lkIjogIkNoaWxkIzEifQ=="}}},
+                    "workflowExecution": {
+                        "workflowId": "child-workflow-id-123",
+                        # Missing runId
+                    },
+                },
+            },
+        ]
+
+        result = get_child_workflow_workflow_id_run_id(events, "Child#1")
+
+        assert result is None
