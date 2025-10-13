@@ -416,7 +416,7 @@ def get_child_workflow_workflow_id_run_id(events: list[dict], node_id: str) -> t
     node_data = get_node_data_from_node_id(events, node_id)
     if not node_data or node_id not in node_data:
         logger.error("No node data found for child workflow", node_id=node_id)
-        raise Exception(
+        raise ValueError(
             f"No node data found for child workflow with node_id={node_id}. "
             f"The child workflow may not have been executed or the node_id is invalid."
         )

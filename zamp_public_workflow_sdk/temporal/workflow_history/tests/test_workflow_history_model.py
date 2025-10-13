@@ -5,6 +5,9 @@ Unit tests for WorkflowHistory model.
 from zamp_public_workflow_sdk.temporal.workflow_history.models.workflow_history import (
     WorkflowHistory,
 )
+import pytest
+import base64
+import json
 
 
 class TestWorkflowHistory:
@@ -15,8 +18,6 @@ class TestWorkflowHistory:
         # The node_id "Child#1" is base64 encoded as eyJub2RlX2lkIjogIkNoaWxkIzEifQ==
         # which decodes to: {"node_id": "Child#1"}
         # But the extract_node_id_from_event returns the raw base64 string
-        import base64
-        import json
 
         node_id = "Child#1"
         node_id_encoded = base64.b64encode(json.dumps({"node_id": node_id}).encode()).decode()
@@ -55,7 +56,6 @@ class TestWorkflowHistory:
 
     def test_get_child_workflow_workflow_id_run_id_not_found(self):
         """Test get_child_workflow_workflow_id_run_id when child workflow not found."""
-        import pytest
 
         events = [
             {
@@ -77,7 +77,6 @@ class TestWorkflowHistory:
 
     def test_get_child_workflow_workflow_id_run_id_empty_events(self):
         """Test get_child_workflow_workflow_id_run_id with empty events."""
-        import pytest
 
         workflow_history = WorkflowHistory(
             workflow_id="main-workflow-id",

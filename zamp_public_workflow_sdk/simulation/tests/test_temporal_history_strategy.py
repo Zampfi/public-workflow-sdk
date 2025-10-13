@@ -203,7 +203,7 @@ class TestTemporalHistoryStrategyHandler:
         mock_history.get_node_output.side_effect = lambda node_id: {"output": f"output-{node_id}"}
 
         # Set the cached history
-        handler.cached_histories["main_workflow"] = mock_history
+        handler.workflow_histories_map["main_workflow"] = mock_history
 
         result = await handler._extract_node_output(
             node_ids=["activity#1", "activity#2"],
@@ -227,7 +227,7 @@ class TestTemporalHistoryStrategyHandler:
         mock_history.get_node_output.return_value = {"output": "main-output"}
 
         # Set the cached history
-        handler.cached_histories["main_workflow"] = mock_history
+        handler.workflow_histories_map["main_workflow"] = mock_history
 
         # Mock _extract_child_workflow_node_outputs
         with patch.object(handler, "_extract_child_workflow_node_outputs", new_callable=AsyncMock) as mock_child:
@@ -253,7 +253,7 @@ class TestTemporalHistoryStrategyHandler:
         mock_history.get_node_output.side_effect = Exception("Extract error")
 
         # Set the cached history
-        handler.cached_histories["main_workflow"] = mock_history
+        handler.workflow_histories_map["main_workflow"] = mock_history
 
         with pytest.raises(Exception, match="Extract error"):
             await handler._extract_node_output(
@@ -403,7 +403,7 @@ class TestTemporalHistoryStrategyHandler:
         mock_cached_history = Mock(spec=WorkflowHistory)
 
         # Use cached history
-        handler.cached_histories["Child#1"] = mock_cached_history
+        handler.workflow_histories_map["Child#1"] = mock_cached_history
 
         result = await handler._fetch_nested_child_workflow_history(
             parent_workflow_history=mock_parent_history,
