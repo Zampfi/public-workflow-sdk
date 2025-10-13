@@ -241,7 +241,9 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
             workflow_nodes_needed=workflow_nodes_needed,
         )
         logger.info(
-            "Child history present with workflow_id and run_id", child_history.run_id, child_history.workflow_id
+            "Child history present with workflow_id and run_id",
+            run_id=child_history.run_id,
+            workflow_id=child_history.workflow_id,
         )
         if not child_history:
             raise Exception(
