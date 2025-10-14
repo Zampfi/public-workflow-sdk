@@ -67,6 +67,7 @@ with workflow.unsafe.imports_passed_through():
         get_variable_from_context,
     )
     from .utils.datetime_utils import convert_iso_to_timedelta
+    from zamp_public_workflow_sdk.simulation.activities import return_mocked_result
 
     logger = structlog.get_logger(__name__)
 
@@ -461,8 +462,14 @@ class ActionsHub:
             logger.info(
                 "Activity mocked",
                 node_id=node_id,
+                activity_name=activity_name,
             )
-            return simulation_result.execution_response
+            result = await workflow.execute_activity(
+                return_mocked_result,
+                args=(node_id, f"response mocked {node_id}", simulation_result.execution_response),
+                start_to_close_timeout=timedelta(seconds=10),
+            )
+            return result
 
         # Temporal execution mode
         # Convert ISO string to timedelta
@@ -718,8 +725,15 @@ class ActionsHub:
             logger.info(
                 "Child workflow mocked",
                 node_id=node_id,
+                workflow_name=child_workflow_name,
             )
-            return simulation_result.execution_response
+
+            result = await workflow.execute_activity(
+                return_mocked_result,
+                args=(node_id, f"response mocked {node_id}", simulation_result.execution_response),
+                start_to_close_timeout=timedelta(seconds=10),
+            )
+            return result
 
         # Temporal execution mode
         node_id_arg = {TEMPORAL_NODE_ID_KEY: node_id}
@@ -771,10 +785,16 @@ class ActionsHub:
         if simulation_result.execution_type == ExecutionType.MOCK:
             logger.info(
                 "Child workflow mocked",
-                activity_name=workflow_name,
+                workflow_name=child_workflow_name,
                 node_id=node_id,
             )
-            return simulation_result.execution_response
+
+            result = await workflow.execute_activity(
+                return_mocked_result,
+                args=(node_id, f"response mocked {node_id}", simulation_result.execution_response),
+                start_to_close_timeout=timedelta(seconds=10),
+            )
+            return result
 
         logger.info(
             "Starting child workflow",

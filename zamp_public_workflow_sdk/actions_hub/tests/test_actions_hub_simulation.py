@@ -54,7 +54,7 @@ class TestActionsHubSimulation:
     def test_get_simulation_response_no_simulation_registered(self):
         """Test _get_simulation_response when no simulation is registered."""
         result = ActionsHub._get_simulation_response(
-            workflow_id="test_wf", node_id="node_1", action=None, return_type=None
+            workflow_id="test_wf", node_id="node_1", action="test_action", return_type=None
         )
 
         assert result.execution_type == ExecutionType.EXECUTE
@@ -71,7 +71,7 @@ class TestActionsHubSimulation:
         ActionsHub._workflow_id_to_simulation_map["test_wf"] = mock_simulation
 
         result = ActionsHub._get_simulation_response(
-            workflow_id="test_wf", node_id="node_1", action=None, return_type=None
+            workflow_id="test_wf", node_id="node_1", action="test_action", return_type=None
         )
 
         assert result.execution_type == ExecutionType.MOCK
@@ -89,7 +89,7 @@ class TestActionsHubSimulation:
         ActionsHub._workflow_id_to_simulation_map["test_wf"] = mock_simulation
 
         result = ActionsHub._get_simulation_response(
-            workflow_id="test_wf", node_id="node_1", action=None, return_type=None
+            workflow_id="test_wf", node_id="node_1", action="test_action", return_type=None
         )
 
         assert result.execution_type == ExecutionType.EXECUTE
@@ -112,7 +112,7 @@ class TestActionsHubSimulation:
         result = ActionsHub._get_simulation_response(
             workflow_id="test_wf",
             node_id="node_1",
-            action=None,
+            action="test_action",
             return_type=TestModel,
         )
 
