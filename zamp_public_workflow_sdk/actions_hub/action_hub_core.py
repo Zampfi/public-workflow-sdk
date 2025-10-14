@@ -287,8 +287,8 @@ class ActionsHub:
                     cls._workflow_id_to_simulation_map[workflow_id] = parent_simulation
                     return parent_simulation
         except Exception as e:
-            logger.info(
-                "Could not check for parent workflow simulation",
+            logger.error(
+                "Failed to get simulation from workflow_id",
                 workflow_id=workflow_id,
                 error=str(e),
             )
