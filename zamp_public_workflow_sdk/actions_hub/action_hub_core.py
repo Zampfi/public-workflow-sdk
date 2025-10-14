@@ -254,7 +254,7 @@ class ActionsHub:
         logger.info("Simulation initialized for workflow", workflow_id=workflow_id)
 
     @classmethod
-    def get_simulation_from_workflow_id(cls, workflow_id: str) -> WorkflowSimulationService:
+    def get_simulation_from_workflow_id(cls, workflow_id: str) -> WorkflowSimulationService | None:
         """
         Get simulation service for a workflow_id with hierarchical lookup.
 
