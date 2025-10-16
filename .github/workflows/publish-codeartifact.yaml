@@ -1,0 +1,62 @@
+name: Build and Publish to CodeArtifact
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - id: vars_and_account
+        run: |
+          # Set variables
+          echo "AWS_REGION=us-east-1" >> $GITHUB_OUTPUT
+          echo "AWS_ACCOUNT_ID=916079538338" >> $GITHUB_OUTPUT
+          echo "CODEARTIFACT_DOMAIN=zamp" >> $GITHUB_OUTPUT
+          echo "CODEARTIFACT_REGISTRY_URL=zamp-916079538338.d.codeartifact.us-east-1.amazonaws.com/pypi/zampy" >> $GITHUB_OUTPUT
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        run: |
+          echo "⚙️ Installing uv..."
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Build package
+        run: |
+          echo "📦 Building package..."
+          uv build
+
+      - name: Set up AWS credentials using OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ steps.vars_and_account.outputs.AWS_ACCOUNT_ID }}:role/GitHubActionsRole
+          aws-region: ${{ steps.vars_and_account.outputs.AWS_REGION }}
+          role-session-name: GitHubActionsSession
+
+      - name: Get CodeArtifact auth token
+        id: codeartifact_auth
+        run: |
+          echo "🔑 Getting CodeArtifact credentials..."
+          AUTH_TOKEN=$(aws codeartifact get-authorization-token \
+            --domain ${{ steps.vars_and_account.outputs.CODEARTIFACT_DOMAIN }} \
+            --query authorizationToken \
+            --output text)
+          echo "::add-mask::$AUTH_TOKEN"
+          echo "auth_token=$AUTH_TOKEN" >> $GITHUB_OUTPUT
+
+      - name: Publish to CodeArtifact
+        env:
+          CODEARTIFACT_AUTH_TOKEN: ${{ steps.codeartifact_auth.outputs.auth_token }}
+          CODEARTIFACT_REGISTRY_URL: ${{ steps.vars_and_account.outputs.CODEARTIFACT_REGISTRY_URL }}
+        run: |
+          echo "📤 Publishing to CodeArtifact..."
+          CODEARTIFACT_PUBLISH_URL="https://aws:${CODEARTIFACT_AUTH_TOKEN}@${CODEARTIFACT_REGISTRY_URL}"
+          uv publish --publish-url "${CODEARTIFACT_PUBLISH_URL}" dist/*
+          echo "✅ Package published successfully!"
