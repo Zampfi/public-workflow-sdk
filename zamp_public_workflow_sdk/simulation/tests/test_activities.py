@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 import pytest
 
-from zamp_public_workflow_sdk.simulation.activities import return_mocked_result
+from zamp_public_workflow_sdk.simulation.activities import return_mocked_result, MockedResultInput
 
 
 class TestReturnMockedResult:
@@ -17,8 +17,9 @@ class TestReturnMockedResult:
         """Test return_mocked_result with string output."""
         node_id = "TestActivity#1"
         output = "test_output"
+        input_data = MockedResultInput(node_id=node_id, output=output)
 
-        result = await return_mocked_result(node_id, output)
+        result = await return_mocked_result(input_data)
 
         assert result == "test_output"
 
@@ -27,8 +28,9 @@ class TestReturnMockedResult:
         """Test return_mocked_result with dict output."""
         node_id = "TestActivity#1"
         output = {"key": "value", "number": 123}
+        input_data = MockedResultInput(node_id=node_id, output=output)
 
-        result = await return_mocked_result(node_id, output)
+        result = await return_mocked_result(input_data)
 
         assert result == {"key": "value", "number": 123}
         assert result["key"] == "value"
@@ -39,8 +41,9 @@ class TestReturnMockedResult:
         """Test return_mocked_result with list output."""
         node_id = "TestActivity#1"
         output = [1, 2, 3, "test"]
+        input_data = MockedResultInput(node_id=node_id, output=output)
 
-        result = await return_mocked_result(node_id, output)
+        result = await return_mocked_result(input_data)
 
         assert result == [1, 2, 3, "test"]
         assert len(result) == 4
@@ -50,8 +53,9 @@ class TestReturnMockedResult:
         """Test return_mocked_result with None output."""
         node_id = "TestActivity#1"
         output = None
+        input_data = MockedResultInput(node_id=node_id, output=output)
 
-        result = await return_mocked_result(node_id, output)
+        result = await return_mocked_result(input_data)
 
         assert result is None
 
@@ -64,7 +68,8 @@ class TestReturnMockedResult:
             "metadata": {"count": 2, "timestamp": "2024-01-01"},
         }
 
-        result = await return_mocked_result(node_id, output)
+        input_data = MockedResultInput(node_id=node_id, output=output)
+        result = await return_mocked_result(input_data)
 
         assert result == output
         assert result["data"][0]["id"] == 1
@@ -76,7 +81,8 @@ class TestReturnMockedResult:
         node_id = "ParentWorkflow#1.ChildActivity#2"
         output = "nested_result"
 
-        result = await return_mocked_result(node_id, output)
+        input_data = MockedResultInput(node_id=node_id, output=output)
+        result = await return_mocked_result(input_data)
 
         assert result == "nested_result"
 
@@ -87,7 +93,8 @@ class TestReturnMockedResult:
         output = "test_output"
 
         with patch("zamp_public_workflow_sdk.simulation.activities.logger") as mock_logger:
-            result = await return_mocked_result(node_id, output)
+            input_data = MockedResultInput(node_id=node_id, output=output)
+            result = await return_mocked_result(input_data)
 
             assert result == "test_output"
             mock_logger.info.assert_called_once_with("Returning mocked result", node_id="TestActivity#1")
@@ -98,7 +105,8 @@ class TestReturnMockedResult:
         node_id = ""
         output = "test_output"
 
-        result = await return_mocked_result(node_id, output)
+        input_data = MockedResultInput(node_id=node_id, output=output)
+        result = await return_mocked_result(input_data)
 
         assert result == "test_output"
 
@@ -108,7 +116,8 @@ class TestReturnMockedResult:
         node_id = "TestActivity#1"
         output = "test_output"
 
-        result = await return_mocked_result(node_id, output)
+        input_data = MockedResultInput(node_id=node_id, output=output)
+        result = await return_mocked_result(input_data)
 
         assert result == "test_output"
 
@@ -118,7 +127,8 @@ class TestReturnMockedResult:
         node_id = "TestActivity#1"
         output = True
 
-        result = await return_mocked_result(node_id, output)
+        input_data = MockedResultInput(node_id=node_id, output=output)
+        result = await return_mocked_result(input_data)
 
         assert result is True
 
@@ -128,13 +138,16 @@ class TestReturnMockedResult:
         node_id = "TestActivity#1"
 
         # Test integer
-        result_int = await return_mocked_result(node_id, 42)
+        input_data_int = MockedResultInput(node_id=node_id, output=42)
+        result_int = await return_mocked_result(input_data_int)
         assert result_int == 42
 
         # Test float
-        result_float = await return_mocked_result(node_id, 3.14)
+        input_data_float = MockedResultInput(node_id=node_id, output=3.14)
+        result_float = await return_mocked_result(input_data_float)
         assert result_float == 3.14
 
         # Test negative number
-        result_negative = await return_mocked_result(node_id, -100)
+        input_data_negative = MockedResultInput(node_id=node_id, output=-100)
+        result_negative = await return_mocked_result(input_data_negative)
         assert result_negative == -100
