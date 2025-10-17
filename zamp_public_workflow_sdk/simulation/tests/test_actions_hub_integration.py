@@ -74,9 +74,9 @@ class TestActionsHubSimulationIntegration:
             mock_var.return_value = workflow_id
 
             with patch(
-                "zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.execute_child_workflow"
-            ) as mock_execute:
-                mock_execute.return_value = "simulated_result"
+                "zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.execute_activity"
+            ) as mock_execute_activity:
+                mock_execute_activity.return_value = "simulated_result"
 
                 # Mock workflow.info() to avoid workflow event loop error
                 with patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.info") as mock_info:
@@ -215,9 +215,9 @@ class TestActionsHubSimulationIntegration:
             mock_var.return_value = workflow_id
 
             with patch(
-                "zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.start_child_workflow"
-            ) as mock_start:
-                mock_start.return_value = "simulated_result"
+                "zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.execute_activity"
+            ) as mock_execute_activity:
+                mock_execute_activity.return_value = "simulated_result"
 
                 # Mock workflow.info() to avoid workflow event loop error
                 with patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.info") as mock_info:

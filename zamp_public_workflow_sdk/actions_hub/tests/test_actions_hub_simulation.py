@@ -184,8 +184,9 @@ class TestActionsHubSimulation:
 
         result = "plain_string"
         converted = ActionsHub._convert_result_to_model(result, TestModel)
-        # Should return original result unchanged
-        assert converted == result
+        # Should convert non-dict result to Pydantic model when return type has single field
+        assert isinstance(converted, TestModel)
+        assert converted.value == "plain_string"
 
     def test_convert_result_to_model_validation_error(self):
         """Test _convert_result_to_model when validation fails."""
