@@ -480,7 +480,7 @@ class ActionsHub:
             )
             await workflow.execute_activity(
                 return_mocked_result,
-                args=(node_id, f"response mocked {node_id}", simulation_result.execution_response),
+                args=(node_id, simulation_result.execution_response),
                 start_to_close_timeout=timedelta(seconds=10),
             )
             return simulation_result.execution_response
@@ -743,7 +743,7 @@ class ActionsHub:
             )
             await workflow.execute_activity(
                 return_mocked_result,
-                args=(node_id, f"response mocked {node_id}", simulation_result.execution_response),
+                args=(node_id, simulation_result.execution_response),
                 start_to_close_timeout=timedelta(seconds=10),
             )
             return simulation_result.execution_response
@@ -803,7 +803,7 @@ class ActionsHub:
             )
             await workflow.execute_activity(
                 return_mocked_result,
-                args=(node_id, f"response mocked {node_id}", simulation_result.execution_response),
+                args=(node_id, simulation_result.execution_response),
                 start_to_close_timeout=timedelta(seconds=10),
             )
             return simulation_result.execution_response
