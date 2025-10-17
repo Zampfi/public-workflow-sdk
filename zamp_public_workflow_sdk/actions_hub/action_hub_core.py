@@ -228,6 +228,7 @@ class ActionsHub:
         if not return_type or result is None:
             return result
 
+        # Case 1: For dict results, convert to Pydantic model
         if hasattr(return_type, "model_validate") and isinstance(result, dict):
             try:
                 return return_type.model_validate(result)
@@ -238,6 +239,19 @@ class ActionsHub:
                     e,
                 )
                 return result
+        # Case 2: For non-dict results,construct Pydantic model from the raw value
+        try:
+            if hasattr(return_type, "model_fields"):
+                fields = return_type.model_fields
+                if len(fields) == 1:
+                    field_name = next(iter(fields.keys()))
+                    return return_type.model_validate({field_name: result})
+        except Exception as e:
+            logger.warning(
+                "Could not convert result to Pydantic model %s: %s",
+                return_type.__name__,
+                e,
+            )
 
         return result
 
@@ -464,12 +478,12 @@ class ActionsHub:
                 node_id=node_id,
                 activity_name=activity_name,
             )
-            result = await workflow.execute_activity(
+            await workflow.execute_activity(
                 return_mocked_result,
                 args=(node_id, f"response mocked {node_id}", simulation_result.execution_response),
                 start_to_close_timeout=timedelta(seconds=10),
             )
-            return result
+            return simulation_result.execution_response
 
         # Temporal execution mode
         # Convert ISO string to timedelta
@@ -728,12 +742,12 @@ class ActionsHub:
                 workflow_name=child_workflow_name,
             )
 
-            result = await workflow.execute_activity(
+            await workflow.execute_activity(
                 return_mocked_result,
                 args=(node_id, f"response mocked {node_id}", simulation_result.execution_response),
                 start_to_close_timeout=timedelta(seconds=10),
             )
-            return result
+            return simulation_result.execution_response
 
         # Temporal execution mode
         node_id_arg = {TEMPORAL_NODE_ID_KEY: node_id}
@@ -789,12 +803,12 @@ class ActionsHub:
                 node_id=node_id,
             )
 
-            result = await workflow.execute_activity(
+            await workflow.execute_activity(
                 return_mocked_result,
                 args=(node_id, f"response mocked {node_id}", simulation_result.execution_response),
                 start_to_close_timeout=timedelta(seconds=10),
             )
-            return result
+            return simulation_result.execution_response
 
         logger.info(
             "Starting child workflow",
