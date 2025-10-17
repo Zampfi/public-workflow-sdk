@@ -9,22 +9,28 @@ from typing import Any
 
 import structlog
 from temporalio import activity
+from pydantic import BaseModel
 
 logger = structlog.get_logger(__name__)
 
 
+class MockedResultInput(BaseModel):
+    """Input model for return_mocked_result activity."""
+    node_id: str
+    output: Any
+
+
 @activity.defn(name="return_mocked_result")
-async def return_mocked_result(node_id: str, output: Any) -> Any:
+async def return_mocked_result(input_data: MockedResultInput) -> Any:
     """
     Activity to return mocked results. This makes mocked operations visible in Temporal UI.
 
     Args:
-        node_id: The node_id identifying the mocked operation
-        output: The mocked output to return
+        input_data: The input data containing node_id and output
 
     Returns:
         The mocked output value
     """
 
-    logger.info("Returning mocked result", node_id=node_id)
-    return output
+    logger.info("Returning mocked result", node_id=input_data.node_id)
+    return input_data.output

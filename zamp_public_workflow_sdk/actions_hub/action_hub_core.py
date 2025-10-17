@@ -67,7 +67,7 @@ with workflow.unsafe.imports_passed_through():
         get_variable_from_context,
     )
     from .utils.datetime_utils import convert_iso_to_timedelta
-    from zamp_public_workflow_sdk.simulation.activities import return_mocked_result
+    from zamp_public_workflow_sdk.simulation.activities import return_mocked_result, MockedResultInput
 
     logger = structlog.get_logger(__name__)
 
@@ -251,7 +251,6 @@ class ActionsHub:
                 return_type.__name__,
                 e,
             )
-
         return result
 
     @classmethod
@@ -515,10 +514,12 @@ class ActionsHub:
                 node_id=node_id,
                 activity_name=activity_name,
             )
+            mocked_summary = f"Activity mocked {node_id}"
             await workflow.execute_activity(
                 return_mocked_result,
-                args=(node_id, simulation_result.execution_response),
+                MockedResultInput(node_id=node_id, output=simulation_result.execution_response),
                 start_to_close_timeout=timedelta(seconds=10),
+                summary=mocked_summary,
             )
             return simulation_result.execution_response
 
@@ -778,10 +779,12 @@ class ActionsHub:
                 node_id=node_id,
                 workflow_name=child_workflow_name,
             )
+            mocked_summary = f"Child workflow mocked {node_id}"
             await workflow.execute_activity(
                 return_mocked_result,
-                args=(node_id, simulation_result.execution_response),
+                MockedResultInput(node_id=node_id, output=simulation_result.execution_response),
                 start_to_close_timeout=timedelta(seconds=10),
+                summary=mocked_summary,
             )
             return simulation_result.execution_response
 
@@ -838,10 +841,12 @@ class ActionsHub:
                 workflow_name=child_workflow_name,
                 node_id=node_id,
             )
+            mocked_summary = f"Child workflow mocked {node_id}"
             await workflow.execute_activity(
                 return_mocked_result,
-                args=(node_id, simulation_result.execution_response),
+                MockedResultInput(node_id=node_id, output=simulation_result.execution_response),
                 start_to_close_timeout=timedelta(seconds=10),
+                summary=mocked_summary,
             )
             return simulation_result.execution_response
 
