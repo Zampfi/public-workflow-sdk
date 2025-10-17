@@ -613,11 +613,11 @@ class TestTemporalHistoryStrategyHandler:
 
         # Test with nested child workflows
         result = handler._group_nodes_by_parent_workflow(["Parent#1.Child#1.activity#1", "Parent#1.activity#1"])
-        assert "Child#1" in result
+        assert "Parent#1.Child#1" in result
         assert "Parent#1" in result
-        assert result["Child#1"] == ["Parent#1.Child#1.activity#1"]
+        assert result["Parent#1.Child#1"] == ["Parent#1.Child#1.activity#1"]
         assert result["Parent#1"] == ["Parent#1.activity#1"]
 
         # Test with deeply nested workflows
         result = handler._group_nodes_by_parent_workflow(["Parent#1.Child#1.GrandChild#1.activity#1"])
-        assert result == {"GrandChild#1": ["Parent#1.Child#1.GrandChild#1.activity#1"]}
+        assert result == {"Parent#1.Child#1.GrandChild#1": ["Parent#1.Child#1.GrandChild#1.activity#1"]}

@@ -193,7 +193,6 @@ class ActionsHub:
         action_name = cls._get_action_name(action)
         if action_name and action_name in SKIP_SIMULATION_WORKFLOWS:
             return SimulationResponse(execution_type=ExecutionType.EXECUTE, execution_response=None)
-
         simulation = cls.get_simulation_from_workflow_id(workflow_id)
         if not simulation:
             return SimulationResponse(execution_type=ExecutionType.EXECUTE, execution_response=None)
@@ -270,8 +269,46 @@ class ActionsHub:
         logger.info("Simulation initialized for workflow", workflow_id=workflow_id)
 
     @classmethod
-    def get_simulation_from_workflow_id(cls, workflow_id: str) -> WorkflowSimulationService:
-        return cls._workflow_id_to_simulation_map.get(workflow_id)
+    def get_simulation_from_workflow_id(cls, workflow_id: str) -> WorkflowSimulationService | None:
+        """
+        Get simulation service for a workflow_id with hierarchical lookup.
+
+        If simulation is not found for the current workflow_id, this method will
+        check if this is a child workflow and try to get the parent's simulation.
+
+        Args:
+            workflow_id: The workflow ID to look up
+
+        Returns:
+            WorkflowSimulationService if found (either direct or from parent), None otherwise
+        """
+        simulation = cls._workflow_id_to_simulation_map.get(workflow_id)
+        if simulation:
+            return simulation
+
+        try:
+            info = workflow.info()
+            # Check if the workflow is a child workflow and if so, use the parent's simulation
+            if hasattr(info, "parent") and info.parent:
+                parent_workflow_id = info.parent.workflow_id
+                parent_simulation = cls._workflow_id_to_simulation_map.get(parent_workflow_id)
+                if parent_simulation:
+                    logger.info(
+                        "Using parent workflow simulation for child workflow",
+                        child_workflow_id=workflow_id,
+                        parent_workflow_id=parent_workflow_id,
+                    )
+                    # Copy the parent's simulation to the child workflow
+                    cls._workflow_id_to_simulation_map[workflow_id] = parent_simulation
+                    return parent_simulation
+        except Exception as e:
+            logger.error(
+                "Failed to get simulation from workflow_id",
+                workflow_id=workflow_id,
+                error=str(e),
+            )
+
+        return None
 
     @classmethod
     def _get_current_workflow_id(cls) -> str:
