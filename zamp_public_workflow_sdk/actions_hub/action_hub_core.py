@@ -238,7 +238,7 @@ class ActionsHub:
                     e,
                 )
                 return result
-        # Case 2: For non-dict results,construct Pydantic model from the raw value
+        # Case 2: For non-dict results, construct Pydantic model from the raw value
         try:
             if hasattr(return_type, "model_fields"):
                 fields = return_type.model_fields
