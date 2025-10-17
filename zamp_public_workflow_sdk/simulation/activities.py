@@ -16,6 +16,7 @@ logger = structlog.get_logger(__name__)
 
 class MockedResultInput(BaseModel):
     """Input model for return_mocked_result activity."""
+
     node_id: str
     output: Any
 
