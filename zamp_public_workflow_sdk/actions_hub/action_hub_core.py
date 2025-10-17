@@ -741,7 +741,6 @@ class ActionsHub:
                 node_id=node_id,
                 workflow_name=child_workflow_name,
             )
-
             await workflow.execute_activity(
                 return_mocked_result,
                 args=(node_id, f"response mocked {node_id}", simulation_result.execution_response),
@@ -802,7 +801,6 @@ class ActionsHub:
                 workflow_name=child_workflow_name,
                 node_id=node_id,
             )
-
             await workflow.execute_activity(
                 return_mocked_result,
                 args=(node_id, f"response mocked {node_id}", simulation_result.execution_response),
