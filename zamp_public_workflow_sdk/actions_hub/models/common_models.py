@@ -18,6 +18,7 @@ class ZampMetadataContext(BaseModel):
     """
 
     organization_id: str = Field(..., description="Organization ID")
+    organization_ids: list[str] | None = Field(None, description="Organization IDs")
     user_id: str = Field(..., description="User ID")
     process_id: str = Field(..., description="Process ID")
     dataset_metadata_context: dict[str, str] | None = Field(None, description="Dataset Metadata Context")
