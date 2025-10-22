@@ -67,6 +67,7 @@ with workflow.unsafe.imports_passed_through():
         get_variable_from_context,
     )
     from .utils.datetime_utils import convert_iso_to_timedelta
+    from zamp_public_workflow_sdk.simulation.activities import return_mocked_result, MockedResultInput
 
     logger = structlog.get_logger(__name__)
 
@@ -226,6 +227,7 @@ class ActionsHub:
         if not return_type or result is None:
             return result
 
+        # Case 1: For dict results, convert to Pydantic model
         if hasattr(return_type, "model_validate") and isinstance(result, dict):
             try:
                 return return_type.model_validate(result)
@@ -236,7 +238,19 @@ class ActionsHub:
                     e,
                 )
                 return result
-
+        # Case 2: For non-dict results, construct Pydantic model from the raw value
+        try:
+            if hasattr(return_type, "model_fields"):
+                fields = return_type.model_fields
+                if len(fields) == 1:
+                    field_name = next(iter(fields.keys()))
+                    return return_type.model_validate({field_name: result})
+        except Exception as e:
+            logger.warning(
+                "Could not convert result to Pydantic model %s: %s",
+                return_type.__name__,
+                e,
+            )
         return result
 
     @classmethod
@@ -498,6 +512,14 @@ class ActionsHub:
             logger.info(
                 "Activity mocked",
                 node_id=node_id,
+                activity_name=activity_name,
+            )
+            mocked_summary = activity_name
+            await workflow.execute_activity(
+                return_mocked_result,
+                MockedResultInput(node_id=node_id, output=simulation_result.execution_response),
+                start_to_close_timeout=timedelta(seconds=10),
+                summary=mocked_summary,
             )
             return simulation_result.execution_response
 
@@ -755,6 +777,14 @@ class ActionsHub:
             logger.info(
                 "Child workflow mocked",
                 node_id=node_id,
+                workflow_name=child_workflow_name,
+            )
+            mocked_summary = child_workflow_name
+            await workflow.execute_activity(
+                return_mocked_result,
+                MockedResultInput(node_id=node_id, output=simulation_result.execution_response),
+                start_to_close_timeout=timedelta(seconds=10),
+                summary=mocked_summary,
             )
             return simulation_result.execution_response
 
@@ -808,8 +838,15 @@ class ActionsHub:
         if simulation_result.execution_type == ExecutionType.MOCK:
             logger.info(
                 "Child workflow mocked",
-                activity_name=workflow_name,
+                workflow_name=child_workflow_name,
                 node_id=node_id,
+            )
+            mocked_summary = child_workflow_name
+            await workflow.execute_activity(
+                return_mocked_result,
+                MockedResultInput(node_id=node_id, output=simulation_result.execution_response),
+                start_to_close_timeout=timedelta(seconds=10),
+                summary=mocked_summary,
             )
             return simulation_result.execution_response
 
