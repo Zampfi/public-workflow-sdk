@@ -2,6 +2,7 @@
 Common models for ActionsHub - independent of Pantheon platform.
 """
 
+from typing import Dict, Optional, List
 from pydantic import BaseModel, Field
 
 from .decorators import external
@@ -18,6 +19,9 @@ class ZampMetadataContext(BaseModel):
     """
 
     organization_id: str = Field(..., description="Organization ID")
+    organization_ids: Optional[List[str]] = Field(None, description="Organization IDs")
     user_id: str = Field(..., description="User ID")
     process_id: str = Field(..., description="Process ID")
-    dataset_metadata_context: dict[str, str] | None = Field(None, description="Dataset Metadata Context")
+    dataset_metadata_context: Optional[Dict[str, str]] = Field(
+        None, description="Dataset Metadata Context"
+    )
