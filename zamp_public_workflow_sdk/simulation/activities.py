@@ -6,19 +6,11 @@ such as making mocked operations visible in the Temporal UI.
 """
 
 from typing import Any
-
 import structlog
 from temporalio import activity
-from pydantic import BaseModel
+from zamp_public_workflow_sdk.simulation.models.mocked_result import MockedResultInput
 
 logger = structlog.get_logger(__name__)
-
-
-class MockedResultInput(BaseModel):
-    """Input model for return_mocked_result activity."""
-
-    node_id: str
-    output: Any
 
 
 @activity.defn(name="return_mocked_result")
