@@ -514,7 +514,7 @@ class ActionsHub:
                 node_id=node_id,
                 activity_name=activity_name,
             )
-            mocked_summary = f"Activity mocked {node_id}"
+            mocked_summary = activity_name
             await workflow.execute_activity(
                 return_mocked_result,
                 MockedResultInput(node_id=node_id, output=simulation_result.execution_response),
@@ -779,7 +779,7 @@ class ActionsHub:
                 node_id=node_id,
                 workflow_name=child_workflow_name,
             )
-            mocked_summary = f"Child workflow mocked {node_id}"
+            mocked_summary = child_workflow_name
             await workflow.execute_activity(
                 return_mocked_result,
                 MockedResultInput(node_id=node_id, output=simulation_result.execution_response),
@@ -841,7 +841,7 @@ class ActionsHub:
                 workflow_name=child_workflow_name,
                 node_id=node_id,
             )
-            mocked_summary = f"Child workflow mocked {node_id}"
+            mocked_summary = child_workflow_name
             await workflow.execute_activity(
                 return_mocked_result,
                 MockedResultInput(node_id=node_id, output=simulation_result.execution_response),
