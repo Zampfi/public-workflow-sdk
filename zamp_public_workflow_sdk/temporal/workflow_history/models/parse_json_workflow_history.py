@@ -11,9 +11,3 @@ class ParseJsonWorkflowHistoryInput(BaseModel):
     content_base64: str = Field(..., description="Base64 encoded JSON content from blob storage")
     workflow_id: str = Field(..., description="Expected workflow ID")
     run_id: str = Field(..., description="Expected run ID")
-
-
-class ParseAndUploadWorkflowHistoryOutput(BaseModel):
-    """Output model for parse and upload workflow history proto activity."""
-
-    success: bool = Field(description="Whether the operation was successful")
