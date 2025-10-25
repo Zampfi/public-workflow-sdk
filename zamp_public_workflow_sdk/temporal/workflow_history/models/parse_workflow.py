@@ -14,3 +14,9 @@ class ParseWorkflowHistoryProtoOutput(BaseModel):
     workflow_histories: list[WorkflowHistory] = Field(
         ..., description="List of parsed workflow histories from the protobuf data"
     )
+
+
+class ParseAndUploadWorkflowHistoryOutput(BaseModel):
+    """Output model for parse and upload workflow history proto activity."""
+
+    success: bool = Field(description="Whether the operation was successful")
