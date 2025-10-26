@@ -30,6 +30,7 @@ with workflow.unsafe.imports_passed_through():
         SimulationConfigBuilderInput,
         SimulationConfigBuilderOutput,
     )
+    from zamp_public_workflow_sdk.simulation.constants.versions import SupportedVersions
 
 logger = structlog.get_logger(__name__)
 
@@ -354,7 +355,7 @@ class SimulationConfigBuilderWorkflow:
         mock_config = NodeMockConfig(node_strategies=[node_strategy])
 
         simulation_config = SimulationConfig(
-            version="1.0.0",
+            version=SupportedVersions.V1_0_0.value,
             mock_config=mock_config,
         )
 
