@@ -53,6 +53,8 @@ class SimulationConfigBuilderWorkflow:
     5. Generates a simulation configuration with all collected node IDs
     """
 
+    MAIN_WORKFLOW_KEY = "main-workflow"
+
     def __init__(self):
         """Initialize the simulation config builder workflow.
 
@@ -92,7 +94,7 @@ class SimulationConfigBuilderWorkflow:
             workflow_id=input.workflow_id,
             run_id=input.run_id,
         )
-        self.workflow_histories["main"] = main_history
+        self.workflow_histories[self.MAIN_WORKFLOW_KEY] = main_history
 
         # Step 2: Extract all node IDs recursively
         all_node_ids = await self._extract_all_node_ids_recursively(
@@ -159,7 +161,7 @@ class SimulationConfigBuilderWorkflow:
         )
 
         try:
-            child_workflow_id, child_run_id = workflow_history.get_child_workflow_workflow_id_run_id(node_id)
+            child_workflow_id, child_run_id = workflow_history.get_child_workflow_workflow_id_run_id(node_id=node_id)
 
             logger.info(
                 "Fetching child workflow history",
@@ -245,7 +247,7 @@ class SimulationConfigBuilderWorkflow:
 
         for node_id, node_data in nodes_data.items():
             # Check if this node is a child workflow
-            is_child_workflow = self._is_child_workflow_node(node_data)
+            is_child_workflow = self._is_child_workflow_node(node_data=node_data)
 
             logger.info(
                 "Checking node",
@@ -255,11 +257,13 @@ class SimulationConfigBuilderWorkflow:
 
             if is_child_workflow:
                 # Process child workflow node
-                child_node_ids = await self._process_child_workflow_node(node_id, workflow_history)
+                child_node_ids = await self._process_child_workflow_node(
+                    node_id=node_id, workflow_history=workflow_history
+                )
                 all_node_ids.extend(child_node_ids)
             else:
                 # Process node if it should be included
-                node_id_to_include = self._should_include_node(node_id)
+                node_id_to_include = self._should_include_node(node_id=node_id)
                 if node_id_to_include:
                     all_node_ids.append(node_id_to_include)
 
@@ -288,7 +292,7 @@ class SimulationConfigBuilderWorkflow:
         )
 
         try:
-            history = await ActionsHub.execute_child_workflow(
+            history: FetchTemporalWorkflowHistoryOutput = await ActionsHub.execute_child_workflow(
                 "FetchTemporalWorkflowHistoryWorkflow",
                 FetchTemporalWorkflowHistoryInput(
                     workflow_id=workflow_id,
@@ -347,10 +351,8 @@ class SimulationConfigBuilderWorkflow:
             nodes=all_node_ids,
         )
 
-        # Create mock config with the single strategy
         mock_config = NodeMockConfig(node_strategies=[node_strategy])
 
-        # Create simulation config
         simulation_config = SimulationConfig(
             version="1.0.0",
             mock_config=mock_config,
