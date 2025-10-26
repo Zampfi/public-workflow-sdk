@@ -5,28 +5,31 @@ including those from child workflows, and generates a simulation configuration
 that can be used to mock those nodes during simulation.
 """
 
-import structlog
+import temporalio.workflow as workflow
 
-from zamp_public_workflow_sdk.actions_hub import ActionsHub
-from zamp_public_workflow_sdk.temporal.workflow_history.models import (
-    FetchTemporalWorkflowHistoryInput,
-    FetchTemporalWorkflowHistoryOutput,
-    WorkflowHistory,
-)
-from zamp_public_workflow_sdk.temporal.workflow_history.constants import EventType, EventField
-from zamp_public_workflow_sdk.simulation.models import (
-    SimulationConfig,
-    NodeMockConfig,
-    NodeStrategy,
-    SimulationStrategyConfig,
-    TemporalHistoryConfig,
-    StrategyType,
-)
+with workflow.unsafe.imports_passed_through():
+    import structlog
 
-from zamp_public_workflow_sdk.simulation.models.simulation_config_builder import (
-    SimulationConfigBuilderInput,
-    SimulationConfigBuilderOutput,
-)
+    from zamp_public_workflow_sdk.actions_hub import ActionsHub
+    from zamp_public_workflow_sdk.temporal.workflow_history.models import (
+        FetchTemporalWorkflowHistoryInput,
+        FetchTemporalWorkflowHistoryOutput,
+        WorkflowHistory,
+    )
+    from zamp_public_workflow_sdk.temporal.workflow_history.constants import EventType, EventField
+    from zamp_public_workflow_sdk.simulation.models import (
+        SimulationConfig,
+        NodeMockConfig,
+        NodeStrategy,
+        SimulationStrategyConfig,
+        TemporalHistoryConfig,
+        StrategyType,
+    )
+
+    from zamp_public_workflow_sdk.simulation.models.simulation_config_builder import (
+        SimulationConfigBuilderInput,
+        SimulationConfigBuilderOutput,
+    )
 
 logger = structlog.get_logger(__name__)
 
