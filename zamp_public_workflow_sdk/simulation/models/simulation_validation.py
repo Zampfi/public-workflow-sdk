@@ -9,7 +9,7 @@ from zamp_public_workflow_sdk.actions_hub.models.common_models import (
 )
 
 
-class NodeInputComparison(BaseModel):
+class NodeComparison(BaseModel):
     """Comparison result for a single node."""
 
     node_id: str = Field(..., description="Node ID being compared")
@@ -49,7 +49,7 @@ class NodeInputComparison(BaseModel):
     error: str | None = Field(default=None, description="Error message if comparison failed")
 
 
-class ValidateWorkflowSimulationInput(BaseModel):
+class SimulationValidatorInput(BaseModel):
     """Input for workflow simulation validation."""
 
     reference_workflow_id: str = Field(
@@ -88,7 +88,7 @@ class MismatchedNodeSummary(BaseModel):
     )
 
 
-class ValidateWorkflowSimulationOutput(BaseModel):
+class SimulationValidatorOutput(BaseModel):
     """Output for workflow simulation validation."""
 
     total_nodes_compared: int = Field(..., description="Total number of nodes compared")
@@ -100,5 +100,5 @@ class ValidateWorkflowSimulationOutput(BaseModel):
         default_factory=list,
         description="Summary of nodes that had mismatches",
     )
-    comparisons: list[NodeInputComparison] = Field(..., description="Detailed comparison results for each node")
+    comparisons: list[NodeComparison] = Field(..., description="Detailed comparison results for each node")
     validation_passed: bool = Field(..., description="Whether all non-mocked nodes have matching inputs")

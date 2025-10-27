@@ -12,9 +12,9 @@ from zamp_public_workflow_sdk.temporal.workflow_history.models import (
 )
 
 from zamp_public_workflow_sdk.simulation.models.simulation_validation import (
-    ValidateWorkflowSimulationInput,
-    ValidateWorkflowSimulationOutput,
-    NodeInputComparison,
+    SimulationValidatorInput,
+    SimulationValidatorOutput,
+    NodeComparison,
     MismatchedNodeSummary,
 )
 
@@ -27,7 +27,7 @@ MAIN_WORKFLOW_IDENTIFIER = "main_workflow"
     "Workflow that validates simulation by comparing inputs between golden and mocked workflows",
     labels=["temporal", "validation", "simulation"],
 )
-class ValidateWorkflowSimulationWorkflow:
+class SimulationValidatorWorkflow:
     """
     Validates simulation accuracy by comparing node inputs/outputs between golden and mocked workflows.
 
@@ -41,7 +41,7 @@ class ValidateWorkflowSimulationWorkflow:
         self.golden_workflow_histories: dict[str, WorkflowHistory] = {}
 
     @ActionsHub.register_workflow_run
-    async def execute(self, input: ValidateWorkflowSimulationInput) -> ValidateWorkflowSimulationOutput:
+    async def execute(self, input: SimulationValidatorInput) -> SimulationValidatorOutput:
         """Execute workflow validation by comparing inputs and outputs."""
         logger.info(
             "Starting validation",
@@ -71,7 +71,7 @@ class ValidateWorkflowSimulationWorkflow:
 
         return output
 
-    async def _fetch_and_cache_main_workflows(self, input: ValidateWorkflowSimulationInput) -> None:
+    async def _fetch_and_cache_main_workflows(self, input: SimulationValidatorInput) -> None:
         """Fetch and cache main workflow histories for both reference and golden."""
         reference_history = await self._fetch_workflow_history(
             workflow_id=input.reference_workflow_id,
@@ -87,7 +87,7 @@ class ValidateWorkflowSimulationWorkflow:
         )
         self.golden_workflow_histories[MAIN_WORKFLOW_IDENTIFIER] = golden_history
 
-    async def _compare_all_nodes(self, mocked_nodes: set[str]) -> list[NodeInputComparison]:
+    async def _compare_all_nodes(self, mocked_nodes: set[str]) -> list[NodeComparison]:
         """Compare all mocked nodes across main and child workflows."""
         node_groups = self._group_nodes_by_parent_workflow(list(mocked_nodes))
         comparisons = []
@@ -100,19 +100,17 @@ class ValidateWorkflowSimulationWorkflow:
 
         return comparisons
 
-    async def _compare_main_workflow_nodes(
-        self, node_ids: list[str], mocked_nodes: set[str]
-    ) -> list[NodeInputComparison]:
+    async def _compare_main_workflow_nodes(self, node_ids: list[str], mocked_nodes: set[str]) -> list[NodeComparison]:
         """Compare nodes in the main workflow."""
         reference_nodes = self.reference_workflow_histories[MAIN_WORKFLOW_IDENTIFIER].get_nodes_data()
         golden_nodes = self.golden_workflow_histories[MAIN_WORKFLOW_IDENTIFIER].get_nodes_data()
 
         return [
-            await self._compare_node_inputs(node_id, mocked_nodes, reference_nodes, golden_nodes)
+            await self._compare_node(node_id, mocked_nodes, reference_nodes, golden_nodes)
             for node_id in sorted(node_ids)
         ]
 
-    def _build_output(self, comparisons: list[NodeInputComparison]) -> ValidateWorkflowSimulationOutput:
+    def _build_output(self, comparisons: list[NodeComparison]) -> SimulationValidatorOutput:
         """Build validation output with statistics and mismatch summary."""
         matching_count = 0
         mismatched_count = 0
@@ -136,7 +134,7 @@ class ValidateWorkflowSimulationWorkflow:
                     )
                 )
 
-        return ValidateWorkflowSimulationOutput(
+        return SimulationValidatorOutput(
             total_nodes_compared=len(comparisons),
             mocked_nodes_count=len(comparisons),
             matching_nodes_count=matching_count,
@@ -147,9 +145,9 @@ class ValidateWorkflowSimulationWorkflow:
             validation_passed=(mismatched_count == 0 and error_count == 0),
         )
 
-    def _build_empty_output(self) -> ValidateWorkflowSimulationOutput:
+    def _build_empty_output(self) -> SimulationValidatorOutput:
         """Build empty output when no nodes to compare."""
-        return ValidateWorkflowSimulationOutput(
+        return SimulationValidatorOutput(
             total_nodes_compared=0,
             mocked_nodes_count=0,
             matching_nodes_count=0,
@@ -186,9 +184,9 @@ class ValidateWorkflowSimulationWorkflow:
             logger.error(f"Failed to fetch {description} workflow history", error=str(e))
             raise
 
-    def _create_error_comparison(self, node_id: str, is_mocked: bool, error: str) -> NodeInputComparison:
+    def _create_error_comparison(self, node_id: str, is_mocked: bool, error: str) -> NodeComparison:
         """Create a NodeInputComparison object for error cases."""
-        return NodeInputComparison(
+        return NodeComparison(
             node_id=node_id,
             is_mocked=is_mocked,
             inputs_match=None,
@@ -196,13 +194,13 @@ class ValidateWorkflowSimulationWorkflow:
             error=error,
         )
 
-    async def _compare_node_inputs(
+    async def _compare_node(
         self,
         node_id: str,
         mocked_nodes: set[str],
         reference_nodes: dict,
         golden_nodes: dict,
-    ) -> NodeInputComparison:
+    ) -> NodeComparison:
         """Compare inputs and outputs for a single node between reference and golden workflows."""
         is_mocked = node_id in mocked_nodes
 
@@ -237,7 +235,7 @@ class ValidateWorkflowSimulationWorkflow:
             log_level = logger.info if inputs_match and outputs_match else logger.warning
             log_level("Node comparison", node_id=node_id, inputs_match=inputs_match, outputs_match=outputs_match)
 
-            return NodeInputComparison(
+            return NodeComparison(
                 node_id=node_id,
                 is_mocked=is_mocked,
                 inputs_match=inputs_match,
@@ -259,7 +257,7 @@ class ValidateWorkflowSimulationWorkflow:
         parent_workflow_id: str,
         node_ids: list[str],
         mocked_nodes: set[str],
-    ) -> list[NodeInputComparison]:
+    ) -> list[NodeComparison]:
         """Compare inputs for nodes that belong to a child workflow."""
         full_child_path = self._get_workflow_path_from_node(node_ids[0], parent_workflow_id)
         logger.info("Processing child workflow", full_child_path=full_child_path, node_count=len(node_ids))
@@ -283,7 +281,7 @@ class ValidateWorkflowSimulationWorkflow:
             golden_child_nodes = golden_child_history.get_nodes_data()
 
             return [
-                await self._compare_node_inputs(node_id, mocked_nodes, reference_child_nodes, golden_child_nodes)
+                await self._compare_node(node_id, mocked_nodes, reference_child_nodes, golden_child_nodes)
                 for node_id in sorted(node_ids)
             ]
 
