@@ -8,6 +8,9 @@ class SimulationConfigBuilderInput(BaseModel):
 
     workflow_id: str = Field(..., description="Workflow ID to extract node IDs from")
     run_id: str = Field(..., description="Run ID to extract node IDs from")
+    execute_actions: list[str] | None = Field(
+        default=None, description="List of node IDs to execute (not mock). These will be added to the skip list."
+    )
 
 
 class SimulationConfigBuilderOutput(BaseModel):

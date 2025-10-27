@@ -172,31 +172,23 @@ class SimulationConfigBuilderWorkflow:
                 child_run_id=child_run_id,
             )
 
-            # Fetch child workflow history
-            child_history = await self._fetch_workflow_history(
-                workflow_id=child_workflow_id,
-                run_id=child_run_id,
-            )
-
-            # Get all node IDs from child workflow without filtering
-            all_child_node_ids = await self._get_all_node_ids(
-                workflow_history=child_history,
-            )
+            # Get all node IDs from child workflow
+            child_node_ids = workflow_history.get_nodes_data().keys()
 
             node_skipped = False
             included_node_ids = []
-            for child_node_id in all_child_node_ids:
+            for child_node_id in child_node_ids:
                 if self._should_include_node(node_id=child_node_id):
                     included_node_ids.append(child_node_id)
                 else:
                     node_skipped = True
 
             # If no nodes would be skipped, mock the entire child workflow
-            if not node_skipped and len(all_child_node_ids) > 0:
+            if not node_skipped and len(child_node_ids) > 0:
                 logger.info(
                     "All activities in child workflow would be mocked - mocking entire child workflow",
                     child_node_id=node_id,
-                    total_activities=len(all_child_node_ids),
+                    total_activities=len(child_node_ids),
                 )
                 return [node_id]  # Return the child workflow node_id itself
 
@@ -204,9 +196,8 @@ class SimulationConfigBuilderWorkflow:
                 "Some activities in child workflow would be skipped - mocking individual activities",
                 child_node_id=node_id,
                 included_count=len(included_node_ids),
-                total_activities=len(all_child_node_ids),
+                total_activities=len(child_node_ids),
             )
-
             return included_node_ids
 
         except Exception as e:
@@ -215,50 +206,7 @@ class SimulationConfigBuilderWorkflow:
                 node_id=node_id,
                 error=str(e),
             )
-            return []
-
-    async def _get_all_node_ids(self, workflow_history: WorkflowHistory) -> list[str]:
-        """Get all node IDs from a workflow without applying any filtering.
-
-        Recursively processes a workflow history to extract all node IDs,
-        including those from child workflows, without applying skip filters.
-
-        Args:
-            workflow_history: The workflow history to extract node IDs from
-
-        Returns:
-            List of all node IDs from the workflow and its children (unfiltered)
-        """
-        all_node_ids = []
-
-        # Get all nodes from current workflow
-        nodes_data = workflow_history.get_nodes_data()
-
-        for node_id, node_data in nodes_data.items():
-            # Check if this node is a child workflow
-            is_child_workflow = self._is_child_workflow_node(node_data=node_data)
-            if is_child_workflow:
-                # Process child workflow node recursively
-                try:
-                    child_workflow_id, child_run_id = workflow_history.get_child_workflow_workflow_id_run_id(
-                        node_id=node_id
-                    )
-                    child_history = await self._fetch_workflow_history(
-                        workflow_id=child_workflow_id,
-                        run_id=child_run_id,
-                    )
-                    child_node_ids = await self._get_all_node_ids(workflow_history=child_history)
-                    all_node_ids.extend(child_node_ids)
-                except Exception as e:
-                    logger.error(
-                        "Failed to extract child workflow nodes (unfiltered)",
-                        node_id=node_id,
-                        error=str(e),
-                    )
-            else:
-                all_node_ids.append(node_id)
-
-        return all_node_ids
+            raise
 
     def _should_include_node(self, node_id: str) -> str | None:
         """Determine if a node should be included in the simulation configuration.
