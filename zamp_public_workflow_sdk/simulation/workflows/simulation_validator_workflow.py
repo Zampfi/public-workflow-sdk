@@ -238,8 +238,7 @@ class SimulationValidatorWorkflow:
             inputs_match = len(input_diff) == 0
             outputs_match = len(output_diff) == 0
 
-            log_level = logger.info if inputs_match and outputs_match else logger.warning
-            log_level("Node comparison", node_id=node_id, inputs_match=inputs_match, outputs_match=outputs_match)
+            logger.info("Node comparison", node_id=node_id, inputs_match=inputs_match, outputs_match=outputs_match)
 
             return NodeComparison(
                 node_id=node_id,
