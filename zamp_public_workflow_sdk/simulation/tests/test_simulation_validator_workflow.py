@@ -11,6 +11,7 @@ from zamp_public_workflow_sdk.simulation.workflows.simulation_validator_workflow
 )
 from zamp_public_workflow_sdk.simulation.models.simulation_validation import (
     SimulationValidatorInput,
+    SimulationValidatorOutput,
     NodeComparison,
 )
 from zamp_public_workflow_sdk.simulation.models import (
@@ -21,7 +22,6 @@ from zamp_public_workflow_sdk.simulation.models import (
     StrategyType,
     CustomOutputConfig,
 )
-from zamp_public_workflow_sdk.actions_hub.models.common_models import ZampMetadataContext
 
 
 class TestSimulationValidatorWorkflow:
@@ -44,17 +44,13 @@ class TestSimulationValidatorWorkflow:
             ]
         )
         self.simulation_config = SimulationConfig(mock_config=self.mock_config)
-        self.metadata_context = ZampMetadataContext(
-            organization_id="org-123", user_id="user-456", process_id="process-789"
-        )
 
         self.validator_input = SimulationValidatorInput(
-            reference_workflow_id="ref-workflow-123",
-            reference_run_id="ref-run-456",
+            simulation_workflow_id="sim-workflow-123",
+            simulation_workflow_run_id="sim-run-456",
             golden_workflow_id="golden-workflow-789",
             golden_run_id="golden-run-012",
             simulation_config=self.simulation_config,
-            zamp_metadata_context=self.metadata_context,
         )
 
     def test_init(self):
@@ -91,16 +87,31 @@ class TestSimulationValidatorWorkflow:
 
         assert mocked_nodes == set()
 
-    def test_build_empty_output(self):
-        """Test building empty output."""
-        output = self.workflow._build_empty_output()
+    def test_simulation_validator_output_defaults(self):
+        """Test that SimulationValidatorOutput has correct default values."""
+        output = SimulationValidatorOutput(
+            total_nodes_compared=0,
+            mocked_nodes_count=0,
+            matching_nodes_count=0,
+            mismatched_nodes_count=0,
+            mismatched_node_ids=None,
+            comparison_error_nodes_count=0,
+            comparison_error_node_ids=None,
+            nodes_missing_in_simulation_workflow=None,
+            nodes_missing_in_golden_workflow=None,
+            comparisons=[],
+            validation_passed=True,
+        )
 
         assert output.total_nodes_compared == 0
         assert output.mocked_nodes_count == 0
         assert output.matching_nodes_count == 0
         assert output.mismatched_nodes_count == 0
-        assert output.error_nodes_count == 0
-        assert output.mismatched_nodes_summary == []
+        assert output.mismatched_node_ids is None
+        assert output.comparison_error_nodes_count == 0
+        assert output.comparison_error_node_ids is None
+        assert output.nodes_missing_in_simulation_workflow is None
+        assert output.nodes_missing_in_golden_workflow is None
         assert output.comparisons == []
         assert output.validation_passed is True
 
@@ -127,8 +138,11 @@ class TestSimulationValidatorWorkflow:
         assert output.mocked_nodes_count == 2
         assert output.matching_nodes_count == 2
         assert output.mismatched_nodes_count == 0
-        assert output.error_nodes_count == 0
-        assert len(output.mismatched_nodes_summary) == 0
+        assert output.mismatched_node_ids is None
+        assert output.comparison_error_nodes_count == 0
+        assert output.comparison_error_node_ids is None
+        assert output.nodes_missing_in_simulation_workflow is None
+        assert output.nodes_missing_in_golden_workflow is None
         assert output.validation_passed is True
 
     def test_build_output_mismatched_nodes(self):
@@ -158,9 +172,11 @@ class TestSimulationValidatorWorkflow:
         assert output.mocked_nodes_count == 2
         assert output.matching_nodes_count == 1
         assert output.mismatched_nodes_count == 1
-        assert output.error_nodes_count == 0
-        assert len(output.mismatched_nodes_summary) == 1
-        assert output.mismatched_nodes_summary[0].node_id == "activity#2"
+        assert output.mismatched_node_ids == ["activity#2"]
+        assert output.comparison_error_nodes_count == 0
+        assert output.comparison_error_node_ids is None
+        assert output.nodes_missing_in_simulation_workflow is None
+        assert output.nodes_missing_in_golden_workflow is None
         assert output.validation_passed is False
 
     def test_build_output_error_nodes(self):
@@ -175,7 +191,7 @@ class TestSimulationValidatorWorkflow:
             NodeComparison(
                 node_id="activity#2",
                 is_mocked=False,
-                error="Node not found in reference workflow",
+                error="Node not found in simulation workflow",
             ),
         ]
 
@@ -185,8 +201,40 @@ class TestSimulationValidatorWorkflow:
         assert output.mocked_nodes_count == 2
         assert output.matching_nodes_count == 1
         assert output.mismatched_nodes_count == 0
-        assert output.error_nodes_count == 1
-        assert len(output.mismatched_nodes_summary) == 0
+        assert output.mismatched_node_ids is None
+        assert output.comparison_error_nodes_count == 1
+        assert output.comparison_error_node_ids == ["activity#2"]
+        assert output.nodes_missing_in_simulation_workflow == ["activity#2"]
+        assert output.nodes_missing_in_golden_workflow is None
+        assert output.validation_passed is False
+
+    def test_build_output_missing_nodes_in_golden(self):
+        """Test building output with nodes missing in golden workflow."""
+        comparisons = [
+            NodeComparison(
+                node_id="activity#1",
+                is_mocked=False,
+                inputs_match=True,
+                outputs_match=True,
+            ),
+            NodeComparison(
+                node_id="activity#2",
+                is_mocked=False,
+                error="Node not found in golden workflow",
+            ),
+        ]
+
+        output = self.workflow._build_output(comparisons)
+
+        assert output.total_nodes_compared == 2
+        assert output.mocked_nodes_count == 2
+        assert output.matching_nodes_count == 1
+        assert output.mismatched_nodes_count == 0
+        assert output.mismatched_node_ids is None
+        assert output.comparison_error_nodes_count == 1
+        assert output.comparison_error_node_ids == ["activity#2"]
+        assert output.nodes_missing_in_simulation_workflow is None
+        assert output.nodes_missing_in_golden_workflow == ["activity#2"]
         assert output.validation_passed is False
 
     def test_create_error_comparison(self):
@@ -274,10 +322,10 @@ class TestSimulationValidatorWorkflow:
         assert comparison.is_mocked is True
         assert comparison.inputs_match is True
         assert comparison.outputs_match is True
-        assert comparison.reference_input == {"param": "value"}
-        assert comparison.golden_input == {"param": "value"}
-        assert comparison.reference_output == {"result": "success"}
-        assert comparison.golden_output == {"result": "success"}
+        assert comparison.actual_input == {"param": "value"}
+        assert comparison.expected_input == {"param": "value"}
+        assert comparison.actual_output == {"result": "success"}
+        assert comparison.expected_output == {"result": "success"}
         assert comparison.difference is None
         assert comparison.output_difference is None
         assert comparison.error is None
@@ -304,10 +352,10 @@ class TestSimulationValidatorWorkflow:
         assert comparison.is_mocked is True
         assert comparison.inputs_match is False
         assert comparison.outputs_match is False
-        assert comparison.reference_input == {"param": "value1"}
-        assert comparison.golden_input == {"param": "value2"}
-        assert comparison.reference_output == {"result": "success1"}
-        assert comparison.golden_output == {"result": "success2"}
+        assert comparison.actual_input == {"param": "value1"}
+        assert comparison.expected_input == {"param": "value2"}
+        assert comparison.actual_output == {"result": "success1"}
+        assert comparison.expected_output == {"result": "success2"}
         assert comparison.difference is not None
         assert comparison.output_difference is not None
         assert comparison.error is None
@@ -325,7 +373,7 @@ class TestSimulationValidatorWorkflow:
         assert comparison.is_mocked is True
         assert comparison.inputs_match is None
         assert comparison.outputs_match is None
-        assert comparison.error == "Node not found in reference workflow"
+        assert comparison.error == "Node not found in simulation workflow"
 
     @pytest.mark.asyncio
     async def test_compare_node_golden_node_not_found(self):
@@ -497,12 +545,11 @@ class TestSimulationValidatorWorkflow:
         empty_mock_config = NodeMockConfig(node_strategies=[])
         empty_config = SimulationConfig(mock_config=empty_mock_config)
         input_data = SimulationValidatorInput(
-            reference_workflow_id="ref-workflow-123",
-            reference_run_id="ref-run-456",
+            simulation_workflow_id="sim-workflow-123",
+            simulation_workflow_run_id="sim-run-456",
             golden_workflow_id="golden-workflow-789",
             golden_run_id="golden-run-012",
             simulation_config=empty_config,
-            zamp_metadata_context=self.metadata_context,
         )
 
         result = await self.workflow.execute(input_data)

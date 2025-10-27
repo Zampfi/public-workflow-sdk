@@ -1,21 +1,21 @@
-"""Workflow for validating simulation configurations by comparing inputs."""
+from temporalio import workflow
 
-import structlog
-from collections import defaultdict
-from deepdiff import DeepDiff
+with workflow.unsafe.imports_passed_through():
+    import structlog
+    from collections import defaultdict
+    from deepdiff import DeepDiff
 
-from zamp_public_workflow_sdk.actions_hub import ActionsHub
-from zamp_public_workflow_sdk.temporal.workflow_history.models import (
-    FetchTemporalWorkflowHistoryInput,
-    FetchTemporalWorkflowHistoryOutput,
-    WorkflowHistory,
-)
+    from zamp_public_workflow_sdk.actions_hub import ActionsHub
+    from zamp_public_workflow_sdk.temporal.workflow_history.models import (
+        FetchTemporalWorkflowHistoryInput,
+        FetchTemporalWorkflowHistoryOutput,
+        WorkflowHistory,
+    )
 
 from zamp_public_workflow_sdk.simulation.models.simulation_validation import (
     SimulationValidatorInput,
     SimulationValidatorOutput,
     NodeComparison,
-    MismatchedNodeSummary,
 )
 
 logger = structlog.get_logger(__name__)
@@ -45,14 +45,26 @@ class SimulationValidatorWorkflow:
         """Execute workflow validation by comparing inputs and outputs."""
         logger.info(
             "Starting validation",
-            reference_workflow_id=input.reference_workflow_id,
+            simulation_workflow_id=input.simulation_workflow_id,
             golden_workflow_id=input.golden_workflow_id,
         )
 
         mocked_nodes = self._get_mocked_nodes(input.simulation_config)
         if not mocked_nodes:
             logger.warning("No mocked nodes found in simulation config")
-            return self._build_empty_output()
+            return SimulationValidatorOutput(
+                total_nodes_compared=0,
+                mocked_nodes_count=0,
+                matching_nodes_count=0,
+                mismatched_nodes_count=0,
+                mismatched_node_ids=None,
+                comparison_error_nodes_count=0,
+                comparison_error_node_ids=None,
+                nodes_missing_in_simulation_workflow=None,
+                nodes_missing_in_golden_workflow=None,
+                comparisons=[],
+                validation_passed=True,
+            )
 
         logger.info("Identified mocked nodes", count=len(mocked_nodes))
 
@@ -65,20 +77,22 @@ class SimulationValidatorWorkflow:
             total_compared=output.total_nodes_compared,
             matching=output.matching_nodes_count,
             mismatched=output.mismatched_nodes_count,
-            errors=output.error_nodes_count,
+            comparison_errors=output.comparison_error_nodes_count,
+            missing_in_simulation=len(output.nodes_missing_in_simulation_workflow or []),
+            missing_in_golden=len(output.nodes_missing_in_golden_workflow or []),
             passed=output.validation_passed,
         )
 
         return output
 
     async def _fetch_and_cache_main_workflows(self, input: SimulationValidatorInput) -> None:
-        """Fetch and cache main workflow histories for both reference and golden."""
-        reference_history = await self._fetch_workflow_history(
-            workflow_id=input.reference_workflow_id,
-            run_id=input.reference_run_id,
-            description="reference",
+        """Fetch and cache main workflow histories for both simulation and golden."""
+        simulation_history = await self._fetch_workflow_history(
+            workflow_id=input.simulation_workflow_id,
+            run_id=input.simulation_workflow_run_id,
+            description="simulation",
         )
-        self.reference_workflow_histories[MAIN_WORKFLOW_IDENTIFIER] = reference_history
+        self.reference_workflow_histories[MAIN_WORKFLOW_IDENTIFIER] = simulation_history
 
         golden_history = await self._fetch_workflow_history(
             workflow_id=input.golden_workflow_id,
@@ -114,48 +128,40 @@ class SimulationValidatorWorkflow:
         """Build validation output with statistics and mismatch summary."""
         matching_count = 0
         mismatched_count = 0
-        error_count = 0
-        mismatched_nodes_summary = []
+        comparison_error_count = 0
+        mismatched_node_ids = []
+        comparison_error_node_ids = []
+        nodes_missing_in_simulation = []
+        nodes_missing_in_golden = []
 
         for comparison in comparisons:
             if comparison.error:
-                error_count += 1
+                comparison_error_count += 1
+                comparison_error_node_ids.append(comparison.node_id)
+
+                # Check if it's a missing node error
+                if "not found in simulation workflow" in comparison.error:
+                    nodes_missing_in_simulation.append(comparison.node_id)
+                elif "not found in golden workflow" in comparison.error:
+                    nodes_missing_in_golden.append(comparison.node_id)
             elif comparison.inputs_match and comparison.outputs_match:
                 matching_count += 1
             else:
                 mismatched_count += 1
-                mismatched_nodes_summary.append(
-                    MismatchedNodeSummary(
-                        node_id=comparison.node_id,
-                        inputs_match=comparison.inputs_match,
-                        outputs_match=comparison.outputs_match,
-                        input_differences=comparison.difference if not comparison.inputs_match else None,
-                        output_differences=comparison.output_difference if not comparison.outputs_match else None,
-                    )
-                )
+                mismatched_node_ids.append(comparison.node_id)
 
         return SimulationValidatorOutput(
             total_nodes_compared=len(comparisons),
             mocked_nodes_count=len(comparisons),
             matching_nodes_count=matching_count,
             mismatched_nodes_count=mismatched_count,
-            error_nodes_count=error_count,
-            mismatched_nodes_summary=mismatched_nodes_summary,
+            mismatched_node_ids=mismatched_node_ids if mismatched_node_ids else None,
+            comparison_error_nodes_count=comparison_error_count,
+            comparison_error_node_ids=comparison_error_node_ids if comparison_error_node_ids else None,
+            nodes_missing_in_simulation_workflow=nodes_missing_in_simulation if nodes_missing_in_simulation else None,
+            nodes_missing_in_golden_workflow=nodes_missing_in_golden if nodes_missing_in_golden else None,
             comparisons=comparisons,
-            validation_passed=(mismatched_count == 0 and error_count == 0),
-        )
-
-    def _build_empty_output(self) -> SimulationValidatorOutput:
-        """Build empty output when no nodes to compare."""
-        return SimulationValidatorOutput(
-            total_nodes_compared=0,
-            mocked_nodes_count=0,
-            matching_nodes_count=0,
-            mismatched_nodes_count=0,
-            error_nodes_count=0,
-            mismatched_nodes_summary=[],
-            comparisons=[],
-            validation_passed=True,
+            validation_passed=(mismatched_count == 0 and comparison_error_count == 0),
         )
 
     def _get_mocked_nodes(self, simulation_config) -> set[str]:
@@ -207,8 +213,8 @@ class SimulationValidatorWorkflow:
         try:
             reference_node = reference_nodes.get(node_id)
             if not reference_node:
-                logger.warning("Node not found in reference workflow", node_id=node_id)
-                return self._create_error_comparison(node_id, is_mocked, "Node not found in reference workflow")
+                logger.warning("Node not found in simulation workflow", node_id=node_id)
+                return self._create_error_comparison(node_id, is_mocked, "Node not found in simulation workflow")
 
             golden_node = golden_nodes.get(node_id)
             if not golden_node:
@@ -240,10 +246,10 @@ class SimulationValidatorWorkflow:
                 is_mocked=is_mocked,
                 inputs_match=inputs_match,
                 outputs_match=outputs_match,
-                reference_input=reference_node.input_payload,
-                golden_input=golden_node.input_payload,
-                reference_output=reference_node.output_payload,
-                golden_output=golden_node.output_payload,
+                actual_input=reference_node.input_payload,
+                expected_input=golden_node.input_payload,
+                actual_output=reference_node.output_payload,
+                expected_output=golden_node.output_payload,
                 difference=dict(input_diff) if not inputs_match else None,
                 output_difference=dict(output_diff) if not outputs_match else None,
             )
@@ -329,7 +335,7 @@ class SimulationValidatorWorkflow:
             current_history = await self._fetch_workflow_history(
                 workflow_id=workflow_id,
                 run_id=run_id,
-                description=f"{'reference' if is_reference else 'golden'} child {current_path}",
+                description=f"{'simulation' if is_reference else 'golden'} child {current_path}",
             )
 
             workflow_histories[current_path] = current_history

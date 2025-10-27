@@ -4,9 +4,6 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from zamp_public_workflow_sdk.simulation.models import SimulationConfig
-from zamp_public_workflow_sdk.actions_hub.models.common_models import (
-    ZampMetadataContext,
-)
 
 
 class NodeComparison(BaseModel):
@@ -22,19 +19,19 @@ class NodeComparison(BaseModel):
         default=None,
         description="Whether outputs match (None if node is mocked or comparison skipped)",
     )
-    reference_input: Any = Field(
+    actual_input: Any = Field(
         default=None,
-        description="Input from reference workflow (can be dict, list, str, etc.)",
+        description="Input from simulation workflow (can be dict, list, str, etc.)",
     )
-    golden_input: Any = Field(
+    expected_input: Any = Field(
         default=None,
         description="Input from golden workflow (can be dict, list, str, etc.)",
     )
-    reference_output: Any = Field(
+    actual_output: Any = Field(
         default=None,
-        description="Output from reference workflow (can be dict, list, str, etc.)",
+        description="Output from simulation workflow (can be dict, list, str, etc.)",
     )
-    golden_output: Any = Field(
+    expected_output: Any = Field(
         default=None,
         description="Output from golden workflow (can be dict, list, str, etc.)",
     )
@@ -52,11 +49,11 @@ class NodeComparison(BaseModel):
 class SimulationValidatorInput(BaseModel):
     """Input for workflow simulation validation."""
 
-    reference_workflow_id: str = Field(
+    simulation_workflow_id: str = Field(
         ...,
         description="Workflow ID of the workflow running with simulation (mocked workflow)",
     )
-    reference_run_id: str = Field(
+    simulation_workflow_run_id: str = Field(
         ...,
         description="Run ID of the workflow running with simulation (mocked workflow)",
     )
@@ -68,24 +65,7 @@ class SimulationValidatorInput(BaseModel):
         ...,
         description="Run ID of the golden workflow (original execution without mocking)",
     )
-    simulation_config: SimulationConfig = Field(..., description="Simulation config used in the reference workflow")
-    zamp_metadata_context: ZampMetadataContext = Field(..., description="Zamp metadata context")
-
-
-class MismatchedNodeSummary(BaseModel):
-    """Summary of a mismatched node."""
-
-    node_id: str = Field(..., description="Node ID that had mismatches")
-    inputs_match: bool | None = Field(..., description="Whether inputs matched")
-    outputs_match: bool | None = Field(..., description="Whether outputs matched")
-    input_differences: dict[str, Any] | None = Field(
-        default=None,
-        description="Input differences if inputs didn't match",
-    )
-    output_differences: dict[str, Any] | None = Field(
-        default=None,
-        description="Output differences if outputs didn't match",
-    )
+    simulation_config: SimulationConfig = Field(..., description="Simulation config used in the simulation workflow")
 
 
 class SimulationValidatorOutput(BaseModel):
@@ -95,10 +75,16 @@ class SimulationValidatorOutput(BaseModel):
     mocked_nodes_count: int = Field(..., description="Number of nodes that were mocked (skipped from comparison)")
     matching_nodes_count: int = Field(..., description="Number of non-mocked nodes with matching inputs")
     mismatched_nodes_count: int = Field(..., description="Number of non-mocked nodes with mismatched inputs")
-    error_nodes_count: int = Field(..., description="Number of nodes where comparison failed with error")
-    mismatched_nodes_summary: list[MismatchedNodeSummary] = Field(
-        default_factory=list,
-        description="Summary of nodes that had mismatches",
+    mismatched_node_ids: list[str] | None = Field(default=None, description="List of node IDs that had mismatches")
+    comparison_error_nodes_count: int = Field(..., description="Number of nodes where comparison failed with error")
+    comparison_error_node_ids: list[str] | None = Field(
+        default=None, description="List of node IDs where comparison failed"
+    )
+    nodes_missing_in_simulation_workflow: list[str] | None = Field(
+        default=None, description="List of node IDs missing in simulation workflow"
+    )
+    nodes_missing_in_golden_workflow: list[str] | None = Field(
+        default=None, description="List of node IDs missing in golden workflow"
     )
     comparisons: list[NodeComparison] = Field(..., description="Detailed comparison results for each node")
     validation_passed: bool = Field(..., description="Whether all non-mocked nodes have matching inputs")
