@@ -72,6 +72,22 @@ class ValidateWorkflowSimulationInput(BaseModel):
     zamp_metadata_context: ZampMetadataContext = Field(..., description="Zamp metadata context")
 
 
+class MismatchedNodeSummary(BaseModel):
+    """Summary of a mismatched node."""
+
+    node_id: str = Field(..., description="Node ID that had mismatches")
+    inputs_match: bool | None = Field(..., description="Whether inputs matched")
+    outputs_match: bool | None = Field(..., description="Whether outputs matched")
+    input_differences: dict[str, Any] | None = Field(
+        default=None,
+        description="Input differences if inputs didn't match",
+    )
+    output_differences: dict[str, Any] | None = Field(
+        default=None,
+        description="Output differences if outputs didn't match",
+    )
+
+
 class ValidateWorkflowSimulationOutput(BaseModel):
     """Output for workflow simulation validation."""
 
@@ -80,5 +96,9 @@ class ValidateWorkflowSimulationOutput(BaseModel):
     matching_nodes_count: int = Field(..., description="Number of non-mocked nodes with matching inputs")
     mismatched_nodes_count: int = Field(..., description="Number of non-mocked nodes with mismatched inputs")
     error_nodes_count: int = Field(..., description="Number of nodes where comparison failed with error")
+    mismatched_nodes_summary: list[MismatchedNodeSummary] = Field(
+        default_factory=list,
+        description="Summary of nodes that had mismatches",
+    )
     comparisons: list[NodeInputComparison] = Field(..., description="Detailed comparison results for each node")
     validation_passed: bool = Field(..., description="Whether all non-mocked nodes have matching inputs")
