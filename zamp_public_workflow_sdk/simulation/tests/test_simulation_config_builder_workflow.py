@@ -127,8 +127,8 @@ class TestSimulationConfigBuilderWorkflow:
         assert result is None
 
     @pytest.mark.asyncio
-    async def test_process_child_workflow_node_success(self, workflow):
-        """Test _process_child_workflow_node processes child workflow successfully."""
+    async def test_process_child_workflow_node_all_activities_mocked(self, workflow):
+        """Test _process_child_workflow_node returns parent node_id when all activities would be mocked."""
         # Mock workflow history
         workflow_history = MagicMock()
         workflow_history.get_child_workflow_workflow_id_run_id.return_value = (
@@ -136,7 +136,7 @@ class TestSimulationConfigBuilderWorkflow:
             "child-run-id",
         )
 
-        # Mock child history
+        # Mock child history with 2 activity nodes
         child_history = MagicMock()
         child_history.get_nodes_data.return_value = {
             "child_node1": MagicMock(node_events=[]),
@@ -147,11 +147,45 @@ class TestSimulationConfigBuilderWorkflow:
             with patch.object(
                 workflow, "_extract_all_node_ids_recursively", return_value=["child_node1", "child_node2"]
             ) as mock_extract:
-                result = await workflow._process_child_workflow_node("parent_node", workflow_history)
+                with patch.object(workflow, "_count_activity_nodes", return_value=2) as mock_count:
+                    result = await workflow._process_child_workflow_node("parent_node", workflow_history)
 
-                assert result == ["child_node1", "child_node2"]
-                mock_fetch.assert_called_once_with(workflow_id="child-workflow-id", run_id="child-run-id")
-                mock_extract.assert_called_once_with(workflow_history=child_history)
+                    # Should return parent node_id since all activities would be mocked
+                    assert result == ["parent_node"]
+                    mock_fetch.assert_called_once_with(workflow_id="child-workflow-id", run_id="child-run-id")
+                    mock_extract.assert_called_once_with(workflow_history=child_history)
+                    mock_count.assert_called_once_with(workflow_history=child_history)
+
+    @pytest.mark.asyncio
+    async def test_process_child_workflow_node_some_activities_skipped(self, workflow):
+        """Test _process_child_workflow_node returns individual activities when some are skipped."""
+        # Mock workflow history
+        workflow_history = MagicMock()
+        workflow_history.get_child_workflow_workflow_id_run_id.return_value = (
+            "child-workflow-id",
+            "child-run-id",
+        )
+
+        # Mock child history with 3 activity nodes, but only 2 would be mocked
+        child_history = MagicMock()
+        child_history.get_nodes_data.return_value = {
+            "child_node1": MagicMock(node_events=[]),
+            "child_node2": MagicMock(node_events=[]),
+            "child_node3": MagicMock(node_events=[]),
+        }
+
+        with patch.object(workflow, "_fetch_workflow_history", return_value=child_history) as mock_fetch:
+            with patch.object(
+                workflow, "_extract_all_node_ids_recursively", return_value=["child_node1", "child_node2"]
+            ) as mock_extract:
+                with patch.object(workflow, "_count_activity_nodes", return_value=3) as mock_count:
+                    result = await workflow._process_child_workflow_node("parent_node", workflow_history)
+
+                    # Should return individual activity node_ids since not all would be mocked
+                    assert result == ["child_node1", "child_node2"]
+                    mock_fetch.assert_called_once_with(workflow_id="child-workflow-id", run_id="child-run-id")
+                    mock_extract.assert_called_once_with(workflow_history=child_history)
+                    mock_count.assert_called_once_with(workflow_history=child_history)
 
     @pytest.mark.asyncio
     async def test_process_child_workflow_node_exception(self, workflow):
@@ -161,6 +195,57 @@ class TestSimulationConfigBuilderWorkflow:
 
         result = await workflow._process_child_workflow_node("parent_node", workflow_history)
         assert result == []
+
+    def test_count_activity_nodes(self, workflow):
+        """Test _count_activity_nodes counts only activity nodes, not child workflows."""
+        # Create mock workflow history with mixed node types
+        workflow_history = MagicMock()
+
+        # Create activity nodes
+        activity_node1 = MagicMock(node_events=[])
+        activity_node2 = MagicMock(node_events=[])
+
+        # Create child workflow node
+        child_workflow_node = MagicMock()
+        child_workflow_node.node_events = [
+            {EventField.EVENT_TYPE.value: EventType.START_CHILD_WORKFLOW_EXECUTION_INITIATED.value}
+        ]
+
+        workflow_history.get_nodes_data.return_value = {
+            "activity1": activity_node1,
+            "activity2": activity_node2,
+            "child_workflow": child_workflow_node,
+        }
+
+        count = workflow._count_activity_nodes(workflow_history)
+
+        # Should count only the 2 activity nodes, not the child workflow node
+        assert count == 2
+
+    def test_count_activity_nodes_only_child_workflows(self, workflow):
+        """Test _count_activity_nodes returns 0 when only child workflows exist."""
+        workflow_history = MagicMock()
+
+        # Create only child workflow nodes
+        child_workflow_node = MagicMock()
+        child_workflow_node.node_events = [
+            {EventField.EVENT_TYPE.value: EventType.START_CHILD_WORKFLOW_EXECUTION_INITIATED.value}
+        ]
+
+        workflow_history.get_nodes_data.return_value = {
+            "child_workflow": child_workflow_node,
+        }
+
+        count = workflow._count_activity_nodes(workflow_history)
+        assert count == 0
+
+    def test_count_activity_nodes_empty_workflow(self, workflow):
+        """Test _count_activity_nodes returns 0 for empty workflow."""
+        workflow_history = MagicMock()
+        workflow_history.get_nodes_data.return_value = {}
+
+        count = workflow._count_activity_nodes(workflow_history)
+        assert count == 0
 
     @pytest.mark.asyncio
     async def test_extract_all_node_ids_recursively_with_regular_nodes(self, workflow):
@@ -172,7 +257,9 @@ class TestSimulationConfigBuilderWorkflow:
             "node2": MagicMock(node_events=[]),
         }
 
-        with patch.object(workflow, "_should_include_node", side_effect=lambda x: x if x != "node2" else None):
+        with patch.object(
+            workflow, "_should_include_node", side_effect=lambda node_id: node_id if node_id != "node2" else None
+        ):
             result = await workflow._extract_all_node_ids_recursively(workflow_history)
 
             assert result == ["node1"]  # node2 should be filtered out

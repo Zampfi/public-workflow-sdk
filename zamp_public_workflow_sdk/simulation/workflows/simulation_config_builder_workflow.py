@@ -140,14 +140,18 @@ class SimulationConfigBuilderWorkflow:
         """Process a child workflow node and extract its node IDs.
 
         Fetches the child workflow's execution history and recursively extracts
-        all node IDs from it, including nodes from nested child workflows.
+        all node IDs from it. If ALL activities within the child workflow would
+        be mocked (none are in skip list), returns just the child workflow node_id.
+        Otherwise, returns individual activity node IDs.
 
         Args:
             node_id: The node ID that represents the child workflow
             workflow_history: The parent workflow history containing the child workflow
 
         Returns:
-            List of all node IDs extracted from the child workflow
+            List containing either:
+            - Just the child workflow node_id if all activities would be mocked
+            - Individual activity node IDs if some activities would be skipped
 
         Note:
             Returns an empty list if child workflow processing fails
@@ -173,14 +177,28 @@ class SimulationConfigBuilderWorkflow:
                 run_id=child_run_id,
             )
 
+            # Extract child node IDs with filtering
             child_node_ids = await self._extract_all_node_ids_recursively(
                 workflow_history=child_history,
             )
 
+            # Count total activity nodes in child workflow (excluding child workflows)
+            total_activity_count = self._count_activity_nodes(workflow_history=child_history)
+
+            # If all activities would be mocked (none filtered out), mock the entire child workflow
+            if len(child_node_ids) == total_activity_count and total_activity_count > 0:
+                logger.info(
+                    "All activities in child workflow would be mocked - mocking entire child workflow",
+                    child_node_id=node_id,
+                    total_activities=total_activity_count,
+                )
+                return [node_id]  # Return the child workflow node_id itself
+
             logger.info(
-                "Extracted child workflow activities",
+                "Some activities in child workflow would be skipped - mocking individual activities",
                 child_node_id=node_id,
                 child_count=len(child_node_ids),
+                total_activities=total_activity_count,
             )
 
             return child_node_ids
@@ -192,6 +210,25 @@ class SimulationConfigBuilderWorkflow:
                 error=str(e),
             )
             return []
+
+    def _count_activity_nodes(self, workflow_history: WorkflowHistory) -> int:
+        """Count total number of activity nodes in a workflow (excluding child workflows).
+
+        Args:
+            workflow_history: The workflow history to count nodes from
+
+        Returns:
+            Count of activity nodes (non-child-workflow nodes) in the workflow
+        """
+        nodes_data = workflow_history.get_nodes_data()
+        activity_count = 0
+
+        for node_id, node_data in nodes_data.items():
+            # Only count non-child-workflow nodes
+            if not self._is_child_workflow_node(node_data=node_data):
+                activity_count += 1
+
+        return activity_count
 
     def _should_include_node(self, node_id: str) -> str | None:
         """Determine if a node should be included in the simulation configuration.
