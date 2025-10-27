@@ -170,7 +170,7 @@ class SimulationValidatorWorkflow:
 
     async def _fetch_workflow_history(self, workflow_id: str, run_id: str, description: str) -> WorkflowHistory:
         """Fetch workflow history using the FetchTemporalWorkflowHistoryWorkflow."""
-        logger.info(f"Fetching {description} workflow history", workflow_id=workflow_id)
+        logger.info("Fetching workflow history", description=description, workflow_id=workflow_id)
 
         try:
             history = await ActionsHub.execute_child_workflow(
@@ -178,10 +178,10 @@ class SimulationValidatorWorkflow:
                 FetchTemporalWorkflowHistoryInput(workflow_id=workflow_id, run_id=run_id),
                 result_type=FetchTemporalWorkflowHistoryOutput,
             )
-            logger.info(f"Fetched {description} workflow history", events_count=len(history.events))
+            logger.info("Fetched workflow history", description=description, events_count=len(history.events))
             return history
         except Exception as e:
-            logger.error(f"Failed to fetch {description} workflow history", error=str(e))
+            logger.error("Failed to fetch workflow history", description=description, error=str(e))
             raise
 
     def _create_error_comparison(self, node_id: str, is_mocked: bool, error: str) -> NodeComparison:
