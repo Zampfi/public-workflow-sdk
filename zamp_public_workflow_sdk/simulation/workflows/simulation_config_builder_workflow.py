@@ -1,10 +1,3 @@
-"""SimulationConfigBuilderWorkflow - Generates simulation configuration by extracting node IDs from workflows.
-
-This workflow recursively traverses workflow histories to extract all node IDs,
-including those from child workflows, and generates a simulation configuration
-that can be used to mock those nodes during simulation.
-"""
-
 import temporalio.workflow as workflow
 
 with workflow.unsafe.imports_passed_through():
@@ -66,6 +59,9 @@ class SimulationConfigBuilderWorkflow:
         # List of node IDs to skip
         self.nodes_to_skip = [
             "generate_llm_model_response",
+            "generate_embeddings",
+            "generate_with_template",
+            "extract_ocr_data",
         ]
 
     @ActionsHub.register_workflow_run
@@ -109,7 +105,7 @@ class SimulationConfigBuilderWorkflow:
 
         # Step 3: Generate simulation config
         simulation_config = self._generate_simulation_config(
-            all_node_ids=all_node_ids,
+            mocked_node_ids=all_node_ids,
             reference_workflow_id=input.workflow_id,
             reference_run_id=input.run_id,
         )
@@ -323,7 +319,7 @@ class SimulationConfigBuilderWorkflow:
 
     def _generate_simulation_config(
         self,
-        all_node_ids: list[str],
+        mocked_node_ids: list[str],
         reference_workflow_id: str,
         reference_run_id: str,
     ) -> SimulationConfig:
@@ -349,7 +345,7 @@ class SimulationConfigBuilderWorkflow:
                     reference_workflow_run_id=reference_run_id,
                 ),
             ),
-            nodes=all_node_ids,
+            nodes=mocked_node_ids,
         )
 
         mock_config = NodeMockConfig(node_strategies=[node_strategy])
