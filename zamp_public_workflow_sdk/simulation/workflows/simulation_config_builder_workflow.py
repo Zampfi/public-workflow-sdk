@@ -204,15 +204,11 @@ class SimulationConfigBuilderWorkflow:
             all_activities_mockable = True
 
             for child_node_id, child_node_data in nodes_data.items():
-                # Skip workflow execution nodes (these represent the workflow itself, not activities)
                 if self._is_workflow_execution_node(child_node_data):
                     continue
-
                 if self._is_child_workflow_node(child_node_data):
-                    # Found a nested child workflow
                     has_nested_child_workflows = True
                 else:
-                    # This is an activity - check if it's mockable
                     if not self._should_include_node(node_id=child_node_id):
                         all_activities_mockable = False
 
