@@ -5,14 +5,13 @@ on:
   pull_request:
     branches:
       - main
-
-permissions:
-  contents: read
-  pull-requests: write
-
 jobs:
   tests-and-coverage:
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: write
+      actions: read
     concurrency:
       group: ${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: true
@@ -35,7 +34,7 @@ jobs:
           chmod +x scripts/tests.sh
           ./scripts/tests.sh
       - name: Comment coverage results on GitHub
-        uses: ewjoachim/coverage-comment-action@v1
+        uses: py-cov-action/python-coverage-comment-action@v3
         with:
-          COVERAGE_FILE: "coverage.xml"
+          COVERAGE_PATH: "coverage.xml"
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
