@@ -83,14 +83,14 @@ class TestSimulationConfigBuilderWorkflow:
         assert result is True
 
     def test_is_child_workflow_node_with_workflow_execution_started(self, workflow):
-        """Test _is_child_workflow_node returns True for WORKFLOW_EXECUTION_STARTED."""
+        """Test _is_child_workflow_node returns False for WORKFLOW_EXECUTION_STARTED."""
         node_data = MagicMock()
         node_data.node_events = [
             {EventField.EVENT_TYPE.value: EventType.WORKFLOW_EXECUTION_STARTED.value},
         ]
 
         result = workflow._is_child_workflow_node(node_data)
-        assert result is True
+        assert result is False
 
     def test_is_child_workflow_node_without_child_workflow_events(self, workflow):
         """Test _is_child_workflow_node returns False for non-child workflow events."""
@@ -136,17 +136,12 @@ class TestSimulationConfigBuilderWorkflow:
             "child-run-id",
         )
 
-        # Mock child history
+        # Mock child history with nodes data
         child_history = MagicMock()
-
-        # Mock workflow history nodes data (the method uses workflow_history.get_nodes_data().keys())
-        workflow_history.get_nodes_data.return_value = {
+        child_history.get_nodes_data.return_value = {
             "child_node1": MagicMock(node_events=[]),
             "child_node2": MagicMock(node_events=[]),
         }
-
-        # Mock child history
-        child_history = MagicMock()
 
         with patch.object(workflow, "_fetch_workflow_history", return_value=child_history):
             with patch.object(
@@ -168,18 +163,13 @@ class TestSimulationConfigBuilderWorkflow:
             "child-run-id",
         )
 
-        # Mock child history
+        # Mock child history with nodes data
         child_history = MagicMock()
-
-        # Mock workflow history nodes data (the method uses workflow_history.get_nodes_data().keys())
-        workflow_history.get_nodes_data.return_value = {
+        child_history.get_nodes_data.return_value = {
             "child_node1": MagicMock(node_events=[]),
             "child_node2": MagicMock(node_events=[]),
             "child_node3": MagicMock(node_events=[]),
         }
-
-        # Mock child history
-        child_history = MagicMock()
 
         with patch.object(workflow, "_fetch_workflow_history", return_value=child_history):
             # Mock to skip child_node3
@@ -192,8 +182,8 @@ class TestSimulationConfigBuilderWorkflow:
 
                 # Should return individual activity node_ids since not all would be mocked (some skipped)
                 assert result == ["child_node1", "child_node2"]
-                # Note: _fetch_workflow_history is not called in current implementation
-                assert mock_should_include.call_count == 3
+                # _should_include_node is called 3 times in initial check + 3 times in recursive call = 6 total
+                assert mock_should_include.call_count == 6
 
     @pytest.mark.asyncio
     async def test_process_child_workflow_node_exception(self, workflow):
