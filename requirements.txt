@@ -8,5 +8,6 @@ pytest-asyncio
 pytest-cov
 python-dateutil
 python-dotenv
+sentry-sdk==2.41.0
 structlog
 temporalio==1.13.0
