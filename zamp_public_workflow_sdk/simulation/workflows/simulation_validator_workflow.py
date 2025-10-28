@@ -11,12 +11,11 @@ with workflow.unsafe.imports_passed_through():
         FetchTemporalWorkflowHistoryOutput,
         WorkflowHistory,
     )
-
-from zamp_public_workflow_sdk.simulation.models.simulation_validation import (
-    SimulationValidatorInput,
-    SimulationValidatorOutput,
-    NodeComparison,
-)
+    from zamp_public_workflow_sdk.simulation.models.simulation_validation import (
+        SimulationValidatorInput,
+        SimulationValidatorOutput,
+        NodeComparison,
+    )
 
 logger = structlog.get_logger(__name__)
 
@@ -37,7 +36,7 @@ class SimulationValidatorWorkflow:
 
     def __init__(self):
         """Initialize workflow with caches for fetched histories."""
-        self.reference_workflow_histories: dict[str, WorkflowHistory] = {}
+        self.simulation_workflow_histories: dict[str, WorkflowHistory] = {}
         self.golden_workflow_histories: dict[str, WorkflowHistory] = {}
 
     @ActionsHub.register_workflow_run
@@ -92,7 +91,7 @@ class SimulationValidatorWorkflow:
             run_id=input.simulation_workflow_run_id,
             description="simulation",
         )
-        self.reference_workflow_histories[MAIN_WORKFLOW_IDENTIFIER] = simulation_history
+        self.simulation_workflow_histories[MAIN_WORKFLOW_IDENTIFIER] = simulation_history
 
         golden_history = await self._fetch_workflow_history(
             workflow_id=input.golden_workflow_id,
@@ -116,11 +115,11 @@ class SimulationValidatorWorkflow:
 
     async def _compare_main_workflow_nodes(self, node_ids: list[str], mocked_nodes: set[str]) -> list[NodeComparison]:
         """Compare nodes in the main workflow."""
-        reference_nodes = self.reference_workflow_histories[MAIN_WORKFLOW_IDENTIFIER].get_nodes_data()
+        simulation_nodes = self.simulation_workflow_histories[MAIN_WORKFLOW_IDENTIFIER].get_nodes_data()
         golden_nodes = self.golden_workflow_histories[MAIN_WORKFLOW_IDENTIFIER].get_nodes_data()
 
         return [
-            await self._compare_node(node_id, mocked_nodes, reference_nodes, golden_nodes)
+            await self._compare_node(node_id, mocked_nodes, simulation_nodes, golden_nodes)
             for node_id in sorted(node_ids)
         ]
 
@@ -204,15 +203,15 @@ class SimulationValidatorWorkflow:
         self,
         node_id: str,
         mocked_nodes: set[str],
-        reference_nodes: dict,
+        simulation_nodes: dict,
         golden_nodes: dict,
     ) -> NodeComparison:
         """Compare inputs and outputs for a single node between reference and golden workflows."""
         is_mocked = node_id in mocked_nodes
 
         try:
-            reference_node = reference_nodes.get(node_id)
-            if not reference_node:
+            simulation_node = simulation_nodes.get(node_id)
+            if not simulation_node:
                 logger.warning("Node not found in simulation workflow", node_id=node_id)
                 return self._create_error_comparison(node_id, is_mocked, "Node not found in simulation workflow")
 
@@ -224,13 +223,13 @@ class SimulationValidatorWorkflow:
             # Compare inputs and outputs
             input_diff = DeepDiff(
                 golden_node.input_payload,
-                reference_node.input_payload,
+                simulation_node.input_payload,
                 ignore_order=False,
                 verbose_level=2,
             )
             output_diff = DeepDiff(
                 golden_node.output_payload,
-                reference_node.output_payload,
+                simulation_node.output_payload,
                 ignore_order=False,
                 verbose_level=2,
             )
@@ -245,9 +244,9 @@ class SimulationValidatorWorkflow:
                 is_mocked=is_mocked,
                 inputs_match=inputs_match,
                 outputs_match=outputs_match,
-                actual_input=reference_node.input_payload,
+                actual_input=simulation_node.input_payload,
                 expected_input=golden_node.input_payload,
-                actual_output=reference_node.output_payload,
+                actual_output=simulation_node.output_payload,
                 expected_output=golden_node.output_payload,
                 difference=dict(input_diff) if not inputs_match else None,
                 output_difference=dict(output_diff) if not outputs_match else None,
@@ -269,24 +268,24 @@ class SimulationValidatorWorkflow:
 
         try:
             # Fetch child workflow histories
-            reference_child_history = await self._fetch_nested_child_workflow_history(
-                parent_workflow_history=self.reference_workflow_histories[MAIN_WORKFLOW_IDENTIFIER],
+            simulation_child_history = await self._fetch_nested_child_workflow_history(
+                parent_workflow_history=self.simulation_workflow_histories[MAIN_WORKFLOW_IDENTIFIER],
                 full_child_path=full_child_path,
-                is_reference=True,
+                is_simulation=True,
             )
 
             golden_child_history = await self._fetch_nested_child_workflow_history(
                 parent_workflow_history=self.golden_workflow_histories[MAIN_WORKFLOW_IDENTIFIER],
                 full_child_path=full_child_path,
-                is_reference=False,
+                is_simulation=False,
             )
 
             # Extract and compare nodes
-            reference_child_nodes = reference_child_history.get_nodes_data()
+            simulation_child_nodes = simulation_child_history.get_nodes_data()
             golden_child_nodes = golden_child_history.get_nodes_data()
 
             return [
-                await self._compare_node(node_id, mocked_nodes, reference_child_nodes, golden_child_nodes)
+                await self._compare_node(node_id, mocked_nodes, simulation_child_nodes, golden_child_nodes)
                 for node_id in sorted(node_ids)
             ]
 
@@ -303,13 +302,13 @@ class SimulationValidatorWorkflow:
         self,
         parent_workflow_history: WorkflowHistory,
         full_child_path: str,
-        is_reference: bool,
+        is_simulation: bool,
     ) -> WorkflowHistory:
         """
         Fetch nested child workflow by traversing the path.
         E.g., "Parent#1.Child#1" fetches Parent#1, then Child#1 from Parent#1.
         """
-        workflow_histories = self.reference_workflow_histories if is_reference else self.golden_workflow_histories
+        workflow_histories = self.simulation_workflow_histories if is_simulation else self.golden_workflow_histories
         path_parts = full_child_path.split(".")
         current_history = parent_workflow_history
 
@@ -334,7 +333,7 @@ class SimulationValidatorWorkflow:
             current_history = await self._fetch_workflow_history(
                 workflow_id=workflow_id,
                 run_id=run_id,
-                description=f"{'simulation' if is_reference else 'golden'} child {current_path}",
+                description=f"{'simulation' if is_simulation else 'golden'} child {current_path}",
             )
 
             workflow_histories[current_path] = current_history

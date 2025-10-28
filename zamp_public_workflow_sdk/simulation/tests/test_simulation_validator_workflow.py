@@ -56,7 +56,7 @@ class TestSimulationValidatorWorkflow:
     def test_init(self):
         """Test workflow initialization."""
         workflow = SimulationValidatorWorkflow()
-        assert workflow.reference_workflow_histories == {}
+        assert workflow.simulation_workflow_histories == {}
         assert workflow.golden_workflow_histories == {}
 
     def test_get_mocked_nodes_valid_config(self):
@@ -435,7 +435,7 @@ class TestSimulationValidatorWorkflow:
             "activity#2": Mock(input_payload={"param": "value"}, output_payload={"result": "success"}),
         }
 
-        self.workflow.reference_workflow_histories[MAIN_WORKFLOW_IDENTIFIER] = reference_history
+        self.workflow.simulation_workflow_histories[MAIN_WORKFLOW_IDENTIFIER] = reference_history
         self.workflow.golden_workflow_histories[MAIN_WORKFLOW_IDENTIFIER] = golden_history
 
         node_ids = ["activity#1", "activity#2"]
@@ -489,7 +489,7 @@ class TestSimulationValidatorWorkflow:
 
             await self.workflow._fetch_and_cache_main_workflows(self.validator_input)
 
-            assert self.workflow.reference_workflow_histories[MAIN_WORKFLOW_IDENTIFIER] == mock_reference_history
+            assert self.workflow.simulation_workflow_histories[MAIN_WORKFLOW_IDENTIFIER] == mock_reference_history
             assert self.workflow.golden_workflow_histories[MAIN_WORKFLOW_IDENTIFIER] == mock_golden_history
             assert mock_fetch.call_count == 2
 
@@ -592,11 +592,11 @@ class TestSimulationValidatorWorkflow:
             mock_fetch.return_value = child_history
 
             result = await self.workflow._fetch_nested_child_workflow_history(
-                parent_workflow_history=parent_history, full_child_path="Child#1", is_reference=True
+                parent_workflow_history=parent_history, full_child_path="Child#1", is_simulation=True
             )
 
             assert result == child_history
-            assert self.workflow.reference_workflow_histories["Child#1"] == child_history
+            assert self.workflow.simulation_workflow_histories["Child#1"] == child_history
             mock_fetch.assert_called_once()
 
     @pytest.mark.asyncio
@@ -604,12 +604,12 @@ class TestSimulationValidatorWorkflow:
         """Test nested child workflow history fetching with cached result."""
         # Mock cached history
         cached_history = Mock()
-        self.workflow.reference_workflow_histories["Child#1"] = cached_history
+        self.workflow.simulation_workflow_histories["Child#1"] = cached_history
 
         parent_history = Mock()
 
         result = await self.workflow._fetch_nested_child_workflow_history(
-            parent_workflow_history=parent_history, full_child_path="Child#1", is_reference=True
+            parent_workflow_history=parent_history, full_child_path="Child#1", is_simulation=True
         )
 
         assert result == cached_history
@@ -622,7 +622,7 @@ class TestSimulationValidatorWorkflow:
 
         with pytest.raises(Exception, match="Failed to get workflow_id and run_id for child workflow"):
             await self.workflow._fetch_nested_child_workflow_history(
-                parent_workflow_history=parent_history, full_child_path="Child#1", is_reference=True
+                parent_workflow_history=parent_history, full_child_path="Child#1", is_simulation=True
             )
 
     @pytest.mark.asyncio
@@ -631,7 +631,7 @@ class TestSimulationValidatorWorkflow:
         # Mock main workflow histories
         main_reference_history = Mock()
         main_golden_history = Mock()
-        self.workflow.reference_workflow_histories[MAIN_WORKFLOW_IDENTIFIER] = main_reference_history
+        self.workflow.simulation_workflow_histories[MAIN_WORKFLOW_IDENTIFIER] = main_reference_history
         self.workflow.golden_workflow_histories[MAIN_WORKFLOW_IDENTIFIER] = main_golden_history
 
         # Mock child workflow histories
@@ -661,7 +661,7 @@ class TestSimulationValidatorWorkflow:
         # Mock main workflow histories
         main_reference_history = Mock()
         main_golden_history = Mock()
-        self.workflow.reference_workflow_histories[MAIN_WORKFLOW_IDENTIFIER] = main_reference_history
+        self.workflow.simulation_workflow_histories[MAIN_WORKFLOW_IDENTIFIER] = main_reference_history
         self.workflow.golden_workflow_histories[MAIN_WORKFLOW_IDENTIFIER] = main_golden_history
 
         with patch.object(self.workflow, "_fetch_nested_child_workflow_history", new_callable=AsyncMock) as mock_fetch:
