@@ -197,7 +197,7 @@ def get_enumerator(value: dict | BaseModel):
         for key, item_value in value.items():
             yield key, type(item_value), item_value
     elif isinstance(value, BaseModel):
-        for name, field in type(value).model_fields.items():
+        for name, field in value.model_fields.items():
             yield name, get_property_type(field), getattr(value, name)
 
 

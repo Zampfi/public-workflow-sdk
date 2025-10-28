@@ -143,7 +143,7 @@ class Transformer:
             for key, item_value in value.items():
                 yield key, type(item_value), item_value
         elif isinstance(value, BaseModel):
-            for name, field in type(value).model_fields.items():
+            for name, field in value.model_fields.items():
                 yield name, cls._get_property_type(field), getattr(value, name)
 
     @classmethod
