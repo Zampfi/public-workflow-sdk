@@ -3,7 +3,7 @@
 set -euo pipefail
 IFS=$'\n\t'
 
-python -m pytest tests/ zamp_public_workflow_sdk/ --cov=zamp_public_workflow_sdk --cov-report=xml
+python -m pytest tests/ zamp_public_workflow_sdk/ --cov=zamp_public_workflow_sdk --cov-report=xml --cov-report=term-missing
 git fetch origin main:refs/remotes/origin/main
 diff-cover --version
 
