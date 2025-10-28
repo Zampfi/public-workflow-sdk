@@ -53,6 +53,10 @@ class TestActionsHubSimulation:
 
     def test_get_simulation_response_no_simulation_registered(self):
         """Test _get_simulation_response when no simulation is registered."""
+
+        class TestWorkflow:
+            pass
+
         result = ActionsHub._get_simulation_response(
             workflow_id="test_wf", node_id="node_1", action="test_action", return_type=None
         )
@@ -62,6 +66,10 @@ class TestActionsHubSimulation:
 
     def test_get_simulation_response_with_mock_response(self):
         """Test _get_simulation_response when simulation returns MOCK."""
+
+        class TestWorkflow:
+            pass
+
         # Create mock simulation service
         mock_simulation = Mock(spec=WorkflowSimulationService)
         mock_response = SimulationResponse(execution_type=ExecutionType.MOCK, execution_response={"result": "mocked"})
@@ -80,6 +88,10 @@ class TestActionsHubSimulation:
 
     def test_get_simulation_response_with_execute_response(self):
         """Test _get_simulation_response when simulation returns EXECUTE."""
+
+        class TestWorkflow:
+            pass
+
         # Create mock simulation service
         mock_simulation = Mock(spec=WorkflowSimulationService)
         mock_response = SimulationResponse(execution_type=ExecutionType.EXECUTE, execution_response=None)
@@ -97,6 +109,9 @@ class TestActionsHubSimulation:
 
     def test_get_simulation_response_with_return_type_conversion(self):
         """Test _get_simulation_response with return type conversion."""
+
+        class TestWorkflow:
+            pass
 
         class TestModel(BaseModel):
             value: str
