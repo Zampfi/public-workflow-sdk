@@ -15,7 +15,7 @@ from zamp_public_workflow_sdk.temporal.interceptors.node_id_interceptor import (
     NODE_ID_HEADER_KEY,
 )
 
-from .constants import DEFAULT_MODE, SKIP_SIMULATION_WORKFLOWS
+from .constants import DEFAULT_MODE, SKIP_SIMULATION_WORKFLOWS, LogMode
 from .models.mcp_models import MCPConfig
 
 with workflow.unsafe.imports_passed_through():
@@ -63,9 +63,11 @@ with workflow.unsafe.imports_passed_through():
     )
     from .utils.context_utils import (
         get_execution_mode_from_context,
+        get_log_mode_from_context,
         get_variable_from_context,
     )
     from .utils.datetime_utils import convert_iso_to_timedelta
+    from zamp_public_workflow_sdk.simulation.activities import return_mocked_result, MockedResultInput
 
     logger = structlog.get_logger(__name__)
 
@@ -191,7 +193,6 @@ class ActionsHub:
         action_name = cls._get_action_name(action)
         if action_name and action_name in SKIP_SIMULATION_WORKFLOWS:
             return SimulationResponse(execution_type=ExecutionType.EXECUTE, execution_response=None)
-
         simulation = cls.get_simulation_from_workflow_id(workflow_id)
         if not simulation:
             return SimulationResponse(execution_type=ExecutionType.EXECUTE, execution_response=None)
@@ -226,6 +227,7 @@ class ActionsHub:
         if not return_type or result is None:
             return result
 
+        # Case 1: For dict results, convert to Pydantic model
         if hasattr(return_type, "model_validate") and isinstance(result, dict):
             try:
                 return return_type.model_validate(result)
@@ -236,7 +238,19 @@ class ActionsHub:
                     e,
                 )
                 return result
-
+        # Case 2: For non-dict results, construct Pydantic model from the raw value
+        try:
+            if hasattr(return_type, "model_fields"):
+                fields = return_type.model_fields
+                if len(fields) == 1:
+                    field_name = next(iter(fields.keys()))
+                    return return_type.model_validate({field_name: result})
+        except Exception as e:
+            logger.warning(
+                "Could not convert result to Pydantic model %s: %s",
+                return_type.__name__,
+                e,
+            )
         return result
 
     @classmethod
@@ -254,8 +268,46 @@ class ActionsHub:
         logger.info("Simulation initialized for workflow", workflow_id=workflow_id)
 
     @classmethod
-    def get_simulation_from_workflow_id(cls, workflow_id: str) -> WorkflowSimulationService:
-        return cls._workflow_id_to_simulation_map.get(workflow_id)
+    def get_simulation_from_workflow_id(cls, workflow_id: str) -> WorkflowSimulationService | None:
+        """
+        Get simulation service for a workflow_id with hierarchical lookup.
+
+        If simulation is not found for the current workflow_id, this method will
+        check if this is a child workflow and try to get the parent's simulation.
+
+        Args:
+            workflow_id: The workflow ID to look up
+
+        Returns:
+            WorkflowSimulationService if found (either direct or from parent), None otherwise
+        """
+        simulation = cls._workflow_id_to_simulation_map.get(workflow_id)
+        if simulation:
+            return simulation
+
+        try:
+            info = workflow.info()
+            # Check if the workflow is a child workflow and if so, use the parent's simulation
+            if hasattr(info, "parent") and info.parent:
+                parent_workflow_id = info.parent.workflow_id
+                parent_simulation = cls._workflow_id_to_simulation_map.get(parent_workflow_id)
+                if parent_simulation:
+                    logger.info(
+                        "Using parent workflow simulation for child workflow",
+                        child_workflow_id=workflow_id,
+                        parent_workflow_id=parent_workflow_id,
+                    )
+                    # Copy the parent's simulation to the child workflow
+                    cls._workflow_id_to_simulation_map[workflow_id] = parent_simulation
+                    return parent_simulation
+        except Exception as e:
+            logger.error(
+                "Failed to get simulation from workflow_id",
+                workflow_id=workflow_id,
+                error=str(e),
+            )
+
+        return None
 
     @classmethod
     def _get_current_workflow_id(cls) -> str:
@@ -376,6 +428,29 @@ class ActionsHub:
         return list(cls._activities.values())
 
     @classmethod
+    def _log_action_execution_response(
+        cls,
+        message: str,
+        action_name: str,
+        action_type: ActionType,
+        result: Any,
+        node_id: str | None = None,
+    ):
+        if get_log_mode_from_context() != LogMode.DEBUG:
+            return
+
+        action_type_str = action_type.name
+
+        logger.info(
+            message,
+            action_name=action_name,
+            action_type=action_type_str,
+            result=result,
+            node_id=node_id if node_id else "N/A",
+            workflow_id=cls._get_current_workflow_id(),
+        )
+
+    @classmethod
     async def execute_activity(
         cls,
         activity: str | Callable,
@@ -393,9 +468,10 @@ class ActionsHub:
 
         if execution_mode == ExecutionMode.API:
             # Direct function execution mode - bypass Temporal
+            activity_name = cls._get_action_name(activity)
             logger.info(
                 "Executing activity in API mode, bypassing Temporal",
-                activity_name=cls._get_action_name(activity),
+                activity_name=activity_name,
             )
 
             # Get the activity function
@@ -408,10 +484,19 @@ class ActionsHub:
                 func = activity
 
             # Execute the function directly
+            result = None
             if asyncio.iscoroutinefunction(func):
-                return await func(*args)
+                result = await func(*args)
             else:
-                return func(*args)
+                result = func(*args)
+
+            cls._log_action_execution_response(
+                message="Activity executed",
+                action_name=activity_name,
+                action_type=ActionType.ACTIVITY,
+                result=result,
+            )
+            return result
 
         # Generate node_id for this activity execution
         activity_name, workflow_id, node_id = cls._generate_node_id_for_action(activity)
@@ -427,6 +512,14 @@ class ActionsHub:
             logger.info(
                 "Activity mocked",
                 node_id=node_id,
+                activity_name=activity_name,
+            )
+            mocked_summary = activity_name
+            await workflow.execute_activity(
+                return_mocked_result,
+                MockedResultInput(node_id=node_id, output=simulation_result.execution_response),
+                start_to_close_timeout=timedelta(seconds=10),
+                summary=mocked_summary,
             )
             return simulation_result.execution_response
 
@@ -446,7 +539,7 @@ class ActionsHub:
             workflow_id=workflow_id,
         )
 
-        return await workflow.execute_activity(
+        result = await workflow.execute_activity(
             activity,
             args=args,
             result_type=return_type,
@@ -455,6 +548,16 @@ class ActionsHub:
             task_queue=task_queue,
             **kwargs,
         )
+
+        cls._log_action_execution_response(
+            message="Activity executed",
+            action_name=activity_name,
+            action_type=ActionType.ACTIVITY,
+            result=result,
+            node_id=node_id,
+        )
+
+        return result
 
     """
     Workflows
@@ -619,10 +722,18 @@ class ActionsHub:
             if isinstance(workflow_name, str):
                 if workflow_name not in cls._workflows:
                     raise ValueError(f"Workflow '{workflow_name}' not found")
+
                 workflow_obj = cls._workflows[workflow_name]
                 if not workflow_obj.func:
                     raise ValueError(f"Workflow function not available for {workflow_name}")
-                return await workflow_obj.func(workflow_obj.class_type(), *args)
+                result = await workflow_obj.func(workflow_obj.class_type(), *args)
+                cls._log_action_execution_response(
+                    message="Child workflow executed",
+                    action_name=cls._get_action_name(workflow_name),
+                    result=result,
+                    action_type=ActionType.WORKFLOW,
+                )
+                return result
             else:
                 func = workflow_name
 
@@ -630,10 +741,26 @@ class ActionsHub:
                 raise ValueError(f"Workflow function not available for {workflow_name}")
 
             # Execute the function directly
+            result = None
             if asyncio.iscoroutinefunction(func):
-                return await func(*args)
+                result = await func(*args)
+                cls._log_action_execution_response(
+                    message="Child workflow executed",
+                    action_name=cls._get_action_name(workflow_name),
+                    result=result,
+                    action_type=ActionType.WORKFLOW,
+                )
+                return result
             else:
-                return func(*args)
+                result = func(*args)
+                cls._log_action_execution_response(
+                    message="Child workflow executed",
+                    action_name=cls._get_action_name(workflow_name),
+                    result=result,
+                    action_type=ActionType.WORKFLOW,
+                )
+
+            return result
 
         # Generate node_id for this child workflow execution
         child_workflow_name, workflow_id, node_id = cls._generate_node_id_for_action(workflow_name)
@@ -650,6 +777,14 @@ class ActionsHub:
             logger.info(
                 "Child workflow mocked",
                 node_id=node_id,
+                workflow_name=child_workflow_name,
+            )
+            mocked_summary = child_workflow_name
+            await workflow.execute_activity(
+                return_mocked_result,
+                MockedResultInput(node_id=node_id, output=simulation_result.execution_response),
+                start_to_close_timeout=timedelta(seconds=10),
+                summary=mocked_summary,
             )
             return simulation_result.execution_response
 
@@ -665,12 +800,22 @@ class ActionsHub:
             workflow_id=workflow_id,
         )
 
-        return await workflow.execute_child_workflow(
+        result = await workflow.execute_child_workflow(
             workflow_name,
             result_type=result_type,
             args=args,
             **kwargs,
         )
+
+        cls._log_action_execution_response(
+            message="Child workflow executed",
+            action_name=child_workflow_name,
+            action_type=ActionType.WORKFLOW,
+            result=result,
+            node_id=node_id,
+        )
+
+        return result
 
     @classmethod
     async def start_child_workflow(
@@ -693,8 +838,15 @@ class ActionsHub:
         if simulation_result.execution_type == ExecutionType.MOCK:
             logger.info(
                 "Child workflow mocked",
-                activity_name=workflow_name,
+                workflow_name=child_workflow_name,
                 node_id=node_id,
+            )
+            mocked_summary = child_workflow_name
+            await workflow.execute_activity(
+                return_mocked_result,
+                MockedResultInput(node_id=node_id, output=simulation_result.execution_response),
+                start_to_close_timeout=timedelta(seconds=10),
+                summary=mocked_summary,
             )
             return simulation_result.execution_response
 

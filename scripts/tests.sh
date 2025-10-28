@@ -11,7 +11,7 @@ LINES_CHANGED=$(git diff --stat origin/main | tail -1 | awk '{print $4}' | sed '
 
 
 if [ "$LINES_CHANGED" -gt 30 ]; then
-    diff-cover coverage.xml --include-untracked --exclude tests/* --exclude sample/* --fail-under=75
+    diff-cover coverage.xml --include-untracked --exclude tests/* --exclude sample/* --fail-under=85
 else
     diff-cover coverage.xml --include-untracked --exclude tests/* --exclude sample/* --fail-under=0
 fi

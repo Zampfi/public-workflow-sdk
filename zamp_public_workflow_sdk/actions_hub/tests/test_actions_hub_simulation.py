@@ -58,7 +58,7 @@ class TestActionsHubSimulation:
             pass
 
         result = ActionsHub._get_simulation_response(
-            workflow_id="test_wf", node_id="node_1", action=TestWorkflow, return_type=None
+            workflow_id="test_wf", node_id="node_1", action="test_action", return_type=None
         )
 
         assert result.execution_type == ExecutionType.EXECUTE
@@ -79,7 +79,7 @@ class TestActionsHubSimulation:
         ActionsHub._workflow_id_to_simulation_map["test_wf"] = mock_simulation
 
         result = ActionsHub._get_simulation_response(
-            workflow_id="test_wf", node_id="node_1", action=TestWorkflow, return_type=None
+            workflow_id="test_wf", node_id="node_1", action="test_action", return_type=None
         )
 
         assert result.execution_type == ExecutionType.MOCK
@@ -101,7 +101,7 @@ class TestActionsHubSimulation:
         ActionsHub._workflow_id_to_simulation_map["test_wf"] = mock_simulation
 
         result = ActionsHub._get_simulation_response(
-            workflow_id="test_wf", node_id="node_1", action=TestWorkflow, return_type=None
+            workflow_id="test_wf", node_id="node_1", action="test_action", return_type=None
         )
 
         assert result.execution_type == ExecutionType.EXECUTE
@@ -127,7 +127,7 @@ class TestActionsHubSimulation:
         result = ActionsHub._get_simulation_response(
             workflow_id="test_wf",
             node_id="node_1",
-            action=TestWorkflow,
+            action="test_action",
             return_type=TestModel,
         )
 
@@ -199,8 +199,9 @@ class TestActionsHubSimulation:
 
         result = "plain_string"
         converted = ActionsHub._convert_result_to_model(result, TestModel)
-        # Should return original result unchanged
-        assert converted == result
+        # Should convert non-dict result to Pydantic model when return type has single field
+        assert isinstance(converted, TestModel)
+        assert converted.value == "plain_string"
 
     def test_convert_result_to_model_validation_error(self):
         """Test _convert_result_to_model when validation fails."""
@@ -273,6 +274,63 @@ class TestActionsHubSimulation:
         """Test get_simulation_from_workflow_id when simulation doesn't exist."""
         result = ActionsHub.get_simulation_from_workflow_id("non_existent_wf")
         assert result is None
+
+    def test_get_simulation_from_workflow_id_with_parent_simulation(self):
+        """Test get_simulation_from_workflow_id finds parent's simulation for child workflow."""
+        mock_simulation = Mock(spec=WorkflowSimulationService)
+        ActionsHub._workflow_id_to_simulation_map["parent_wf"] = mock_simulation
+
+        with patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.info") as mock_info:
+            mock_parent = Mock()
+            mock_parent.workflow_id = "parent_wf"
+
+            # Create a proper mock info object with parent attribute
+            mock_info_obj = Mock()
+            mock_info_obj.parent = mock_parent
+            mock_info.return_value = mock_info_obj
+
+            result = ActionsHub.get_simulation_from_workflow_id("child_wf")
+
+            assert result == mock_simulation
+            # Verify that child workflow now has the simulation cached
+            assert ActionsHub._workflow_id_to_simulation_map["child_wf"] == mock_simulation
+
+    def test_get_simulation_from_workflow_id_parent_has_no_simulation(self):
+        """Test get_simulation_from_workflow_id when parent exists but has no simulation."""
+        with patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.info") as mock_info:
+            mock_parent = Mock()
+            mock_parent.workflow_id = "parent_wf"
+
+            # Create a proper mock info object with parent attribute
+            mock_info_obj = Mock()
+            mock_info_obj.parent = mock_parent
+            mock_info.return_value = mock_info_obj
+
+            result = ActionsHub.get_simulation_from_workflow_id("child_wf")
+
+            assert result is None
+
+    def test_get_simulation_from_workflow_id_no_parent(self):
+        """Test get_simulation_from_workflow_id when workflow has no parent."""
+        with patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.info") as mock_info:
+            # Create a proper mock info object with no parent
+            mock_info_obj = Mock()
+            mock_info_obj.parent = None
+            mock_info.return_value = mock_info_obj
+
+            result = ActionsHub.get_simulation_from_workflow_id("workflow_wf")
+
+            assert result is None
+
+    def test_get_simulation_from_workflow_id_workflow_info_error(self):
+        """Test get_simulation_from_workflow_id when workflow.info() raises an error."""
+        # Mock workflow.info() to raise an exception
+        with patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.info") as mock_info:
+            mock_info.side_effect = Exception("Not in workflow event loop")
+
+            result = ActionsHub.get_simulation_from_workflow_id("workflow_wf")
+
+            assert result is None
 
     def test_execute_activity_simulation_integration(self):
         """Test that execute_activity integrates with simulation response."""
