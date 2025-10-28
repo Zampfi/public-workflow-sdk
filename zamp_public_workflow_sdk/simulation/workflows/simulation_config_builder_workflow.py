@@ -33,30 +33,13 @@ logger = structlog.get_logger(__name__)
     labels=["temporal", "simulation"],
 )
 class SimulationConfigBuilderWorkflow:
-    """Workflow for generating simulation configuration from workflow histories.
-
-    This workflow extracts all node IDs from a workflow execution history,
-    including nodes from child workflows, and generates a simulation configuration
-    that can be used to mock those nodes during simulation runs.
-
-    The extraction process:
-    1. Fetches the main workflow history
-    2. Recursively processes all nodes, identifying child workflows
-    3. Extracts node IDs from child workflows by fetching their histories
-    4. Applies skip filters to exclude unwanted nodes
-    5. Generates a simulation configuration with all collected node IDs
-    """
+    """Generate simulation config by extracting mockable node IDs from workflow execution history."""
 
     MAIN_WORKFLOW_KEY = "main-workflow"
 
     def __init__(self):
-        """Initialize the simulation config builder workflow.
-
-        Sets up internal caches and configuration for processing workflow histories
-        and extracting node IDs for simulation configuration generation.
-        """
+        """Initialize with workflow history cache and skip list."""
         self.workflow_histories: dict[str, WorkflowHistory] = {}
-        # List of node IDs to skip
         self.nodes_to_skip = [
             "generate_llm_model_response",
             "generate_embeddings",
@@ -67,269 +50,139 @@ class SimulationConfigBuilderWorkflow:
 
     @ActionsHub.register_workflow_run
     async def execute(self, input: SimulationConfigBuilderInput) -> SimulationConfigBuilderOutput:
-        """Execute the simulation configuration generation workflow.
+        """Extract all mockable node IDs from workflow and generate simulation config."""
+        if input.execute_actions:
+            self.nodes_to_skip.extend(input.execute_actions)
+        logger.info("Starting simulation config generation", workflow_id=input.workflow_id, run_id=input.run_id)
 
-        Processes the specified workflow execution to extract all node IDs
-        and generate a comprehensive simulation configuration.
-
-        Args:
-            input: Configuration input containing workflow_id and run_id
-
-        Returns:
-            SimulationConfigBuilderOutput containing the generated simulation config
-
-        Raises:
-            Exception: If workflow history cannot be fetched or processed
-        """
-        logger.info(
-            "Starting GenerateSimulationConfigWorkflow",
-            workflow_id=input.workflow_id,
-            run_id=input.run_id,
-        )
-
-        # Step 1: Fetch main workflow history
-        main_history = await self._fetch_workflow_history(
-            workflow_id=input.workflow_id,
-            run_id=input.run_id,
-        )
+        main_history = await self._fetch_workflow_history(input.workflow_id, input.run_id)
         self.workflow_histories[self.MAIN_WORKFLOW_KEY] = main_history
 
-        # Step 2: Extract all node IDs recursively
-        all_node_ids = await self._extract_all_node_ids_recursively(
-            workflow_history=main_history,
-        )
+        # Extract all node IDs recursively
+        all_node_ids = await self._extract_node_ids(main_history)
+        logger.info("Extracted node IDs", total_nodes=len(all_node_ids))
 
-        logger.info(
-            "Extracted all node IDs",
-            total_nodes=len(all_node_ids),
-        )
+        # Generate and return simulation config
+        simulation_config = self._generate_simulation_config(all_node_ids, input.workflow_id, input.run_id)
+        return SimulationConfigBuilderOutput(simulation_config=simulation_config)
 
-        # Step 3: Generate simulation config
-        simulation_config = self._generate_simulation_config(
-            mocked_node_ids=all_node_ids,
-            reference_workflow_id=input.workflow_id,
-            reference_run_id=input.run_id,
-        )
-
-        return SimulationConfigBuilderOutput(
-            simulation_config=simulation_config,
-        )
-
-    def _is_child_workflow_node(self, node_data) -> bool:
-        """Determine if a node represents a child workflow execution.
-
-        Examines the node's events to identify if it contains child workflow
-        execution events, indicating this node spawns a child workflow.
-
-        Args:
-            node_data: Node data containing workflow events
-
-        Returns:
-            True if the node contains child workflow events, False otherwise
-        """
+    def _node_has_event(self, node_data, event_types: list[str]) -> bool:
+        """Check if node has any of the specified event types."""
         for event in node_data.node_events:
             event_type = event.get(EventField.EVENT_TYPE.value)
-            if event_type in [
-                EventType.START_CHILD_WORKFLOW_EXECUTION_INITIATED.value,
-                EventType.CHILD_WORKFLOW_EXECUTION_STARTED.value,
-                EventType.WORKFLOW_EXECUTION_STARTED.value,
-            ]:
+            if event_type in event_types:
                 return True
         return False
 
-    async def _process_child_workflow_node(self, node_id: str, workflow_history: WorkflowHistory) -> list[str]:
-        """Process a child workflow node and extract its node IDs.
-
-        Fetches the child workflow's execution history and recursively extracts
-        all node IDs from it. If ALL activities within the child workflow would
-        be mocked (none are in skip list), returns just the child workflow node_id.
-        Otherwise, returns individual activity node IDs.
-
-        Args:
-            node_id: The node ID that represents the child workflow
-            workflow_history: The parent workflow history containing the child workflow
-
-        Returns:
-            List containing either:
-            - Just the child workflow node_id if all activities would be mocked
-            - Individual activity node IDs if some activities would be skipped
-
-        Note:
-            Returns an empty list if child workflow processing fails
-        """
-        logger.info(
-            "Found child workflow node - skipping and traversing",
-            node_id=node_id,
+    def _is_child_workflow(self, node_data) -> bool:
+        """Check if node is a child workflow."""
+        return self._node_has_event(
+            node_data,
+            [
+                EventType.START_CHILD_WORKFLOW_EXECUTION_INITIATED.value,
+                EventType.CHILD_WORKFLOW_EXECUTION_STARTED.value,
+                EventType.WORKFLOW_EXECUTION_STARTED.value,
+            ],
         )
+
+    def _is_workflow_execution(self, node_data) -> bool:
+        """Check if node is workflow execution itself (should be filtered)."""
+        return self._node_has_event(node_data, [EventType.WORKFLOW_EXECUTION_STARTED.value])
+
+    def _is_mockable(self, node_id: str) -> bool:
+        """Check if node is mockable (not in skip list)."""
+        is_mockable = not any(skip_pattern in node_id for skip_pattern in self.nodes_to_skip)
+        if is_mockable:
+            logger.info("Including activity node", node_id=node_id)
+        else:
+            logger.info("Skipping node (in skip list)", node_id=node_id)
+        return is_mockable
+
+    def _can_mock_as_single_node(self, nodes_data: dict) -> bool:
+        """Check if child workflow can be mocked as single node.
+
+        Returns True if:
+        - All activities are mockable
+        - No nested child workflows
+        """
+        for node_id, node_data in nodes_data.items():
+            if self._is_workflow_execution(node_data):
+                continue
+
+            if self._is_child_workflow(node_data):
+                return False
+
+            if not self._is_mockable(node_id):
+                return False
+
+        return True
+
+    async def _process_child_workflow(self, node_id: str, workflow_history: WorkflowHistory) -> list[str]:
+        """Process child workflow and return node IDs to mock.
+
+        Returns [child_workflow_node_id] if can mock as single node, else recursively extracts node IDs.
+        """
+        logger.info("Processing child workflow", node_id=node_id)
 
         try:
-            child_workflow_id, child_run_id = workflow_history.get_child_workflow_workflow_id_run_id(node_id=node_id)
+            child_workflow_id, child_run_id = workflow_history.get_child_workflow_workflow_id_run_id(node_id)
+            child_history = await self._fetch_workflow_history(child_workflow_id, child_run_id)
+            nodes_data = child_history.get_nodes_data()
 
-            logger.info(
-                "Fetching child workflow history",
-                child_node_id=node_id,
-                child_workflow_id=child_workflow_id,
-                child_run_id=child_run_id,
-            )
+            if self._can_mock_as_single_node(nodes_data):
+                logger.info("Mocking as single node", node_id=node_id)
+                return [node_id]
 
-            # Get all node IDs from child workflow
-            child_node_ids = workflow_history.get_nodes_data().keys()
-
-            node_skipped = False
-            included_node_ids = []
-            for child_node_id in child_node_ids:
-                if self._should_include_node(node_id=child_node_id):
-                    included_node_ids.append(child_node_id)
-                else:
-                    node_skipped = True
-
-            # If no nodes would be skipped, mock the entire child workflow
-            if not node_skipped and len(child_node_ids) > 0:
-                logger.info(
-                    "All activities in child workflow would be mocked - mocking entire child workflow",
-                    child_node_id=node_id,
-                    total_activities=len(child_node_ids),
-                )
-                return [node_id]  # Return the child workflow node_id itself
-
-            logger.info(
-                "Some activities in child workflow would be skipped - mocking individual activities",
-                child_node_id=node_id,
-                included_count=len(included_node_ids),
-                total_activities=len(child_node_ids),
-            )
-            return included_node_ids
+            logger.info("Extracting recursively", node_id=node_id)
+            return await self._extract_node_ids(child_history)
 
         except Exception as e:
-            logger.error(
-                "Failed to extract child workflow nodes",
-                node_id=node_id,
-                error=str(e),
-            )
+            logger.error("Failed to process child workflow", node_id=node_id, error=str(e))
             raise
 
-    def _should_include_node(self, node_id: str) -> str | None:
-        """Determine if a node should be included in the simulation configuration.
+    async def _process_node(self, node_id: str, node_data, workflow_history: WorkflowHistory) -> list[str]:
+        """Process single node and return node IDs to include."""
+        if self._is_workflow_execution(node_data):
+            logger.info("Skipping workflow execution node", node_id=node_id)
+            return []
 
-        Applies filtering logic to determine whether a node should be included
-        in the final simulation configuration based on skip patterns.
+        if self._is_child_workflow(node_data):
+            return await self._process_child_workflow(node_id, workflow_history)
 
-        Args:
-            node_id: The node ID to evaluate for inclusion
+        if self._is_mockable(node_id):
+            return [node_id]
 
-        Returns:
-            The node ID if it should be included, None if it should be skipped
-        """
-        # Check if this node should be skipped based on the skip list
-        if any(skip_pattern in node_id for skip_pattern in self.nodes_to_skip):
-            logger.info(
-                "Skipping node (in skip list)",
-                node_id=node_id,
-            )
-            return None
-        else:
-            logger.info(
-                "Adding activity node",
-                node_id=node_id,
-            )
-            return node_id
+        return []
 
-    async def _extract_all_node_ids_recursively(self, workflow_history: WorkflowHistory) -> list[str]:
-        """Extract all node IDs from a workflow and its child workflows.
-
-        Recursively processes a workflow history to extract all node IDs,
-        including those from child workflows. Applies filtering to exclude
-        unwanted nodes based on configured skip patterns.
-
-        Args:
-            workflow_history: The workflow history to process
-
-        Returns:
-            List of all node IDs extracted from the workflow and its children
-        """
-        all_node_ids = []
-
-        # Get all nodes from current workflow
+    async def _extract_node_ids(self, workflow_history: WorkflowHistory) -> list[str]:
+        """Extract all mockable node IDs from workflow recursively."""
         nodes_data = workflow_history.get_nodes_data()
+        logger.info("Processing workflow nodes", node_count=len(nodes_data))
 
-        logger.info(
-            "Processing workflow nodes",
-            node_count=len(nodes_data),
-        )
-
+        all_node_ids = []
         for node_id, node_data in nodes_data.items():
-            # Check if this node is a child workflow
-            is_child_workflow = self._is_child_workflow_node(node_data=node_data)
-
-            logger.info(
-                "Checking node",
-                node_id=node_id,
-                is_child_workflow=is_child_workflow,
-            )
-
-            if is_child_workflow:
-                # Process child workflow node
-                child_node_ids = await self._process_child_workflow_node(
-                    node_id=node_id, workflow_history=workflow_history
-                )
-                all_node_ids.extend(child_node_ids)
-            else:
-                # Process node if it should be included
-                node_id_to_include = self._should_include_node(node_id=node_id)
-                if node_id_to_include:
-                    all_node_ids.append(node_id_to_include)
+            node_ids = await self._process_node(node_id, node_data, workflow_history)
+            all_node_ids.extend(node_ids)
 
         return all_node_ids
 
     async def _fetch_workflow_history(self, workflow_id: str, run_id: str) -> FetchTemporalWorkflowHistoryOutput:
-        """Fetch workflow execution history from Temporal.
-
-        Uses the FetchTemporalWorkflowHistoryWorkflow to retrieve the complete
-        execution history for a specific workflow run.
-
-        Args:
-            workflow_id: The workflow ID to fetch history for
-            run_id: The specific run ID to fetch history for
-
-        Returns:
-            FetchTemporalWorkflowHistoryOutput containing the workflow history
-
-        Raises:
-            Exception: If the workflow history cannot be fetched
-        """
-        logger.info(
-            "Fetching workflow history",
-            workflow_id=workflow_id,
-            run_id=run_id,
-        )
+        """Fetch workflow execution history from Temporal."""
+        logger.info("Fetching workflow history", workflow_id=workflow_id, run_id=run_id)
 
         try:
-            history: FetchTemporalWorkflowHistoryOutput = await ActionsHub.execute_child_workflow(
+            history = await ActionsHub.execute_child_workflow(
                 "FetchTemporalWorkflowHistoryWorkflow",
-                FetchTemporalWorkflowHistoryInput(
-                    workflow_id=workflow_id,
-                    run_id=run_id,
-                ),
+                FetchTemporalWorkflowHistoryInput(workflow_id=workflow_id, run_id=run_id),
                 result_type=FetchTemporalWorkflowHistoryOutput,
             )
-
             logger.info(
-                "Successfully fetched workflow history",
-                workflow_id=workflow_id,
-                run_id=run_id,
-                events_count=len(history.events),
+                "Successfully fetched workflow history", workflow_id=workflow_id, events_count=len(history.events)
             )
-
             return history
 
         except Exception as e:
-            logger.error(
-                "Failed to fetch workflow history",
-                workflow_id=workflow_id,
-                run_id=run_id,
-                error=str(e),
-                error_type=type(e).__name__,
-            )
+            logger.error("Failed to fetch workflow history", workflow_id=workflow_id, error=str(e))
             raise
 
     def _generate_simulation_config(
@@ -338,36 +191,16 @@ class SimulationConfigBuilderWorkflow:
         reference_workflow_id: str,
         reference_run_id: str,
     ) -> SimulationConfig:
-        """Generate a simulation configuration for the extracted node IDs.
-
-        Creates a comprehensive simulation configuration that includes all
-        extracted node IDs with a TEMPORAL_HISTORY strategy for mocking.
-
-        Args:
-            all_node_ids: Complete list of node IDs to include in simulation
-            reference_workflow_id: Workflow ID to use as reference for TEMPORAL_HISTORY
-            reference_run_id: Run ID to use as reference for TEMPORAL_HISTORY
-
-        Returns:
-            SimulationConfig configured to mock all extracted node IDs
-        """
-        # Create a single node strategy that mocks all nodes
-        node_strategy = NodeStrategy(
-            strategy=SimulationStrategyConfig(
-                type=StrategyType.TEMPORAL_HISTORY,
-                config=TemporalHistoryConfig(
-                    reference_workflow_id=reference_workflow_id,
-                    reference_workflow_run_id=reference_run_id,
-                ),
+        """Generate simulation config with TEMPORAL_HISTORY strategy for all extracted node IDs."""
+        strategy = SimulationStrategyConfig(
+            type=StrategyType.TEMPORAL_HISTORY,
+            config=TemporalHistoryConfig(
+                reference_workflow_id=reference_workflow_id,
+                reference_workflow_run_id=reference_run_id,
             ),
-            nodes=mocked_node_ids,
         )
 
-        mock_config = NodeMockConfig(node_strategies=[node_strategy])
-
-        simulation_config = SimulationConfig(
+        return SimulationConfig(
             version=SupportedVersions.V1_0_0.value,
-            mock_config=mock_config,
+            mock_config=NodeMockConfig(node_strategies=[NodeStrategy(strategy=strategy, nodes=mocked_node_ids)]),
         )
-
-        return simulation_config
