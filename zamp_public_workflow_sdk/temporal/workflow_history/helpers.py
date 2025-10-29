@@ -110,7 +110,7 @@ def _extract_payload_encoded(event: dict, event_type: str, payload_field: str) -
     Returns the  payload object.
     Returns None if no payloads found.
     """
-    logger.info("Extracting encoded payload", event_type=event_type, payload_field=payload_field)
+    logger.info("Extracting encoded payload", event_type=event_type)
     attrs_key = _get_attributes_key_for_event_type(event_type)
 
     if not attrs_key or attrs_key not in event:
@@ -325,6 +325,11 @@ def _process_events_for_payloads(
         event_type = event.get(EventField.EVENT_TYPE.value)
         node_id = None
         payload_field = None
+        logger.info(
+            "Processing event",
+            event_index=event_index,
+            event_type=event_type,
+        )
 
         # Handle workflow execution started
         if event_type == EventType.WORKFLOW_EXECUTION_STARTED.value:
@@ -413,14 +418,14 @@ def _process_events_for_payloads(
             if node_id not in node_payloads:
                 node_payloads[node_id] = {}
             payload = _extract_payload_encoded(event, event_type, payload_field)
-            if payload:
-                if payload_field == PayloadField.INPUT.value:
-                    node_payloads[node_id]["input_payload"] = payload
-                else:
-                    node_payloads[node_id]["output_payload"] = payload
+            if not payload:
+                continue
+            if payload_field == PayloadField.INPUT.value:
+                node_payloads[node_id]["input_payload"] = payload
+            else:
+                node_payloads[node_id]["output_payload"] = payload
         else:
             _add_event_and_payload(node_id, event, payload_field, node_payloads)
-
     return node_payloads
 
 
