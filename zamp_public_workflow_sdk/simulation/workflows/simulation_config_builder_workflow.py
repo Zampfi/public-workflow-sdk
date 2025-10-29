@@ -81,6 +81,8 @@ class SimulationConfigBuilderWorkflow:
         Raises:
             Exception: If workflow history cannot be fetched or processed
         """
+        if input.execute_actions:
+            self.nodes_to_skip.extend(input.execute_actions)
         logger.info(
             "Starting GenerateSimulationConfigWorkflow",
             workflow_id=input.workflow_id,
@@ -132,8 +134,24 @@ class SimulationConfigBuilderWorkflow:
             if event_type in [
                 EventType.START_CHILD_WORKFLOW_EXECUTION_INITIATED.value,
                 EventType.CHILD_WORKFLOW_EXECUTION_STARTED.value,
-                EventType.WORKFLOW_EXECUTION_STARTED.value,
             ]:
+                return True
+        return False
+
+    def _is_workflow_execution_node(self, node_data) -> bool:
+        """Determine if a node represents the workflow execution itself (not an activity or child workflow).
+
+        These nodes should be filtered out when extracting node IDs.
+
+        Args:
+            node_data: Node data containing workflow events
+
+        Returns:
+            True if the node represents workflow execution, False otherwise
+        """
+        for event in node_data.node_events:
+            event_type = event.get(EventField.EVENT_TYPE.value)
+            if event_type == EventType.WORKFLOW_EXECUTION_STARTED.value:
                 return True
         return False
 
@@ -172,33 +190,47 @@ class SimulationConfigBuilderWorkflow:
                 child_run_id=child_run_id,
             )
 
-            # Get all node IDs from child workflow
-            child_node_ids = workflow_history.get_nodes_data().keys()
+            # Fetch child workflow history
+            child_history = await self._fetch_workflow_history(
+                workflow_id=child_workflow_id,
+                run_id=child_run_id,
+            )
 
-            node_skipped = False
-            included_node_ids = []
-            for child_node_id in child_node_ids:
-                if self._should_include_node(node_id=child_node_id):
-                    included_node_ids.append(child_node_id)
+            # Get all nodes from child workflow (activities + nested child workflows)
+            nodes_data = child_history.get_nodes_data()
+
+            # Check if there are any nested child workflows and if all activities are mockable
+            has_nested_child_workflows = False
+            all_activities_mockable = True
+
+            for child_node_id, child_node_data in nodes_data.items():
+                if self._is_workflow_execution_node(child_node_data):
+                    continue
+                if self._is_child_workflow_node(child_node_data):
+                    has_nested_child_workflows = True
                 else:
-                    node_skipped = True
+                    if not self._should_include_node(node_id=child_node_id):
+                        all_activities_mockable = False
 
-            # If no nodes would be skipped, mock the entire child workflow
-            if not node_skipped and len(child_node_ids) > 0:
+            # Only return child workflow node_id if:
+            # 1. All activities are mockable
+            # 2. There are NO nested child workflows
+            if all_activities_mockable and not has_nested_child_workflows and len(nodes_data) > 0:
                 logger.info(
                     "All activities in child workflow would be mocked - mocking entire child workflow",
                     child_node_id=node_id,
-                    total_activities=len(child_node_ids),
+                    total_nodes=len(nodes_data),
                 )
                 return [node_id]  # Return the child workflow node_id itself
 
+            # Either has nested child workflows or some activities not mockable - recursively extract
             logger.info(
                 "Some activities in child workflow would be skipped - mocking individual activities",
                 child_node_id=node_id,
-                included_count=len(included_node_ids),
-                total_activities=len(child_node_ids),
+                has_nested_child_workflows=has_nested_child_workflows,
+                all_activities_mockable=all_activities_mockable,
             )
-            return included_node_ids
+            return await self._extract_all_node_ids_recursively(workflow_history=child_history)
 
         except Exception as e:
             logger.error(
@@ -258,6 +290,14 @@ class SimulationConfigBuilderWorkflow:
         )
 
         for node_id, node_data in nodes_data.items():
+            # Skip workflow execution nodes (these represent the workflow itself, not activities)
+            if self._is_workflow_execution_node(node_data):
+                logger.info(
+                    "Skipping workflow execution node",
+                    node_id=node_id,
+                )
+                continue
+
             # Check if this node is a child workflow
             is_child_workflow = self._is_child_workflow_node(node_data=node_data)
 
