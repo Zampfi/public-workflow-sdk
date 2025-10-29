@@ -15,7 +15,6 @@ from zamp_public_workflow_sdk.temporal.interceptors.node_id_interceptor import (
     NODE_ID_HEADER_KEY,
 )
 
-
 from .constants import DEFAULT_MODE, SKIP_SIMULATION_WORKFLOWS, LogMode
 from .models.mcp_models import MCPConfig
 
@@ -224,6 +223,7 @@ class ActionsHub:
                         error=str(e),
                         error_type=type(e).__name__,
                     )
+                    raise e
 
             if return_type is None and action:
                 return_type = cls._get_action_return_type(action)

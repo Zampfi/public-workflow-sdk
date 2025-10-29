@@ -85,12 +85,7 @@ def extract_node_id_from_event(event: dict) -> str | None:
 
 
 def _extract_payload_data(event: dict, event_type: str, payload_field: str) -> dict | None:
-    """
-    Extract payload data from event attributes.
-
-    Returns the data from payload
-    Returns None if no payloads found.
-    """
+    """Extract payload data from event attributes."""
     logger.info("Extracting payload data", event_type=event_type, payload_field=payload_field)
     attrs_key = _get_attributes_key_for_event_type(event_type)
 
@@ -99,21 +94,20 @@ def _extract_payload_data(event: dict, event_type: str, payload_field: str) -> d
         return None
 
     payloads = event[attrs_key].get(payload_field, {}).get(PayloadField.PAYLOADS.value, [])
-    if not payloads:
+    if payloads and PayloadField.DATA.value in payloads[0]:
+        result = payloads[0][PayloadField.DATA.value]
+        logger.info("Successfully extracted payload data", payload_size=len(str(result)))
+        return result
+    else:
         logger.info("No payload data found in event")
         return None
-
-    if PayloadField.DATA.value in payloads[0]:
-        return payloads[0][PayloadField.DATA.value]
-
-    return None
 
 
 def _extract_payload_encoded(event: dict, event_type: str, payload_field: str) -> dict | None:
     """
     Extract full encoded payload (with metadata and data) from event attributes.
 
-    Returns the first payload object if multiple payloads exist.
+    Returns the  payload object.
     Returns None if no payloads found.
     """
     logger.info("Extracting encoded payload", event_type=event_type, payload_field=payload_field)
@@ -127,12 +121,6 @@ def _extract_payload_encoded(event: dict, event_type: str, payload_field: str) -
     if not payloads:
         logger.info("No encoded payload found in event")
         return None
-
-    payload_count = len(payloads)
-    if payload_count > 1:
-        logger.info("Multiple encoded payloads found, returning first payload", payload_count=payload_count)
-    else:
-        logger.info("Successfully extracted encoded payload")
     return payloads[0]
 
 
@@ -286,7 +274,7 @@ def _add_event_and_payload(
 
 
 def get_input_from_node_id(events: list[dict], node_id: str) -> dict | None:
-    """Get input payload for a specific node ID from events. Returns the first input payload data if multiple exist."""
+    """Get input payload for a specific node ID from events."""
     logger.info("Getting input payload for node", node_id=node_id, event_count=len(events))
     node_data = extract_node_payloads(events, [node_id])
     result = node_data[node_id].input_payload if node_id in node_data else None
@@ -295,7 +283,7 @@ def get_input_from_node_id(events: list[dict], node_id: str) -> dict | None:
 
 
 def get_output_from_node_id(events: list[dict], node_id: str) -> dict | None:
-    """Get output payload for a specific node ID from events. Returns the first output payload data if multiple exist."""
+    """Get output payload for a specific node ID from events."""
     logger.info("Getting output payload for node", node_id=node_id, event_count=len(events))
     node_data = extract_node_payloads(events, [node_id])
     result = node_data[node_id].output_payload if node_id in node_data else None
@@ -317,13 +305,13 @@ def _process_events_for_payloads(
     return_encoded_format: bool = False,
 ) -> dict:
     """
-    Common logic to process events and extract node_id and payload_field information.
+    logic to process events and extract node_id and payload_field information.
 
     Args:
         events: List of workflow events
         node_ids: Optional list of node IDs to filter by
         return_encoded_format: If True, returns full encoded payload structure (with metadata and data).
-                              If False, returns decoded payload data only.
+                               If False, returns decoded payload data only.
 
     Returns:
         Dictionary mapping node_id to payload data (format depends on return_encoded_format)
@@ -455,7 +443,7 @@ def extract_node_payloads(events: list[dict], node_ids: list[str] | None = None)
 
 
 def get_input_encoded_from_node_id(events: list[dict], node_id: str) -> dict | None:
-    """Get encoded input payload for a specific node ID. Returns the first encoded input payload if multiple exist."""
+    """Get encoded input payload for a specific node ID. Returns the encoded input payload."""
     logger.info("Getting encoded input payload for node", node_id=node_id)
     node_data = extract_node_payloads_encoded(events, [node_id])
     if node_id in node_data and "input_payload" in node_data[node_id]:
@@ -464,7 +452,7 @@ def get_input_encoded_from_node_id(events: list[dict], node_id: str) -> dict | N
 
 
 def get_output_encoded_from_node_id(events: list[dict], node_id: str) -> dict | None:
-    """Get encoded output payload for a specific node ID. Returns the first encoded output payload if multiple exist."""
+    """Get encoded output payload for a specific node ID. Returns the encoded output payload."""
     logger.info("Getting encoded output payload for node", node_id=node_id)
     node_data = extract_node_payloads_encoded(events, [node_id])
     if node_id in node_data and "output_payload" in node_data[node_id]:

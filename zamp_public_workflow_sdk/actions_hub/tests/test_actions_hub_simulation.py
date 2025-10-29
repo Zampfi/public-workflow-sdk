@@ -481,16 +481,13 @@ class TestActionsHubSimulation:
         ) as mock_execute:
             mock_execute.side_effect = Exception("Decoding failed")
 
-            result = await ActionsHub._get_simulation_response(
-                workflow_id="test_wf",
-                node_id="node_1",
-                action="test_action",
-                return_type=None,
-            )
-
-            # Should still return MOCK but with original encoded payload
-            assert result.execution_type == ExecutionType.MOCK
-            assert result.execution_response == encoded_payload
+            with pytest.raises(Exception, match="Decoding failed"):
+                await ActionsHub._get_simulation_response(
+                    workflow_id="test_wf",
+                    node_id="node_1",
+                    action="test_action",
+                    return_type=None,
+                )
 
     @pytest.mark.asyncio
     async def test_get_simulation_response_with_unencoded_payload_no_decoding(self):
