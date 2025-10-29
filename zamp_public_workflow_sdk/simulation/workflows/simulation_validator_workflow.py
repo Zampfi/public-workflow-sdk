@@ -16,6 +16,7 @@ with workflow.unsafe.imports_passed_through():
         SimulationValidatorOutput,
         NodeComparison,
     )
+    import json
 
 logger = structlog.get_logger(__name__)
 
@@ -199,6 +200,26 @@ class SimulationValidatorWorkflow:
             error=error,
         )
 
+    def _convert_diff_to_dict(self, diff, diff_type: str, node_id: str) -> dict | None:
+        """
+        Convert DeepDiff to dict by removing type_changes
+        Returns the dict if serializable, None otherwise.
+        """
+        try:
+            diff_as_dict = dict(diff)
+            diff_as_dict.pop("type_changes", None)
+            json.dumps(diff_as_dict)
+            return diff_as_dict
+        except Exception as e:
+            logger.warning(
+                "Could not serialize difference",
+                diff_type=diff_type,
+                node_id=node_id,
+                error=str(e),
+                error_type=type(e).__name__,
+            )
+            return None
+
     async def _compare_node(
         self,
         node_id: str,
@@ -239,6 +260,11 @@ class SimulationValidatorWorkflow:
 
             logger.info("Node comparison", node_id=node_id, inputs_match=inputs_match, outputs_match=outputs_match)
 
+            difference_dict = self._convert_diff_to_dict(input_diff, "input", node_id) if not inputs_match else None
+            output_difference_dict = (
+                self._convert_diff_to_dict(output_diff, "output", node_id) if not outputs_match else None
+            )
+
             return NodeComparison(
                 node_id=node_id,
                 is_mocked=is_mocked,
@@ -248,8 +274,8 @@ class SimulationValidatorWorkflow:
                 expected_input=golden_node.input_payload,
                 actual_output=simulation_node.output_payload,
                 expected_output=golden_node.output_payload,
-                difference=dict(input_diff) if not inputs_match else None,
-                output_difference=dict(output_diff) if not outputs_match else None,
+                difference=difference_dict,
+                output_difference=output_difference_dict,
             )
 
         except Exception as e:
