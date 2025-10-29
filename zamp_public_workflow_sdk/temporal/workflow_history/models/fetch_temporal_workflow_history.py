@@ -10,6 +10,9 @@ class FetchTemporalWorkflowHistoryInput(BaseModel):
     run_id: str = Field(..., min_length=1, description="Run ID to fetch")
     node_ids: list[str] | None = Field(default=None, description="Filter by specific node IDs")
     prefix_node_ids: list[str] | None = Field(default=None, description="Filter by node ID prefixes")
+    decode_payloads: bool = Field(
+        default=True, description="Whether to decode payloads. Set to False to preserve encoded payloads with metadata."
+    )
 
 
 class FetchTemporalWorkflowHistoryOutput(WorkflowHistory):

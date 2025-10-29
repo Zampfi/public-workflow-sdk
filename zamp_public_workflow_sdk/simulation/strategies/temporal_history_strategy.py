@@ -114,6 +114,7 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
                     workflow_id=target_workflow_id,
                     run_id=target_run_id,
                     node_ids=node_ids,
+                    decode_payloads=False,
                 ),
                 result_type=FetchTemporalWorkflowHistoryOutput,
             )
@@ -185,18 +186,18 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
         self, temporal_history: WorkflowHistory, node_ids: list[str]
     ) -> dict[str, Any | None]:
         """
-        Extract outputs for nodes that belong to the main workflow.
+        Extract encoded outputs for nodes that belong to the main workflow.
 
         Args:
             temporal_history: The main workflow history object
             node_ids: List of node IDs in the main workflow
 
         Returns:
-            Dictionary mapping node IDs to their outputs
+            Dictionary mapping node IDs to their encoded outputs (with metadata and data)
         """
         node_outputs = {}
         for node_id in node_ids:
-            output = temporal_history.get_node_output(node_id)
+            output = temporal_history.get_node_output_encoded(node_id)
             node_outputs[node_id] = output
         return node_outputs
 
@@ -251,13 +252,13 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
                 f"child_workflow_id={child_workflow_id}, node_ids={node_ids}"
             )
 
-        # Extract outputs using full node IDs (workflow stores with prefix, e.g., "Parent#1.activity#1")
-        child_nodes_data = child_history.get_nodes_data()
+        # Extract encoded outputs using full node IDs (workflow stores with prefix, e.g., "Parent#1.activity#1")
+        child_nodes_data = child_history.get_nodes_data_encoded()
         node_outputs = {}
 
         for full_node_id in node_ids:
-            if full_node_id in child_nodes_data:
-                node_outputs[full_node_id] = child_nodes_data[full_node_id].output_payload
+            if full_node_id in child_nodes_data and "output_payload" in child_nodes_data[full_node_id]:
+                node_outputs[full_node_id] = child_nodes_data[full_node_id]["output_payload"]
             else:
                 node_outputs[full_node_id] = None
 

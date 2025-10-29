@@ -35,13 +35,14 @@ class TestActionsHubSimulation:
         ActionsHub._activities.clear()
         ActionsHub._workflows.clear()
 
-    def test_get_simulation_response_action_should_skip(self):
+    @pytest.mark.asyncio
+    async def test_get_simulation_response_action_should_skip(self):
         """Test _get_simulation_response when action should skip simulation."""
 
         class SimulationWorkflow:
             pass
 
-        result = ActionsHub._get_simulation_response(
+        result = await ActionsHub._get_simulation_response(
             workflow_id="test_wf",
             node_id="node_1",
             action=SimulationWorkflow,
@@ -51,20 +52,22 @@ class TestActionsHubSimulation:
         assert result.execution_type == ExecutionType.EXECUTE
         assert result.execution_response is None
 
-    def test_get_simulation_response_no_simulation_registered(self):
+    @pytest.mark.asyncio
+    async def test_get_simulation_response_no_simulation_registered(self):
         """Test _get_simulation_response when no simulation is registered."""
 
         class TestWorkflow:
             pass
 
-        result = ActionsHub._get_simulation_response(
+        result = await ActionsHub._get_simulation_response(
             workflow_id="test_wf", node_id="node_1", action="test_action", return_type=None
         )
 
         assert result.execution_type == ExecutionType.EXECUTE
         assert result.execution_response is None
 
-    def test_get_simulation_response_with_mock_response(self):
+    @pytest.mark.asyncio
+    async def test_get_simulation_response_with_mock_response(self):
         """Test _get_simulation_response when simulation returns MOCK."""
 
         class TestWorkflow:
@@ -78,7 +81,7 @@ class TestActionsHubSimulation:
         # Register the simulation
         ActionsHub._workflow_id_to_simulation_map["test_wf"] = mock_simulation
 
-        result = ActionsHub._get_simulation_response(
+        result = await ActionsHub._get_simulation_response(
             workflow_id="test_wf", node_id="node_1", action="test_action", return_type=None
         )
 
@@ -86,7 +89,8 @@ class TestActionsHubSimulation:
         assert result.execution_response == {"result": "mocked"}
         mock_simulation.get_simulation_response.assert_called_once_with("node_1")
 
-    def test_get_simulation_response_with_execute_response(self):
+    @pytest.mark.asyncio
+    async def test_get_simulation_response_with_execute_response(self):
         """Test _get_simulation_response when simulation returns EXECUTE."""
 
         class TestWorkflow:
@@ -100,14 +104,15 @@ class TestActionsHubSimulation:
         # Register the simulation
         ActionsHub._workflow_id_to_simulation_map["test_wf"] = mock_simulation
 
-        result = ActionsHub._get_simulation_response(
+        result = await ActionsHub._get_simulation_response(
             workflow_id="test_wf", node_id="node_1", action="test_action", return_type=None
         )
 
         assert result.execution_type == ExecutionType.EXECUTE
         assert result.execution_response is None
 
-    def test_get_simulation_response_with_return_type_conversion(self):
+    @pytest.mark.asyncio
+    async def test_get_simulation_response_with_return_type_conversion(self):
         """Test _get_simulation_response with return type conversion."""
 
         class TestWorkflow:
@@ -124,7 +129,7 @@ class TestActionsHubSimulation:
         # Register the simulation
         ActionsHub._workflow_id_to_simulation_map["test_wf"] = mock_simulation
 
-        result = ActionsHub._get_simulation_response(
+        result = await ActionsHub._get_simulation_response(
             workflow_id="test_wf",
             node_id="node_1",
             action="test_action",
@@ -332,7 +337,8 @@ class TestActionsHubSimulation:
 
             assert result is None
 
-    def test_execute_activity_simulation_integration(self):
+    @pytest.mark.asyncio
+    async def test_execute_activity_simulation_integration(self):
         """Test that execute_activity integrates with simulation response."""
         # This tests the integration between execute_activity and _get_simulation_response
         # through mocking
@@ -343,7 +349,7 @@ class TestActionsHubSimulation:
         ActionsHub._workflow_id_to_simulation_map["test_wf"] = mock_simulation
 
         # Test that _get_simulation_response returns the mocked result
-        result = ActionsHub._get_simulation_response(
+        result = await ActionsHub._get_simulation_response(
             workflow_id="test_wf",
             node_id="test_node",
             action="test_activity",
@@ -353,7 +359,8 @@ class TestActionsHubSimulation:
         assert result.execution_type == ExecutionType.MOCK
         assert result.execution_response == "mocked_result"
 
-    def test_child_workflow_simulation_integration(self):
+    @pytest.mark.asyncio
+    async def test_child_workflow_simulation_integration(self):
         """Test that child workflow execution integrates with simulation response."""
         mock_simulation = Mock(spec=WorkflowSimulationService)
         mock_response = SimulationResponse(execution_type=ExecutionType.MOCK, execution_response="mocked_workflow")
@@ -361,7 +368,7 @@ class TestActionsHubSimulation:
         ActionsHub._workflow_id_to_simulation_map["test_wf"] = mock_simulation
 
         # Test that _get_simulation_response returns the mocked result
-        result = ActionsHub._get_simulation_response(
+        result = await ActionsHub._get_simulation_response(
             workflow_id="test_wf",
             node_id="test_node",
             action="TestWorkflow",
@@ -371,7 +378,8 @@ class TestActionsHubSimulation:
         assert result.execution_type == ExecutionType.MOCK
         assert result.execution_response == "mocked_workflow"
 
-    def test_start_child_workflow_simulation_integration(self):
+    @pytest.mark.asyncio
+    async def test_start_child_workflow_simulation_integration(self):
         """Test that start_child_workflow integrates with simulation response."""
         mock_simulation = Mock(spec=WorkflowSimulationService)
         mock_response = SimulationResponse(execution_type=ExecutionType.MOCK, execution_response="mocked_start")
@@ -379,7 +387,7 @@ class TestActionsHubSimulation:
         ActionsHub._workflow_id_to_simulation_map["test_wf"] = mock_simulation
 
         # Test that _get_simulation_response returns the mocked result
-        result = ActionsHub._get_simulation_response(
+        result = await ActionsHub._get_simulation_response(
             workflow_id="test_wf",
             node_id="test_node",
             action="TestWorkflow",
@@ -389,7 +397,8 @@ class TestActionsHubSimulation:
         assert result.execution_type == ExecutionType.MOCK
         assert result.execution_response == "mocked_start"
 
-    def test_get_simulation_response_with_action_return_type_inference(self):
+    @pytest.mark.asyncio
+    async def test_get_simulation_response_with_action_return_type_inference(self):
         """Test _get_simulation_response infers return type from action."""
 
         # Register a test activity
@@ -407,7 +416,7 @@ class TestActionsHubSimulation:
 
         # Call with action but no return_type - should call _get_action_return_type
         with patch.object(ActionsHub, "_get_action_return_type", return_value=str) as mock_get_return_type:
-            ActionsHub._get_simulation_response(
+            await ActionsHub._get_simulation_response(
                 workflow_id="test_wf",
                 node_id="node_1",
                 action=test_activity_type,
@@ -416,3 +425,99 @@ class TestActionsHubSimulation:
 
             # Should have called _get_action_return_type
             mock_get_return_type.assert_called_once_with(test_activity_type)
+
+    @pytest.mark.asyncio
+    async def test_get_simulation_response_with_encoded_payload_decoding_success(self):
+        """Test _get_simulation_response with encoded payload that needs decoding."""
+
+        # Create mock simulation service
+        mock_simulation = Mock(spec=WorkflowSimulationService)
+        # Return an encoded payload with metadata indicating encoding
+        encoded_payload = {"metadata": {"encoding": "json/plain"}, "data": "encoded_data_here"}
+        mock_response = SimulationResponse(execution_type=ExecutionType.MOCK, execution_response=encoded_payload)
+        mock_simulation.get_simulation_response.return_value = mock_response
+
+        # Register the simulation
+        ActionsHub._workflow_id_to_simulation_map["test_wf"] = mock_simulation
+
+        # Mock workflow.execute_activity for decode_node_payload
+        with patch(
+            "zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.execute_activity", new_callable=AsyncMock
+        ) as mock_execute:
+            decoded_data = {"result": "decoded_value"}
+            mock_execute.return_value = decoded_data
+
+            result = await ActionsHub._get_simulation_response(
+                workflow_id="test_wf",
+                node_id="node_1",
+                action="test_action",
+                return_type=None,
+            )
+
+            assert result.execution_type == ExecutionType.MOCK
+            assert result.execution_response == decoded_data
+            # Verify decode activity was called
+            mock_execute.assert_called_once()
+            call_args = mock_execute.call_args
+            assert call_args[0][0] == "decode_node_payload"
+
+    @pytest.mark.asyncio
+    async def test_get_simulation_response_with_encoded_payload_decoding_failure(self):
+        """Test _get_simulation_response when decoding fails."""
+
+        # Create mock simulation service
+        mock_simulation = Mock(spec=WorkflowSimulationService)
+        # Return an encoded payload with metadata indicating encoding
+        encoded_payload = {"metadata": {"encoding": "json/plain"}, "data": "encoded_data_here"}
+        mock_response = SimulationResponse(execution_type=ExecutionType.MOCK, execution_response=encoded_payload)
+        mock_simulation.get_simulation_response.return_value = mock_response
+
+        # Register the simulation
+        ActionsHub._workflow_id_to_simulation_map["test_wf"] = mock_simulation
+
+        # Mock workflow.execute_activity to raise an exception
+        with patch(
+            "zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.execute_activity", new_callable=AsyncMock
+        ) as mock_execute:
+            mock_execute.side_effect = Exception("Decoding failed")
+
+            result = await ActionsHub._get_simulation_response(
+                workflow_id="test_wf",
+                node_id="node_1",
+                action="test_action",
+                return_type=None,
+            )
+
+            # Should still return MOCK but with original encoded payload
+            assert result.execution_type == ExecutionType.MOCK
+            assert result.execution_response == encoded_payload
+
+    @pytest.mark.asyncio
+    async def test_get_simulation_response_with_unencoded_payload_no_decoding(self):
+        """Test _get_simulation_response with payload that doesn't need decoding (CustomOutputStrategy)."""
+
+        # Create mock simulation service
+        mock_simulation = Mock(spec=WorkflowSimulationService)
+        # Return a raw payload without encoding metadata (from CustomOutputStrategy)
+        raw_payload = {"result": "raw_value"}
+        mock_response = SimulationResponse(execution_type=ExecutionType.MOCK, execution_response=raw_payload)
+        mock_simulation.get_simulation_response.return_value = mock_response
+
+        # Register the simulation
+        ActionsHub._workflow_id_to_simulation_map["test_wf"] = mock_simulation
+
+        # Mock workflow.execute_activity - it should NOT be called
+        with patch(
+            "zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.execute_activity", new_callable=AsyncMock
+        ) as mock_execute:
+            result = await ActionsHub._get_simulation_response(
+                workflow_id="test_wf",
+                node_id="node_1",
+                action="test_action",
+                return_type=None,
+            )
+
+            assert result.execution_type == ExecutionType.MOCK
+            assert result.execution_response == raw_payload
+            # Verify decode activity was NOT called (no encoding metadata)
+            mock_execute.assert_not_called()

@@ -309,6 +309,7 @@ class SimulationConfigBuilderWorkflow:
                 FetchTemporalWorkflowHistoryInput(
                     workflow_id=workflow_id,
                     run_id=run_id,
+                    decode_payloads=True,
                 ),
                 result_type=FetchTemporalWorkflowHistoryOutput,
             )

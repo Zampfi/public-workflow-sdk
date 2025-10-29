@@ -180,7 +180,7 @@ class SimulationValidatorWorkflow:
         try:
             history = await ActionsHub.execute_child_workflow(
                 "FetchTemporalWorkflowHistoryWorkflow",
-                FetchTemporalWorkflowHistoryInput(workflow_id=workflow_id, run_id=run_id),
+                FetchTemporalWorkflowHistoryInput(workflow_id=workflow_id, run_id=run_id, decode_payloads=True),
                 result_type=FetchTemporalWorkflowHistoryOutput,
             )
             logger.info("Fetched workflow history", description=description, events_count=len(history.events))
