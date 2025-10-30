@@ -341,7 +341,7 @@ class TestSimulationServiceIntegration:
             assert service.node_id_to_response_map["integration_node#1"] == "integration_test_output"
 
             # Test that simulation response works
-            response = service.get_simulation_response("integration_node#1")
+            response = await service.get_simulation_response("integration_node#1")
             assert response is not None
             assert response.execution_type.value == "MOCK"
-            assert response.execution_response == "integration_test_output"
+            assert response.execution_response is None

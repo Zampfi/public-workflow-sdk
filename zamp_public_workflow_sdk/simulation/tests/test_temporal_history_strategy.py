@@ -16,9 +16,6 @@ from zamp_public_workflow_sdk.simulation.strategies.temporal_history_strategy im
 from zamp_public_workflow_sdk.temporal.workflow_history.models import (
     WorkflowHistory,
 )
-from zamp_public_workflow_sdk.temporal.workflow_history.models.node_payload_data import (
-    NodePayloadData,
-)
 
 
 class TestTemporalHistoryStrategyHandler:
@@ -97,7 +94,7 @@ class TestTemporalHistoryStrategyHandler:
         with patch.object(handler, "_fetch_temporal_history", new_callable=AsyncMock) as mock_fetch:
             mock_fetch.return_value = None
 
-            with pytest.raises(AttributeError, match="'NoneType' object has no attribute 'get_node_output'"):
+            with pytest.raises(AttributeError, match="'NoneType' object has no attribute 'get_node_output_encoded'"):
                 await handler.execute(node_ids=["activity#1"])
 
             mock_fetch.assert_called_once_with(["activity#1"])
@@ -202,7 +199,7 @@ class TestTemporalHistoryStrategyHandler:
         )
 
         mock_history = Mock(spec=WorkflowHistory)
-        mock_history.get_node_output.side_effect = lambda node_id: {"output": f"output-{node_id}"}
+        mock_history.get_node_output_encoded.side_effect = lambda node_id: {"output": f"output-{node_id}"}
 
         # Set the cached history
         handler.workflow_histories_map["main_workflow"] = mock_history
@@ -215,7 +212,7 @@ class TestTemporalHistoryStrategyHandler:
             "activity#1": {"output": "output-activity#1"},
             "activity#2": {"output": "output-activity#2"},
         }
-        assert mock_history.get_node_output.call_count == 2
+        assert mock_history.get_node_output_encoded.call_count == 2
 
     @pytest.mark.asyncio
     async def test_extract_node_output_with_child_workflow(self):
@@ -252,7 +249,7 @@ class TestTemporalHistoryStrategyHandler:
         )
 
         mock_history = Mock(spec=WorkflowHistory)
-        mock_history.get_node_output.side_effect = Exception("Extract error")
+        mock_history.get_node_output_encoded.side_effect = Exception("Extract error")
 
         # Set the cached history
         handler.workflow_histories_map["main_workflow"] = mock_history
@@ -270,7 +267,7 @@ class TestTemporalHistoryStrategyHandler:
         )
 
         mock_history = Mock(spec=WorkflowHistory)
-        mock_history.get_node_output.side_effect = lambda node_id: {"output": f"output-{node_id}"}
+        mock_history.get_node_output_encoded.side_effect = lambda node_id: {"output": f"output-{node_id}"}
 
         result = handler._extract_main_workflow_node_outputs(
             temporal_history=mock_history,
@@ -295,16 +292,9 @@ class TestTemporalHistoryStrategyHandler:
         mock_child_history.workflow_id = "child-workflow-id"
         mock_child_history.run_id = "child-run-id"
 
-        # Mock child history node data
-        mock_node_data = {
-            "Child#1.activity#1": NodePayloadData(
-                node_id="Child#1.activity#1",
-                input_payload=None,
-                output_payload={"result": "child-result"},
-                node_events=[],
-            )
-        }
-        mock_child_history.get_nodes_data.return_value = mock_node_data
+        # Mock child history node data (encoded format)
+        mock_node_data = {"Child#1.activity#1": {"output_payload": {"result": "child-result"}}}
+        mock_child_history.get_nodes_data_encoded.return_value = mock_node_data
 
         # Mock _fetch_nested_child_workflow_history
         with patch.object(handler, "_fetch_nested_child_workflow_history", new_callable=AsyncMock) as mock_fetch:
@@ -353,7 +343,7 @@ class TestTemporalHistoryStrategyHandler:
         mock_child_history.run_id = "child-run-id"
 
         # Mock child history with empty node data
-        mock_child_history.get_nodes_data.return_value = {}
+        mock_child_history.get_nodes_data_encoded.return_value = {}
 
         # Mock _fetch_nested_child_workflow_history
         with patch.object(handler, "_fetch_nested_child_workflow_history", new_callable=AsyncMock) as mock_fetch:

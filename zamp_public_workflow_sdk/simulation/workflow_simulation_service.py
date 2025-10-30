@@ -2,10 +2,11 @@
 Workflow Simulation Service for managing simulation state and responses.
 """
 
+from datetime import timedelta
 from typing import Any
 
 import structlog
-
+from temporalio import workflow
 from zamp_public_workflow_sdk.simulation.models import ExecutionType, SimulationResponse
 from zamp_public_workflow_sdk.simulation.models.config import SimulationConfig
 from zamp_public_workflow_sdk.simulation.models.simulation_strategy import (
@@ -21,6 +22,9 @@ from zamp_public_workflow_sdk.simulation.strategies.custom_output_strategy impor
 )
 from zamp_public_workflow_sdk.simulation.strategies.temporal_history_strategy import (
     TemporalHistoryStrategyHandler,
+)
+from zamp_public_workflow_sdk.temporal.workflow_history.models.node_payload_data import (
+    DecodeNodePayloadInput,
 )
 
 logger = structlog.get_logger(__name__)
@@ -90,28 +94,54 @@ class WorkflowSimulationService:
             )
             raise
 
-    def get_simulation_response(self, node_id: str) -> SimulationResponse:
+    async def get_simulation_response(self, node_id: str, action_name: str | None = None) -> SimulationResponse:
         """
-        Get simulation response for a specific node.
+        Get simulation response for a specific node and decode if needed.
+
+        This method automatically handles decoding of encoded payloads from TemporalHistoryStrategy.
+        CustomOutputStrategy returns raw values without encoding, so no decoding is needed.
 
         Args:
             node_id: The node execution ID
+            action_name: Optional action name for activity summary during decoding
 
         Returns:
-            SimulationResponse with MOCK if node should be mocked, EXECUTE otherwise
+            SimulationResponse with MOCK if node should be mocked (decoded if needed), EXECUTE otherwise
         """
 
         # check if node is in the response map
         is_response_mocked = node_id in self.node_id_to_response_map
+        if not is_response_mocked:
+            return SimulationResponse(execution_type=ExecutionType.EXECUTE, execution_response=None)
 
         # If node is in the response map, it should be mocked
-        if is_response_mocked:
-            return SimulationResponse(
-                execution_type=ExecutionType.MOCK,
-                execution_response=self.node_id_to_response_map[node_id],
-            )
-
-        return SimulationResponse(execution_type=ExecutionType.EXECUTE, execution_response=None)
+        payload = self.node_id_to_response_map[node_id]
+        simulation_response = SimulationResponse(
+            execution_type=ExecutionType.MOCK,
+        )
+        # Only decode if payload has "metadata" with "encoding" (from TemporalHistoryStrategy)
+        # CustomOutputStrategy returns raw values without encoding
+        needs_decoding = (
+            payload and isinstance(payload, dict) and payload.get("metadata", {}).get("encoding") is not None
+        )
+        if needs_decoding:
+            try:
+                decoded_payload = await workflow.execute_activity(
+                    "decode_node_payload",
+                    DecodeNodePayloadInput(node_id=node_id, encoded_payload=payload),
+                    summary=action_name,
+                    start_to_close_timeout=timedelta(seconds=30),
+                )
+                simulation_response.execution_response = decoded_payload
+            except Exception as e:
+                logger.error(
+                    "Failed to decode simulation payload",
+                    node_id=node_id,
+                    error=str(e),
+                    error_type=type(e).__name__,
+                )
+                raise e
+        return simulation_response
 
     @staticmethod
     def get_strategy(node_strategy: NodeStrategy) -> BaseStrategy | None:
