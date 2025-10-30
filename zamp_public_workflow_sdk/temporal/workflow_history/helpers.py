@@ -447,10 +447,10 @@ def extract_node_payloads(events: list[dict], node_ids: list[str] | None = None)
     return node_payloads
 
 
-def get_input_encoded_from_node_id(events: list[dict], node_id: str) -> dict | None:
+def get_encoded_input_from_node_id(events: list[dict], node_id: str) -> dict | None:
     """Get encoded input payload for a specific node ID. Returns the encoded input payload."""
     logger.info("Getting encoded input payload for node", node_id=node_id)
-    node_data = extract_node_payloads_encoded(events, [node_id])
+    node_data = extract_encoded_node_payloads(events, [node_id])
     if node_id in node_data and "input_payload" in node_data[node_id]:
         return node_data[node_id]["input_payload"]
     return None
@@ -459,13 +459,13 @@ def get_input_encoded_from_node_id(events: list[dict], node_id: str) -> dict | N
 def get_output_encoded_from_node_id(events: list[dict], node_id: str) -> dict | None:
     """Get encoded output payload for a specific node ID. Returns the encoded output payload."""
     logger.info("Getting encoded output payload for node", node_id=node_id)
-    node_data = extract_node_payloads_encoded(events, [node_id])
+    node_data = extract_encoded_node_payloads(events, [node_id])
     if node_id in node_data and "output_payload" in node_data[node_id]:
         return node_data[node_id]["output_payload"]
     return None
 
 
-def extract_node_payloads_encoded(events: list[dict], node_ids: list[str] | None = None) -> dict[str, dict]:
+def extract_encoded_node_payloads(events: list[dict], node_ids: list[str] | None = None) -> dict[str, dict]:
     """Extract all encoded node data from workflow events."""
     logger.info("Extracting encoded node payloads", event_count=len(events), target_node_ids=node_ids)
 

@@ -67,7 +67,6 @@ with workflow.unsafe.imports_passed_through():
         get_variable_from_context,
     )
     from .utils.datetime_utils import convert_iso_to_timedelta
-    from zamp_public_workflow_sdk.temporal.workflow_history.models.node_payload_data import DecodeNodePayloadInput
 
     logger = structlog.get_logger(__name__)
 
@@ -197,34 +196,8 @@ class ActionsHub:
         if not simulation:
             return SimulationResponse(execution_type=ExecutionType.EXECUTE, execution_response=None)
 
-        simulation_response = simulation.get_simulation_response(node_id)
+        simulation_response = await simulation.get_simulation_response(node_id, action_name=action_name)
         if simulation_response.execution_type == ExecutionType.MOCK:
-            encoded_payload = simulation_response.execution_response
-            # Only decode if payload has "metadata" with "encoding" (from TemporalHistoryStrategy)
-            # CustomOutputStrategy returns raw values without encoding
-            needs_decoding = (
-                encoded_payload
-                and isinstance(encoded_payload, dict)
-                and encoded_payload.get("metadata", {}).get("encoding") is not None
-            )
-            if needs_decoding:
-                try:
-                    decoded_result = await workflow.execute_activity(
-                        "decode_node_payload",
-                        DecodeNodePayloadInput(node_id=node_id, encoded_payload=encoded_payload),
-                        summary=action_name,
-                        start_to_close_timeout=timedelta(seconds=30),
-                    )
-                    simulation_response.execution_response = decoded_result
-                except Exception as e:
-                    logger.error(
-                        "Failed to decode simulation payload",
-                        node_id=node_id,
-                        error=str(e),
-                        error_type=type(e).__name__,
-                    )
-                    raise e
-
             if return_type is None and action:
                 return_type = cls._get_action_return_type(action)
 

@@ -89,59 +89,64 @@ class TestWorkflowSimulationService:
         assert service.simulation_config == sim_config
         assert len(service.node_id_to_response_map) == 0  # Empty until initialized
 
-    def test_get_simulation_response_simulation_disabled(self):
+    @pytest.mark.asyncio
+    async def test_get_simulation_response_simulation_disabled(self):
         """Test getting simulation response when simulation is disabled."""
         service = WorkflowSimulationService(None)
 
-        response = service.get_simulation_response("node1")
+        response = await service.get_simulation_response("node1")
 
         assert isinstance(response, SimulationResponse)
         assert response.execution_type == ExecutionType.EXECUTE
         assert response.execution_response is None
 
-    def test_get_simulation_response_node_found(self):
+    @pytest.mark.asyncio
+    async def test_get_simulation_response_node_found(self):
         """Test getting simulation response when node is found."""
         service = WorkflowSimulationService(None)
         service.node_id_to_response_map = {"node1#1": "test_output"}
 
-        response = service.get_simulation_response("node1#1")
+        response = await service.get_simulation_response("node1#1")
 
         assert isinstance(response, SimulationResponse)
         assert response.execution_type == ExecutionType.MOCK
         assert response.execution_response == "test_output"
 
-    def test_get_simulation_response_node_not_found(self):
+    @pytest.mark.asyncio
+    async def test_get_simulation_response_node_not_found(self):
         """Test getting simulation response when node is not found."""
         service = WorkflowSimulationService(None)
         service.node_id_to_response_map = {"node1#1": "test_output"}
 
-        response = service.get_simulation_response("nonexistent_node")
+        response = await service.get_simulation_response("nonexistent_node")
 
         assert isinstance(response, SimulationResponse)
         assert response.execution_type == ExecutionType.EXECUTE
         assert response.execution_response is None
 
-    def test_get_simulation_response_with_dict_output(self):
+    @pytest.mark.asyncio
+    async def test_get_simulation_response_with_dict_output(self):
         """Test getting simulation response with dictionary output."""
         dict_output = {"key": "value", "number": 123, "list": [1, 2, 3]}
 
         service = WorkflowSimulationService(None)
         service.node_id_to_response_map = {"node1#1": dict_output}
 
-        response = service.get_simulation_response("node1#1")
+        response = await service.get_simulation_response("node1#1")
 
         assert isinstance(response, SimulationResponse)
         assert response.execution_type == ExecutionType.MOCK
         assert response.execution_response == dict_output
 
-    def test_get_simulation_response_with_list_output(self):
+    @pytest.mark.asyncio
+    async def test_get_simulation_response_with_list_output(self):
         """Test getting simulation response with list output."""
         list_output = [1, 2, 3, "test", {"nested": "value"}]
 
         service = WorkflowSimulationService(None)
         service.node_id_to_response_map = {"node1#1": list_output}
 
-        response = service.get_simulation_response("node1#1")
+        response = await service.get_simulation_response("node1#1")
 
         assert isinstance(response, SimulationResponse)
         assert response.execution_type == ExecutionType.MOCK

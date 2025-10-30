@@ -70,8 +70,8 @@ class TestActionsHubSimulationIntegration:
         workflow_id = "parent-workflow-id"
 
         mock_simulation = Mock()
-        mock_simulation.get_simulation_response.return_value = SimulationResponse(
-            execution_type=ExecutionType.MOCK, execution_response="simulated_result"
+        mock_simulation.get_simulation_response = AsyncMock(
+            return_value=SimulationResponse(execution_type=ExecutionType.MOCK, execution_response="simulated_result")
         )
         ActionsHub._workflow_id_to_simulation_map[workflow_id] = mock_simulation
 
@@ -104,8 +104,8 @@ class TestActionsHubSimulationIntegration:
         workflow_id = "default"
 
         mock_simulation = Mock()
-        mock_simulation.get_simulation_response.return_value = SimulationResponse(
-            execution_type=ExecutionType.EXECUTE, execution_response=None
+        mock_simulation.get_simulation_response = AsyncMock(
+            return_value=SimulationResponse(execution_type=ExecutionType.EXECUTE, execution_response=None)
         )
         ActionsHub._workflow_id_to_simulation_map[workflow_id] = mock_simulation
 
@@ -224,8 +224,8 @@ class TestActionsHubSimulationIntegration:
         workflow_id = "parent-workflow-id"
 
         mock_simulation = Mock()
-        mock_simulation.get_simulation_response.return_value = SimulationResponse(
-            execution_type=ExecutionType.MOCK, execution_response="simulated_result"
+        mock_simulation.get_simulation_response = AsyncMock(
+            return_value=SimulationResponse(execution_type=ExecutionType.MOCK, execution_response="simulated_result")
         )
         ActionsHub._workflow_id_to_simulation_map[workflow_id] = mock_simulation
 

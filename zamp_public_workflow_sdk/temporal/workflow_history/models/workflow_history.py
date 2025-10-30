@@ -1,14 +1,14 @@
 from pydantic import BaseModel, Field
 
 from zamp_public_workflow_sdk.temporal.workflow_history.helpers import (
+    extract_encoded_node_payloads,
+    get_encoded_input_from_node_id,
     get_input_from_node_id,
     get_node_data_from_node_id,
     extract_node_payloads,
     get_child_workflow_workflow_id_run_id,
     get_output_from_node_id,
-    get_input_encoded_from_node_id,
     get_output_encoded_from_node_id,
-    extract_node_payloads_encoded,
 )
 from zamp_public_workflow_sdk.temporal.workflow_history.models.node_payload_data import NodePayloadData
 
@@ -91,7 +91,7 @@ class WorkflowHistory(BaseModel):
         Returns:
             Encoded input payload object (first if multiple exist, with metadata and data) if found, None otherwise
         """
-        return get_input_encoded_from_node_id(self.events, node_id)
+        return get_encoded_input_from_node_id(self.events, node_id)
 
     def get_node_output_encoded(self, node_id: str) -> dict | None:
         """
@@ -115,4 +115,4 @@ class WorkflowHistory(BaseModel):
         Returns:
             Dictionary mapping node_id to encoded payload data (input/output)
         """
-        return extract_node_payloads_encoded(self.events, target_node_ids)
+        return extract_encoded_node_payloads(self.events, target_node_ids)
