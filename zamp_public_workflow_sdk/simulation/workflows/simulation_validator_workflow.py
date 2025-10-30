@@ -2,6 +2,7 @@ from temporalio import workflow
 
 with workflow.unsafe.imports_passed_through():
     import structlog
+    import json
     from collections import defaultdict
     from deepdiff import DeepDiff
 
@@ -16,7 +17,6 @@ with workflow.unsafe.imports_passed_through():
         SimulationValidatorOutput,
         NodeComparison,
     )
-    import json
 
 logger = structlog.get_logger(__name__)
 
