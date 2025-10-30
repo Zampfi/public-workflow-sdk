@@ -456,7 +456,7 @@ def get_encoded_input_from_node_id(events: list[dict], node_id: str) -> dict | N
     return None
 
 
-def get_output_encoded_from_node_id(events: list[dict], node_id: str) -> dict | None:
+def get_encoded_output_from_node_id(events: list[dict], node_id: str) -> dict | None:
     """Get encoded output payload for a specific node ID. Returns the encoded output payload."""
     logger.info("Getting encoded output payload for node", node_id=node_id)
     node_data = extract_encoded_node_payloads(events, [node_id])

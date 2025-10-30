@@ -8,7 +8,7 @@ from zamp_public_workflow_sdk.temporal.workflow_history.helpers import (
     extract_node_payloads,
     get_child_workflow_workflow_id_run_id,
     get_output_from_node_id,
-    get_output_encoded_from_node_id,
+    get_encoded_output_from_node_id,
 )
 from zamp_public_workflow_sdk.temporal.workflow_history.models.node_payload_data import NodePayloadData
 
@@ -103,7 +103,7 @@ class WorkflowHistory(BaseModel):
         Returns:
             Encoded output payload object (first if multiple exist, with metadata and data) if found, None otherwise
         """
-        return get_output_encoded_from_node_id(self.events, node_id)
+        return get_encoded_output_from_node_id(self.events, node_id)
 
     def get_nodes_data_encoded(self, target_node_ids: list[str] | None = None) -> dict[str, dict]:
         """
