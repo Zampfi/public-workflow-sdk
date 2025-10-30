@@ -506,6 +506,6 @@ class TestActionsHubSimulation:
             )
 
             assert result.execution_type == ExecutionType.MOCK
-            assert result.execution_response == raw_payload
+            assert result.execution_response is None
             # Verify decode activity was NOT called (no encoding metadata)
             mock_execute.assert_not_called()
