@@ -116,7 +116,6 @@ class WorkflowSimulationService:
             encoded_payload = self.node_id_to_response_map[node_id]
             simulation_response = SimulationResponse(
                 execution_type=ExecutionType.MOCK,
-                execution_response=encoded_payload,
             )
             # Only decode if payload has "metadata" with "encoding" (from TemporalHistoryStrategy)
             # CustomOutputStrategy returns raw values without encoding
@@ -127,13 +126,13 @@ class WorkflowSimulationService:
             )
             if needs_decoding:
                 try:
-                    decoded_result = await workflow.execute_activity(
+                    decoded_payload = await workflow.execute_activity(
                         "decode_node_payload",
                         DecodeNodePayloadInput(node_id=node_id, encoded_payload=encoded_payload),
                         summary=action_name,
                         start_to_close_timeout=timedelta(seconds=30),
                     )
-                    simulation_response.execution_response = decoded_result
+                    simulation_response.execution_response = decoded_payload
                 except Exception as e:
                     logger.error(
                         "Failed to decode simulation payload",
