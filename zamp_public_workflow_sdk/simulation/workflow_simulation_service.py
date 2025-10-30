@@ -6,7 +6,7 @@ from datetime import timedelta
 from typing import Any
 
 import structlog
-
+from temporalio import workflow
 from zamp_public_workflow_sdk.simulation.models import ExecutionType, SimulationResponse
 from zamp_public_workflow_sdk.simulation.models.config import SimulationConfig
 from zamp_public_workflow_sdk.simulation.models.simulation_strategy import (
@@ -111,7 +111,6 @@ class WorkflowSimulationService:
 
         # check if node is in the response map
         is_response_mocked = node_id in self.node_id_to_response_map
-
         # If node is in the response map, it should be mocked
         if is_response_mocked:
             encoded_payload = self.node_id_to_response_map[node_id]
@@ -128,13 +127,10 @@ class WorkflowSimulationService:
             )
             if needs_decoding:
                 try:
-                    # Import workflow lazily since it's only available in workflow context
-                    from temporalio import workflow
-
                     decoded_result = await workflow.execute_activity(
                         "decode_node_payload",
                         DecodeNodePayloadInput(node_id=node_id, encoded_payload=encoded_payload),
-                        summary=action_name or "decode_simulation_payload",
+                        summary=action_name,
                         start_to_close_timeout=timedelta(seconds=30),
                     )
                     simulation_response.execution_response = decoded_result
