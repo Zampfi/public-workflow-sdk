@@ -5,19 +5,18 @@ This module contains activities that are used to support simulation functionalit
 such as making mocked operations visible in the Temporal UI.
 """
 
-from typing import Any
 import structlog
 from zamp_public_workflow_sdk.actions_hub.action_hub_core import ActionsHub
 from zamp_public_workflow_sdk.actions_hub.constants import ExecutionMode
 from zamp_public_workflow_sdk.simulation.constants import PayloadKey
-from zamp_public_workflow_sdk.simulation.models.mocked_result import MockedResultInput
+from zamp_public_workflow_sdk.simulation.models.mocked_result import MockedResultInput, MockedResultOutput
 from zamp_public_workflow_sdk.temporal.workflow_history.models.node_payload_data import DecodeNodePayloadInput
 
 logger = structlog.get_logger(__name__)
 
 
 @ActionsHub.register_activity("Return mocked result with decoded payloads for simulation")
-async def return_mocked_result(input_data: MockedResultInput) -> Any:
+async def return_mocked_result(input_data: MockedResultInput) -> MockedResultOutput:
     """
     Activity to return mocked results with payload decoding.
     This makes mocked operations visible in Temporal UI.
@@ -25,13 +24,13 @@ async def return_mocked_result(input_data: MockedResultInput) -> Any:
     This activity:
     1. Checks if payloads need decoding (have "metadata" with "encoding")
     2. Decodes both input and output payloads using decode_node_payload activity in API mode
-    3. Returns the decoded output payload
+    3. Returns the decoded output payload wrapped in MockedResultOutput
 
     Args:
         input_data: The input data containing node_id, encoded_payload dict, and optional action_name
 
     Returns:
-        The decoded output payload value, or raw output if no decoding needed
+        MockedResultOutput containing the decoded output payload value, or raw output if no decoding needed
 
     Raises:
         Exception: If decoding fails
@@ -54,7 +53,7 @@ async def return_mocked_result(input_data: MockedResultInput) -> Any:
 
     if not input_needs_decoding and not output_needs_decoding:
         logger.info("No decoding needed, returning raw output", node_id=input_data.node_id)
-        return output_payload
+        return MockedResultOutput(output=output_payload)
 
     try:
         decoded_payload = await ActionsHub.execute_activity(
@@ -67,7 +66,7 @@ async def return_mocked_result(input_data: MockedResultInput) -> Any:
         )
 
         logger.info("Successfully decoded mocked result", node_id=input_data.node_id)
-        return decoded_payload
+        return MockedResultOutput(output=decoded_payload)
 
     except Exception as e:
         logger.error(

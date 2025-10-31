@@ -18,6 +18,7 @@ from zamp_public_workflow_sdk.simulation.models import (
     StrategyType,
     TemporalHistoryConfig,
 )
+from zamp_public_workflow_sdk.simulation.models.mocked_result import MockedResultOutput
 from zamp_public_workflow_sdk.simulation.workflow_simulation_service import (
     WorkflowSimulationService,
 )
@@ -110,7 +111,7 @@ class TestWorkflowSimulationService:
         }
 
         with patch("temporalio.workflow.execute_activity", new_callable=AsyncMock) as mock_execute:
-            mock_execute.return_value = "test_output"
+            mock_execute.return_value = MockedResultOutput(output="test_output")
             response = await service.get_simulation_response("node1#1")
 
             assert isinstance(response, SimulationResponse)
@@ -140,7 +141,7 @@ class TestWorkflowSimulationService:
         }
 
         with patch("temporalio.workflow.execute_activity", new_callable=AsyncMock) as mock_execute:
-            mock_execute.return_value = dict_output
+            mock_execute.return_value = MockedResultOutput(output=dict_output)
             response = await service.get_simulation_response("node1#1")
 
             assert isinstance(response, SimulationResponse)
@@ -158,7 +159,7 @@ class TestWorkflowSimulationService:
         }
 
         with patch("temporalio.workflow.execute_activity", new_callable=AsyncMock) as mock_execute:
-            mock_execute.return_value = list_output
+            mock_execute.return_value = MockedResultOutput(output=list_output)
             response = await service.get_simulation_response("node1#1")
 
             assert isinstance(response, SimulationResponse)

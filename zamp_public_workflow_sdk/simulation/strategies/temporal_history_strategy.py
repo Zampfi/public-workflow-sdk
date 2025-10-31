@@ -164,14 +164,14 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
         for parent_workflow_id, workflow_nodes in node_groups.items():
             if parent_workflow_id == MAIN_WORKFLOW_IDENTIFIER:
                 # Main workflow nodes - extract directly from current history
-                main_workflow_outputs = self._extract_main_workflow_node_payload(
+                main_workflow_outputs = self._extract_main_workflow_node_payloads(
                     temporal_history=temporal_history, node_ids=workflow_nodes
                 )
                 logger.info("main workflow outputs", length_of_outputs=len(main_workflow_outputs))
                 all_node_outputs.update(main_workflow_outputs)
             else:
                 # Child workflow nodes - need to fetch child workflow history
-                child_workflow_outputs = await self._extract_child_workflow_node_payload(
+                child_workflow_outputs = await self._extract_child_workflow_node_payloads(
                     temporal_history,
                     parent_workflow_id,
                     workflow_nodes,
@@ -182,7 +182,7 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
 
         return all_node_outputs
 
-    def _extract_main_workflow_node_payload(
+    def _extract_main_workflow_node_payloads(
         self, temporal_history: WorkflowHistory, node_ids: list[str]
     ) -> dict[str, dict[str, Any | None]]:
         """
@@ -205,7 +205,7 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
             }
         return node_outputs
 
-    async def _extract_child_workflow_node_payload(
+    async def _extract_child_workflow_node_payloads(
         self,
         parent_history: WorkflowHistory,
         child_workflow_id: str,

@@ -18,3 +18,12 @@ class MockedResultInput(BaseModel):
         description="Dict with PayloadKey.INPUT_PAYLOAD and PayloadKey.OUTPUT_PAYLOAD keys containing encoded payloads",
     )
     action_name: str | None = Field(default=None, description="Optional action name for activity summary")
+
+
+class MockedResultOutput(BaseModel):
+    """Output model for return_mocked_result activity.
+
+    Contains the decoded output payload value, which can be any JSON-serializable type.
+    """
+
+    output: Any = Field(..., description="The decoded output payload value, or raw output if no decoding was needed")

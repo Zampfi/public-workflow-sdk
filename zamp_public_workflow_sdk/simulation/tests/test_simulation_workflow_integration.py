@@ -347,8 +347,10 @@ class TestSimulationServiceIntegration:
             )
 
             # Test that simulation response works - mock workflow.execute_activity since get_simulation_response now calls return_mocked_result
+            from zamp_public_workflow_sdk.simulation.models.mocked_result import MockedResultOutput
+
             with patch("temporalio.workflow.execute_activity", new_callable=AsyncMock) as mock_execute:
-                mock_execute.return_value = "integration_test_output"
+                mock_execute.return_value = MockedResultOutput(output="integration_test_output")
                 response = await service.get_simulation_response("integration_node#1")
                 assert response is not None
                 assert response.execution_type.value == "MOCK"

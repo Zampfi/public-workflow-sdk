@@ -23,6 +23,7 @@ from zamp_public_workflow_sdk.simulation.strategies.custom_output_strategy impor
 from zamp_public_workflow_sdk.simulation.strategies.temporal_history_strategy import (
     TemporalHistoryStrategyHandler,
 )
+from zamp_public_workflow_sdk.simulation.models.mocked_result import MockedResultInput, MockedResultOutput
 
 logger = structlog.get_logger(__name__)
 
@@ -106,7 +107,6 @@ class WorkflowSimulationService:
         Returns:
             SimulationResponse with MOCK if node should be mocked (decoded if needed), EXECUTE otherwise
         """
-        from zamp_public_workflow_sdk.simulation.models.mocked_result import MockedResultInput
 
         # check if node is in the response map
         is_response_mocked = node_id in self.node_id_to_response_map
@@ -125,13 +125,14 @@ class WorkflowSimulationService:
                     encoded_payload=node_payloads,
                     action_name=action_name,
                 ),
+                result_type=MockedResultOutput,
                 summary=action_name,
                 start_to_close_timeout=timedelta(seconds=30),
             )
 
             return SimulationResponse(
                 execution_type=ExecutionType.MOCK,
-                execution_response=decoded_result,
+                execution_response=decoded_result.output,
             )
         except Exception as e:
             logger.error(

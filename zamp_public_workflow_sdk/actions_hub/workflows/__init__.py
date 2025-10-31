@@ -1,3 +1,0 @@
-"""
-Workflows package for ActionsHub.
-"""

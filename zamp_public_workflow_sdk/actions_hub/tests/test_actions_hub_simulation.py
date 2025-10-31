@@ -15,6 +15,7 @@ from zamp_public_workflow_sdk.simulation.models import (
     SimulationConfig,
     SimulationResponse,
 )
+from zamp_public_workflow_sdk.simulation.models.mocked_result import MockedResultOutput
 from zamp_public_workflow_sdk.simulation.workflow_simulation_service import (
     WorkflowSimulationService,
 )
@@ -445,7 +446,7 @@ class TestActionsHubSimulation:
         # Since workflow is imported lazily inside get_simulation_response, patch temporalio.workflow
         with patch("temporalio.workflow.execute_activity", new_callable=AsyncMock) as mock_execute:
             decoded_data = {"result": "decoded_value"}
-            mock_execute.return_value = decoded_data
+            mock_execute.return_value = MockedResultOutput(output=decoded_data)
 
             result = await ActionsHub._get_simulation_response(
                 workflow_id="test_wf",
@@ -505,7 +506,7 @@ class TestActionsHubSimulation:
         # Mock workflow.execute_activity - return_mocked_result should be called but no decoding should happen
         # Since workflow is imported lazily inside get_simulation_response, patch temporalio.workflow
         with patch("temporalio.workflow.execute_activity", new_callable=AsyncMock) as mock_execute:
-            mock_execute.return_value = raw_payload
+            mock_execute.return_value = MockedResultOutput(output=raw_payload)
             result = await ActionsHub._get_simulation_response(
                 workflow_id="test_wf",
                 node_id="node_1",
