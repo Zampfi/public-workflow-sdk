@@ -10,7 +10,10 @@ from zamp_public_workflow_sdk.actions_hub.action_hub_core import ActionsHub
 from zamp_public_workflow_sdk.actions_hub.constants import ExecutionMode
 from zamp_public_workflow_sdk.simulation.constants import PayloadKey
 from zamp_public_workflow_sdk.simulation.models.mocked_result import MockedResultInput, MockedResultOutput
-from zamp_public_workflow_sdk.temporal.workflow_history.models.node_payload_data import DecodeNodePayloadInput, DecodeNodePayloadOutput
+from zamp_public_workflow_sdk.temporal.workflow_history.models.node_payload_data import (
+    DecodeNodePayloadInput,
+    DecodeNodePayloadOutput,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -56,7 +59,7 @@ async def return_mocked_result(input_data: MockedResultInput) -> MockedResultOut
         return MockedResultOutput(output=output_payload)
 
     try:
-        decoded_payload : DecodeNodePayloadOutput = await ActionsHub.execute_activity(
+        decoded_payload: DecodeNodePayloadOutput = await ActionsHub.execute_activity(
             "decode_node_payload",
             DecodeNodePayloadInput(
                 node_id=input_data.node_id,

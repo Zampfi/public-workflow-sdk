@@ -110,7 +110,9 @@ class TestWorkflowSimulationService:
             "node1#1": {PayloadKey.INPUT_PAYLOAD: None, PayloadKey.OUTPUT_PAYLOAD: "test_output"}
         }
 
-        with patch("temporalio.workflow.execute_activity", new_callable=AsyncMock) as mock_execute:
+        with patch(
+            "zamp_public_workflow_sdk.actions_hub.action_hub_core.ActionsHub.execute_activity", new_callable=AsyncMock
+        ) as mock_execute:
             mock_execute.return_value = MockedResultOutput(output="test_output")
             response = await service.get_simulation_response("node1#1")
 
@@ -140,7 +142,9 @@ class TestWorkflowSimulationService:
             "node1#1": {PayloadKey.INPUT_PAYLOAD: None, PayloadKey.OUTPUT_PAYLOAD: dict_output}
         }
 
-        with patch("temporalio.workflow.execute_activity", new_callable=AsyncMock) as mock_execute:
+        with patch(
+            "zamp_public_workflow_sdk.actions_hub.action_hub_core.ActionsHub.execute_activity", new_callable=AsyncMock
+        ) as mock_execute:
             mock_execute.return_value = MockedResultOutput(output=dict_output)
             response = await service.get_simulation_response("node1#1")
 
@@ -158,7 +162,9 @@ class TestWorkflowSimulationService:
             "node1#1": {PayloadKey.INPUT_PAYLOAD: None, PayloadKey.OUTPUT_PAYLOAD: list_output}
         }
 
-        with patch("temporalio.workflow.execute_activity", new_callable=AsyncMock) as mock_execute:
+        with patch(
+            "zamp_public_workflow_sdk.actions_hub.action_hub_core.ActionsHub.execute_activity", new_callable=AsyncMock
+        ) as mock_execute:
             mock_execute.return_value = MockedResultOutput(output=list_output)
             response = await service.get_simulation_response("node1#1")
 

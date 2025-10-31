@@ -10,6 +10,7 @@ from zamp_public_workflow_sdk.actions_hub.constants import ExecutionMode
 from zamp_public_workflow_sdk.simulation.constants import PayloadKey
 from zamp_public_workflow_sdk.simulation.models.mocked_result import MockedResultInput, MockedResultOutput
 from zamp_public_workflow_sdk.simulation.activities import return_mocked_result
+from zamp_public_workflow_sdk.temporal.workflow_history.models.node_payload_data import DecodeNodePayloadOutput
 
 
 class TestReturnMockedResult:
@@ -100,13 +101,13 @@ class TestReturnMockedResult:
             action_name="test_action",
         )
 
-        decoded_result = {"result": "decoded_value"}
+        decoded_result = "decoded_value"
 
         with patch(
             "zamp_public_workflow_sdk.simulation.activities.ActionsHub.execute_activity",
             new_callable=AsyncMock,
         ) as mock_execute:
-            mock_execute.return_value = decoded_result
+            mock_execute.return_value = DecodeNodePayloadOutput(result=decoded_result)
 
             result = await return_mocked_result(input_data)
 
@@ -135,13 +136,13 @@ class TestReturnMockedResult:
             action_name="test_action",
         )
 
-        decoded_result = {"result": "decoded_value"}
+        decoded_result = "decoded_value"
 
         with patch(
             "zamp_public_workflow_sdk.simulation.activities.ActionsHub.execute_activity",
             new_callable=AsyncMock,
         ) as mock_execute:
-            mock_execute.return_value = decoded_result
+            mock_execute.return_value = DecodeNodePayloadOutput(result=decoded_result)
 
             result = await return_mocked_result(input_data)
 
@@ -171,13 +172,13 @@ class TestReturnMockedResult:
             action_name="test_action",
         )
 
-        decoded_result = {"result": "decoded_value"}
+        decoded_result = "decoded_value"
 
         with patch(
             "zamp_public_workflow_sdk.simulation.activities.ActionsHub.execute_activity",
             new_callable=AsyncMock,
         ) as mock_execute:
-            mock_execute.return_value = decoded_result
+            mock_execute.return_value = DecodeNodePayloadOutput(result=decoded_result)
 
             result = await return_mocked_result(input_data)
 
