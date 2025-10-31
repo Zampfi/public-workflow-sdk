@@ -107,7 +107,7 @@ class WorkflowSimulationService:
         Returns:
             SimulationResponse with MOCK if node should be mocked (decoded if needed), EXECUTE otherwise
         """
-
+        from zamp_public_workflow_sdk.actions_hub import ActionsHub
         # check if node is in the response map
         is_response_mocked = node_id in self.node_id_to_response_map
         if not is_response_mocked:
@@ -118,14 +118,14 @@ class WorkflowSimulationService:
         node_payloads = self.node_id_to_response_map[node_id]
 
         try:
-            decoded_result = await workflow.execute_activity(
+            decoded_result = await ActionsHub.execute_activity(
                 "return_mocked_result",
                 MockedResultInput(
                     node_id=node_id,
                     encoded_payload=node_payloads,
                     action_name=action_name,
                 ),
-                result_type=MockedResultOutput,
+                return_type=MockedResultOutput,
                 summary=action_name,
                 start_to_close_timeout=timedelta(seconds=30),
             )
