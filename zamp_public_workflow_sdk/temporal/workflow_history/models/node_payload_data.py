@@ -33,3 +33,9 @@ class DecodeNodePayloadInput(BaseModel):
         ...,
         description="Dict with PayloadKey.INPUT_PAYLOAD and PayloadKey.OUTPUT_PAYLOAD keys containing encoded payloads",
     )
+
+
+class DecodeNodePayloadOutput(BaseModel):
+    """Output model for decode_node_payload activity."""
+
+    result: Any = Field(..., description="The decoded payload result")
