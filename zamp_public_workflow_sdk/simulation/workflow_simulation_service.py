@@ -118,7 +118,7 @@ class WorkflowSimulationService:
         node_payloads = self.node_id_to_response_map[node_id]
 
         try:
-            decoded_result = await ActionsHub.execute_activity(
+            decoded_result : MockedResultOutput = await ActionsHub.execute_activity(
                 "return_mocked_result",
                 MockedResultInput(
                     node_id=node_id,
@@ -127,7 +127,6 @@ class WorkflowSimulationService:
                 ),
                 return_type=MockedResultOutput,
                 summary=action_name,
-                start_to_close_timeout=timedelta(seconds=30),
             )
 
             return SimulationResponse(

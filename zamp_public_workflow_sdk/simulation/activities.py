@@ -56,7 +56,7 @@ async def return_mocked_result(input_data: MockedResultInput) -> MockedResultOut
         return MockedResultOutput(output=output_payload)
 
     try:
-        decoded_payload = await ActionsHub.execute_activity(
+        decoded_payload : DecodeNodePayloadOutput = await ActionsHub.execute_activity(
             "decode_node_payload",
             DecodeNodePayloadInput(
                 node_id=input_data.node_id,
@@ -67,7 +67,7 @@ async def return_mocked_result(input_data: MockedResultInput) -> MockedResultOut
         )
 
         logger.info("Successfully decoded mocked result", node_id=input_data.node_id)
-        return MockedResultOutput(output=decoded_payload)
+        return MockedResultOutput(output=decoded_payload.result)
 
     except Exception as e:
         logger.error(
