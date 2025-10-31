@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
+from zamp_public_workflow_sdk.simulation.constants import PayloadKey
 from zamp_public_workflow_sdk.simulation.models import (
     CustomOutputConfig,
     ExecutionType,
@@ -89,63 +90,80 @@ class TestWorkflowSimulationService:
         assert service.simulation_config == sim_config
         assert len(service.node_id_to_response_map) == 0  # Empty until initialized
 
-    def test_get_simulation_response_simulation_disabled(self):
+    @pytest.mark.asyncio
+    async def test_get_simulation_response_simulation_disabled(self):
         """Test getting simulation response when simulation is disabled."""
         service = WorkflowSimulationService(None)
 
-        response = service.get_simulation_response("node1")
+        response = await service.get_simulation_response("node1")
 
         assert isinstance(response, SimulationResponse)
         assert response.execution_type == ExecutionType.EXECUTE
         assert response.execution_response is None
 
-    def test_get_simulation_response_node_found(self):
+    @pytest.mark.asyncio
+    async def test_get_simulation_response_node_found(self):
         """Test getting simulation response when node is found."""
         service = WorkflowSimulationService(None)
-        service.node_id_to_response_map = {"node1#1": "test_output"}
+        service.node_id_to_response_map = {
+            "node1#1": {PayloadKey.INPUT_PAYLOAD: None, PayloadKey.OUTPUT_PAYLOAD: "test_output"}
+        }
 
-        response = service.get_simulation_response("node1#1")
+        with patch("temporalio.workflow.execute_activity", new_callable=AsyncMock) as mock_execute:
+            mock_execute.return_value = "test_output"
+            response = await service.get_simulation_response("node1#1")
 
-        assert isinstance(response, SimulationResponse)
-        assert response.execution_type == ExecutionType.MOCK
-        assert response.execution_response == "test_output"
+            assert isinstance(response, SimulationResponse)
+            assert response.execution_type == ExecutionType.MOCK
+            assert response.execution_response == "test_output"
 
-    def test_get_simulation_response_node_not_found(self):
+    @pytest.mark.asyncio
+    async def test_get_simulation_response_node_not_found(self):
         """Test getting simulation response when node is not found."""
         service = WorkflowSimulationService(None)
         service.node_id_to_response_map = {"node1#1": "test_output"}
 
-        response = service.get_simulation_response("nonexistent_node")
+        response = await service.get_simulation_response("nonexistent_node")
 
         assert isinstance(response, SimulationResponse)
         assert response.execution_type == ExecutionType.EXECUTE
         assert response.execution_response is None
 
-    def test_get_simulation_response_with_dict_output(self):
+    @pytest.mark.asyncio
+    async def test_get_simulation_response_with_dict_output(self):
         """Test getting simulation response with dictionary output."""
         dict_output = {"key": "value", "number": 123, "list": [1, 2, 3]}
 
         service = WorkflowSimulationService(None)
-        service.node_id_to_response_map = {"node1#1": dict_output}
+        service.node_id_to_response_map = {
+            "node1#1": {PayloadKey.INPUT_PAYLOAD: None, PayloadKey.OUTPUT_PAYLOAD: dict_output}
+        }
 
-        response = service.get_simulation_response("node1#1")
+        with patch("temporalio.workflow.execute_activity", new_callable=AsyncMock) as mock_execute:
+            mock_execute.return_value = dict_output
+            response = await service.get_simulation_response("node1#1")
 
-        assert isinstance(response, SimulationResponse)
-        assert response.execution_type == ExecutionType.MOCK
-        assert response.execution_response == dict_output
+            assert isinstance(response, SimulationResponse)
+            assert response.execution_type == ExecutionType.MOCK
+            assert response.execution_response == dict_output
 
-    def test_get_simulation_response_with_list_output(self):
+    @pytest.mark.asyncio
+    async def test_get_simulation_response_with_list_output(self):
         """Test getting simulation response with list output."""
         list_output = [1, 2, 3, "test", {"nested": "value"}]
 
         service = WorkflowSimulationService(None)
-        service.node_id_to_response_map = {"node1#1": list_output}
+        service.node_id_to_response_map = {
+            "node1#1": {PayloadKey.INPUT_PAYLOAD: None, PayloadKey.OUTPUT_PAYLOAD: list_output}
+        }
 
-        response = service.get_simulation_response("node1#1")
+        with patch("temporalio.workflow.execute_activity", new_callable=AsyncMock) as mock_execute:
+            mock_execute.return_value = list_output
+            response = await service.get_simulation_response("node1#1")
 
-        assert isinstance(response, SimulationResponse)
-        assert response.execution_type == ExecutionType.MOCK
-        assert response.execution_response == list_output
+            assert isinstance(response, SimulationResponse)
+            assert response.execution_type == ExecutionType.MOCK
+            assert response.execution_response == list_output
 
     @pytest.mark.asyncio
     async def test_initialize_simulation_data_success(self):
@@ -166,7 +184,9 @@ class TestWorkflowSimulationService:
 
         # Mock the workflow execution
         mock_workflow_result = Mock()
-        mock_workflow_result.node_id_to_response_map = {"node1#1": "test_output"}
+        mock_workflow_result.node_id_to_response_map = {
+            "node1#1": {PayloadKey.INPUT_PAYLOAD: None, PayloadKey.OUTPUT_PAYLOAD: "test_output"}
+        }
 
         with patch("zamp_public_workflow_sdk.actions_hub.ActionsHub") as mock_actions_hub:
             mock_actions_hub.execute_child_workflow = AsyncMock(return_value=mock_workflow_result)
@@ -175,7 +195,7 @@ class TestWorkflowSimulationService:
             await service._initialize_simulation_data()
 
             assert len(service.node_id_to_response_map) == 1
-            assert service.node_id_to_response_map["node1#1"] == "test_output"
+            assert service.node_id_to_response_map["node1#1"][PayloadKey.OUTPUT_PAYLOAD] == "test_output"
             mock_actions_hub.execute_child_workflow.assert_called_once()
 
     @pytest.mark.asyncio

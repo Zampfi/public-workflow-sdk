@@ -67,7 +67,6 @@ with workflow.unsafe.imports_passed_through():
         get_variable_from_context,
     )
     from .utils.datetime_utils import convert_iso_to_timedelta
-    from zamp_public_workflow_sdk.simulation.activities import return_mocked_result, MockedResultInput
 
     logger = structlog.get_logger(__name__)
 
@@ -181,7 +180,7 @@ class ActionsHub:
         return node_id
 
     @classmethod
-    def _get_simulation_response(
+    async def _get_simulation_response(
         cls,
         workflow_id: str,
         node_id: str,
@@ -197,7 +196,7 @@ class ActionsHub:
         if not simulation:
             return SimulationResponse(execution_type=ExecutionType.EXECUTE, execution_response=None)
 
-        simulation_response = simulation.get_simulation_response(node_id)
+        simulation_response = await simulation.get_simulation_response(node_id, action_name=action_name)
         if simulation_response.execution_type == ExecutionType.MOCK:
             if return_type is None and action:
                 return_type = cls._get_action_return_type(action)
@@ -502,7 +501,7 @@ class ActionsHub:
         activity_name, workflow_id, node_id = cls._generate_node_id_for_action(activity)
 
         # Check for simulation result
-        simulation_result = cls._get_simulation_response(
+        simulation_result = await cls._get_simulation_response(
             workflow_id=workflow_id,
             node_id=node_id,
             action=activity,
@@ -513,13 +512,6 @@ class ActionsHub:
                 "Activity mocked",
                 node_id=node_id,
                 activity_name=activity_name,
-            )
-            mocked_summary = activity_name
-            await workflow.execute_activity(
-                return_mocked_result,
-                MockedResultInput(node_id=node_id, output=simulation_result.execution_response),
-                start_to_close_timeout=timedelta(seconds=10),
-                summary=mocked_summary,
             )
             return simulation_result.execution_response
 
@@ -766,7 +758,7 @@ class ActionsHub:
         child_workflow_name, workflow_id, node_id = cls._generate_node_id_for_action(workflow_name)
 
         # Check for simulation result
-        simulation_result = cls._get_simulation_response(
+        simulation_result = await cls._get_simulation_response(
             workflow_id=workflow_id,
             node_id=node_id,
             action=workflow_name,
@@ -778,13 +770,6 @@ class ActionsHub:
                 "Child workflow mocked",
                 node_id=node_id,
                 workflow_name=child_workflow_name,
-            )
-            mocked_summary = child_workflow_name
-            await workflow.execute_activity(
-                return_mocked_result,
-                MockedResultInput(node_id=node_id, output=simulation_result.execution_response),
-                start_to_close_timeout=timedelta(seconds=10),
-                summary=mocked_summary,
             )
             return simulation_result.execution_response
 
@@ -829,7 +814,7 @@ class ActionsHub:
         child_workflow_name, workflow_id, node_id = cls._generate_node_id_for_action(workflow_name)
 
         # Check for simulation result
-        simulation_result = cls._get_simulation_response(
+        simulation_result = await cls._get_simulation_response(
             workflow_id=workflow_id,
             node_id=node_id,
             action=workflow_name,
@@ -840,13 +825,6 @@ class ActionsHub:
                 "Child workflow mocked",
                 workflow_name=child_workflow_name,
                 node_id=node_id,
-            )
-            mocked_summary = child_workflow_name
-            await workflow.execute_activity(
-                return_mocked_result,
-                MockedResultInput(node_id=node_id, output=simulation_result.execution_response),
-                start_to_close_timeout=timedelta(seconds=10),
-                summary=mocked_summary,
             )
             return simulation_result.execution_response
 

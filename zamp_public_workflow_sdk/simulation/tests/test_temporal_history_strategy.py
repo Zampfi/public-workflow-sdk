@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
+from zamp_public_workflow_sdk.simulation.constants import PayloadKey
 from zamp_public_workflow_sdk.simulation.models.simulation_response import (
     SimulationStrategyOutput,
 )
@@ -15,9 +16,6 @@ from zamp_public_workflow_sdk.simulation.strategies.temporal_history_strategy im
 )
 from zamp_public_workflow_sdk.temporal.workflow_history.models import (
     WorkflowHistory,
-)
-from zamp_public_workflow_sdk.temporal.workflow_history.models.node_payload_data import (
-    NodePayloadData,
 )
 
 
@@ -46,9 +44,9 @@ class TestTemporalHistoryStrategyHandler:
         mock_history = Mock(spec=WorkflowHistory)
         mock_history.get_node_output.return_value = {"result": "success"}
 
-        # Mock _fetch_temporal_history and _extract_node_output
+        # Mock _fetch_temporal_history and _extract_node_payload
         with patch.object(handler, "_fetch_temporal_history", new_callable=AsyncMock) as mock_fetch:
-            with patch.object(handler, "_extract_node_output", new_callable=AsyncMock) as mock_extract:
+            with patch.object(handler, "_extract_node_payload", new_callable=AsyncMock) as mock_extract:
                 mock_fetch.return_value = mock_history
                 mock_extract.return_value = {"activity#1": {"result": "success"}}
 
@@ -72,9 +70,9 @@ class TestTemporalHistoryStrategyHandler:
         # Mock workflow history
         mock_history = Mock(spec=WorkflowHistory)
 
-        # Mock _fetch_temporal_history and _extract_node_output
+        # Mock _fetch_temporal_history and _extract_node_payload
         with patch.object(handler, "_fetch_temporal_history", new_callable=AsyncMock) as mock_fetch:
-            with patch.object(handler, "_extract_node_output", new_callable=AsyncMock) as mock_extract:
+            with patch.object(handler, "_extract_node_payload", new_callable=AsyncMock) as mock_extract:
                 mock_fetch.return_value = mock_history
                 mock_extract.return_value = {"activity#1": {"result": "success"}}
 
@@ -97,7 +95,7 @@ class TestTemporalHistoryStrategyHandler:
         with patch.object(handler, "_fetch_temporal_history", new_callable=AsyncMock) as mock_fetch:
             mock_fetch.return_value = None
 
-            with pytest.raises(AttributeError, match="'NoneType' object has no attribute 'get_node_output'"):
+            with pytest.raises(AttributeError, match="'NoneType' object has no attribute 'get_node_"):
                 await handler.execute(node_ids=["activity#1"])
 
             mock_fetch.assert_called_once_with(["activity#1"])
@@ -112,9 +110,9 @@ class TestTemporalHistoryStrategyHandler:
 
         mock_history = Mock(spec=WorkflowHistory)
 
-        # Mock _fetch_temporal_history and _extract_node_output to raise exception
+        # Mock _fetch_temporal_history and _extract_node_payload to raise exception
         with patch.object(handler, "_fetch_temporal_history", new_callable=AsyncMock) as mock_fetch:
-            with patch.object(handler, "_extract_node_output", new_callable=AsyncMock) as mock_extract:
+            with patch.object(handler, "_extract_node_payload", new_callable=AsyncMock) as mock_extract:
                 mock_fetch.return_value = mock_history
                 mock_extract.side_effect = Exception("Test error")
 
@@ -195,47 +193,56 @@ class TestTemporalHistoryStrategyHandler:
 
     @pytest.mark.asyncio
     async def test_extract_node_output_main_workflow_only(self):
-        """Test _extract_node_output with only main workflow nodes."""
+        """Test _extract_node_payload with only main workflow nodes."""
         handler = TemporalHistoryStrategyHandler(
             reference_workflow_id="workflow-123",
             reference_workflow_run_id="run-456",
         )
 
         mock_history = Mock(spec=WorkflowHistory)
-        mock_history.get_node_output.side_effect = lambda node_id: {"output": f"output-{node_id}"}
+        mock_history.get_node_input_encoded.side_effect = lambda node_id: {"input": f"input-{node_id}"}
+        mock_history.get_node_output_encoded.side_effect = lambda node_id: {"output": f"output-{node_id}"}
 
         # Set the cached history
         handler.workflow_histories_map["main_workflow"] = mock_history
 
-        result = await handler._extract_node_output(
+        result = await handler._extract_node_payload(
             node_ids=["activity#1", "activity#2"],
         )
 
         assert result == {
-            "activity#1": {"output": "output-activity#1"},
-            "activity#2": {"output": "output-activity#2"},
+            "activity#1": {
+                PayloadKey.INPUT_PAYLOAD: {"input": "input-activity#1"},
+                PayloadKey.OUTPUT_PAYLOAD: {"output": "output-activity#1"},
+            },
+            "activity#2": {
+                PayloadKey.INPUT_PAYLOAD: {"input": "input-activity#2"},
+                PayloadKey.OUTPUT_PAYLOAD: {"output": "output-activity#2"},
+            },
         }
-        assert mock_history.get_node_output.call_count == 2
+        assert mock_history.get_node_input_encoded.call_count == 2
+        assert mock_history.get_node_output_encoded.call_count == 2
 
     @pytest.mark.asyncio
     async def test_extract_node_output_with_child_workflow(self):
-        """Test _extract_node_output with child workflow nodes."""
+        """Test _extract_node_payload with child workflow nodes."""
         handler = TemporalHistoryStrategyHandler(
             reference_workflow_id="workflow-123",
             reference_workflow_run_id="run-456",
         )
 
         mock_history = Mock(spec=WorkflowHistory)
-        mock_history.get_node_output.return_value = {"output": "main-output"}
+        mock_history.get_node_input_encoded.return_value = {"input": "main-input"}
+        mock_history.get_node_output_encoded.return_value = {"output": "main-output"}
 
         # Set the cached history
         handler.workflow_histories_map["main_workflow"] = mock_history
 
-        # Mock _extract_child_workflow_node_outputs
-        with patch.object(handler, "_extract_child_workflow_node_outputs", new_callable=AsyncMock) as mock_child:
+        # Mock _extract_child_workflow_node_payload
+        with patch.object(handler, "_extract_child_workflow_node_payload", new_callable=AsyncMock) as mock_child:
             mock_child.return_value = {"Child#1.activity#1": {"output": "child-output"}}
 
-            result = await handler._extract_node_output(
+            result = await handler._extract_node_payload(
                 node_ids=["activity#1", "Child#1.activity#1"],
             )
 
@@ -245,46 +252,53 @@ class TestTemporalHistoryStrategyHandler:
 
     @pytest.mark.asyncio
     async def test_extract_node_output_with_exception(self):
-        """Test _extract_node_output when an exception occurs."""
+        """Test _extract_node_payload when an exception occurs."""
         handler = TemporalHistoryStrategyHandler(
             reference_workflow_id="workflow-123",
             reference_workflow_run_id="run-456",
         )
 
         mock_history = Mock(spec=WorkflowHistory)
-        mock_history.get_node_output.side_effect = Exception("Extract error")
+        mock_history.get_node_input_encoded.side_effect = Exception("Extract error")
 
         # Set the cached history
         handler.workflow_histories_map["main_workflow"] = mock_history
 
         with pytest.raises(Exception, match="Extract error"):
-            await handler._extract_node_output(
+            await handler._extract_node_payload(
                 node_ids=["activity#1"],
             )
 
     def test_extract_main_workflow_node_outputs(self):
-        """Test _extract_main_workflow_node_outputs method."""
+        """Test _extract_main_workflow_node_payload method."""
         handler = TemporalHistoryStrategyHandler(
             reference_workflow_id="workflow-123",
             reference_workflow_run_id="run-456",
         )
 
         mock_history = Mock(spec=WorkflowHistory)
-        mock_history.get_node_output.side_effect = lambda node_id: {"output": f"output-{node_id}"}
+        mock_history.get_node_input_encoded.side_effect = lambda node_id: {"input": f"input-{node_id}"}
+        mock_history.get_node_output_encoded.side_effect = lambda node_id: {"output": f"output-{node_id}"}
 
-        result = handler._extract_main_workflow_node_outputs(
+        result = handler._extract_main_workflow_node_payload(
             temporal_history=mock_history,
             node_ids=["activity#1", "activity#2"],
         )
 
         assert result == {
-            "activity#1": {"output": "output-activity#1"},
-            "activity#2": {"output": "output-activity#2"},
+            "activity#1": {
+                PayloadKey.INPUT_PAYLOAD: {"input": "input-activity#1"},
+                PayloadKey.OUTPUT_PAYLOAD: {"output": "output-activity#1"},
+            },
+            "activity#2": {
+                PayloadKey.INPUT_PAYLOAD: {"input": "input-activity#2"},
+                PayloadKey.OUTPUT_PAYLOAD: {"output": "output-activity#2"},
+            },
         }
 
     @pytest.mark.asyncio
     async def test_extract_child_workflow_node_outputs_success(self):
-        """Test _extract_child_workflow_node_outputs with successful extraction."""
+        """Test _extract_child_workflow_node_payload with successful extraction."""
         handler = TemporalHistoryStrategyHandler(
             reference_workflow_id="workflow-123",
             reference_workflow_run_id="run-456",
@@ -295,32 +309,35 @@ class TestTemporalHistoryStrategyHandler:
         mock_child_history.workflow_id = "child-workflow-id"
         mock_child_history.run_id = "child-run-id"
 
-        # Mock child history node data
+        # Mock child history node data (encoded format)
         mock_node_data = {
-            "Child#1.activity#1": NodePayloadData(
-                node_id="Child#1.activity#1",
-                input_payload=None,
-                output_payload={"result": "child-result"},
-                node_events=[],
-            )
+            "Child#1.activity#1": {
+                PayloadKey.INPUT_PAYLOAD: {"input": "child-input"},
+                PayloadKey.OUTPUT_PAYLOAD: {"result": "child-result"},
+            }
         }
-        mock_child_history.get_nodes_data.return_value = mock_node_data
+        mock_child_history.get_nodes_data_encoded.return_value = mock_node_data
 
         # Mock _fetch_nested_child_workflow_history
         with patch.object(handler, "_fetch_nested_child_workflow_history", new_callable=AsyncMock) as mock_fetch:
             mock_fetch.return_value = mock_child_history
 
-            result = await handler._extract_child_workflow_node_outputs(
+            result = await handler._extract_child_workflow_node_payload(
                 parent_history=mock_parent_history,
                 child_workflow_id="Child#1",
                 node_ids=["Child#1.activity#1"],
             )
 
-            assert result == {"Child#1.activity#1": {"result": "child-result"}}
+            assert result == {
+                "Child#1.activity#1": {
+                    PayloadKey.INPUT_PAYLOAD: {"input": "child-input"},
+                    PayloadKey.OUTPUT_PAYLOAD: {"result": "child-result"},
+                }
+            }
 
     @pytest.mark.asyncio
     async def test_extract_child_workflow_node_outputs_not_found(self):
-        """Test _extract_child_workflow_node_outputs when child history is not found."""
+        """Test _extract_child_workflow_node_payload when child history is not found."""
         handler = TemporalHistoryStrategyHandler(
             reference_workflow_id="workflow-123",
             reference_workflow_run_id="run-456",
@@ -332,8 +349,8 @@ class TestTemporalHistoryStrategyHandler:
         with patch.object(handler, "_fetch_nested_child_workflow_history", new_callable=AsyncMock) as mock_fetch:
             mock_fetch.return_value = None
 
-            with pytest.raises(AttributeError, match="'NoneType' object has no attribute 'run_id'"):
-                await handler._extract_child_workflow_node_outputs(
+            with pytest.raises(AttributeError, match="'NoneType' object has no attribute"):
+                await handler._extract_child_workflow_node_payload(
                     parent_history=mock_parent_history,
                     child_workflow_id="Child#1",
                     node_ids=["Child#1.activity#1", "Child#1.activity#2"],
@@ -341,7 +358,7 @@ class TestTemporalHistoryStrategyHandler:
 
     @pytest.mark.asyncio
     async def test_extract_child_workflow_node_outputs_missing_node(self):
-        """Test _extract_child_workflow_node_outputs when node is missing in child history."""
+        """Test _extract_child_workflow_node_payload when node is missing in child history."""
         handler = TemporalHistoryStrategyHandler(
             reference_workflow_id="workflow-123",
             reference_workflow_run_id="run-456",
@@ -353,19 +370,24 @@ class TestTemporalHistoryStrategyHandler:
         mock_child_history.run_id = "child-run-id"
 
         # Mock child history with empty node data
-        mock_child_history.get_nodes_data.return_value = {}
+        mock_child_history.get_nodes_data_encoded.return_value = {}
 
         # Mock _fetch_nested_child_workflow_history
         with patch.object(handler, "_fetch_nested_child_workflow_history", new_callable=AsyncMock) as mock_fetch:
             mock_fetch.return_value = mock_child_history
 
-            result = await handler._extract_child_workflow_node_outputs(
+            result = await handler._extract_child_workflow_node_payload(
                 parent_history=mock_parent_history,
                 child_workflow_id="Child#1",
                 node_ids=["Child#1.activity#1"],
             )
 
-            assert result == {"Child#1.activity#1": None}
+            assert result == {
+                "Child#1.activity#1": {
+                    PayloadKey.INPUT_PAYLOAD: None,
+                    PayloadKey.OUTPUT_PAYLOAD: None,
+                }
+            }
 
     @pytest.mark.asyncio
     async def test_fetch_nested_child_workflow_history_single_level(self):

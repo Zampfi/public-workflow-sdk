@@ -4,6 +4,7 @@ Helper functions for temporal workflow history operations.
 
 import structlog
 
+from zamp_public_workflow_sdk.simulation.constants import PayloadKey
 from zamp_public_workflow_sdk.temporal.workflow_history.constants import (
     EventField,
     EventType,
@@ -101,6 +102,27 @@ def _extract_payload_data(event: dict, event_type: str, payload_field: str) -> d
     else:
         logger.info("No payload data found in event")
         return None
+
+
+def _extract_payload_encoded(event: dict, event_type: str, payload_field: str) -> dict | None:
+    """
+    Extract full encoded payload (with metadata and data) from event attributes.
+
+    Returns the  payload object.
+    Returns None if no payloads found.
+    """
+    logger.info("Extracting encoded payload", event_type=event_type)
+    attrs_key = _get_attributes_key_for_event_type(event_type)
+
+    if not attrs_key or attrs_key not in event:
+        logger.info("No attributes key found or key not in event", attrs_key=attrs_key)
+        return None
+
+    payloads = event[attrs_key].get(payload_field, {}).get(PayloadField.PAYLOADS.value, [])
+    if not payloads:
+        logger.info("No encoded payload found in event")
+        return None
+    return payloads[0]
 
 
 def _should_include_node_id(node_id: str, target_node_ids: list[str] | None) -> bool:
@@ -278,32 +300,37 @@ def get_node_data_from_node_id(events: list[dict], node_id: str) -> dict[str, No
     return result
 
 
-def extract_node_payloads(events: list[dict], node_ids: list[str] | None = None) -> dict[str, NodePayloadData]:
-    """Extract all node data including input/output payloads and all events for each node_id from workflow events."""
-    logger.info(
-        "Starting extraction of all node payloads",
-        event_count=len(events),
-        target_node_ids=node_ids,
-    )
-    node_payloads: dict[str, NodePayloadData] = {}
+def _process_events_for_payloads(
+    events: list[dict],
+    node_ids: list[str] | None,
+    return_encoded_format: bool = False,
+) -> dict:
+    """
+    logic to process events and extract node_id and payload_field information.
+
+    Args:
+        events: List of workflow events
+        node_ids: Optional list of node IDs to filter by
+        return_encoded_format: If True, returns full encoded payload structure (with metadata and data).
+                               If False, returns decoded payload data only.
+
+    Returns:
+        Dictionary mapping node_id to payload data (format depends on return_encoded_format)
+    """
+    node_payloads: dict = {}
     activity_scheduled_events: dict[int, str] = {}
     child_workflow_initiated_events: dict[int, str] = {}
     workflow_node_id: str | None = None
 
     for event_index, event in enumerate(events):
         event_type = event.get(EventField.EVENT_TYPE.value)
-        event_id = event.get(EventField.EVENT_ID.value)
         node_id = None
         payload_field = None
         logger.info(
             "Processing event",
             event_index=event_index,
             event_type=event_type,
-            event_id=event_id,
         )
-
-        node_id = None
-        payload_field = None
 
         # Handle workflow execution started
         if event_type == EventType.WORKFLOW_EXECUTION_STARTED.value:
@@ -313,19 +340,36 @@ def extract_node_payloads(events: list[dict], node_ids: list[str] | None = None)
             node_id, payload_field = result
             workflow_node_id = node_id
 
-        # Handle child workflow execution started (contains workflow_id and run_id)
+        # Handle child workflow execution started
         if event_type == EventType.CHILD_WORKFLOW_EXECUTION_STARTED.value:
-            # extracting child workflow execution info (workflow_id, run_id)
             extracted_node_id = extract_node_id_from_event(event)
-            _add_event_to_node_events(extracted_node_id, event, event_type, node_ids, node_payloads)
+            if return_encoded_format:
+                if _should_include_node_id(extracted_node_id, node_ids):
+                    if extracted_node_id not in node_payloads:
+                        node_payloads[extracted_node_id] = {}
+            else:
+                _add_event_to_node_events(extracted_node_id, event, event_type, node_ids, node_payloads)
             continue
 
         # Handle workflow execution completed
         if event_type == EventType.WORKFLOW_EXECUTION_COMPLETED.value:
-            result = _process_workflow_execution_completed(event, workflow_node_id)
+            if return_encoded_format:
+                if workflow_node_id and _should_include_node_id(workflow_node_id, node_ids):
+                    node_id = workflow_node_id
+                    payload_field = PayloadField.RESULT.value
+            else:
+                result = _process_workflow_execution_completed(event, workflow_node_id)
+                if not result:
+                    continue
+                node_id, payload_field = result
+
+        # Handle activity task scheduled
+        if event_type == EventType.ACTIVITY_TASK_SCHEDULED.value:
+            result = _process_event_with_input_payload(event, EventType.ACTIVITY_TASK_SCHEDULED)
             if not result:
                 continue
             node_id, payload_field = result
+            _track_event_with_node_id(event, node_id, activity_scheduled_events)
 
         # Handle activity task completed
         if event_type == EventType.ACTIVITY_TASK_COMPLETED.value:
@@ -339,25 +383,16 @@ def extract_node_payloads(events: list[dict], node_ids: list[str] | None = None)
                 continue
             node_id, payload_field = result
 
-        # Handle activity task scheduled
-        if event_type == EventType.ACTIVITY_TASK_SCHEDULED.value:
-            result = _process_event_with_input_payload(event, EventType.ACTIVITY_TASK_SCHEDULED)
-            if not result:
-                continue
-            node_id, payload_field = result
-            _track_event_with_node_id(event, node_id, activity_scheduled_events)
-
         # Handle child workflow execution initiated
         if event_type == EventType.START_CHILD_WORKFLOW_EXECUTION_INITIATED.value:
-            result = _process_event_with_input_payload(event, EventType.START_CHILD_WORKFLOW_EXECUTION_INITIATED)
+            result = _process_event_with_input_payload(
+                event,
+                EventType.START_CHILD_WORKFLOW_EXECUTION_INITIATED,
+            )
             if not result:
                 continue
             node_id, payload_field = result
-            _track_event_with_node_id(
-                event,
-                node_id,
-                child_workflow_initiated_events,
-            )
+            _track_event_with_node_id(event, node_id, child_workflow_initiated_events)
 
         # Handle child workflow execution completed
         if event_type == EventType.CHILD_WORKFLOW_EXECUTION_COMPLETED.value:
@@ -379,16 +414,65 @@ def extract_node_payloads(events: list[dict], node_ids: list[str] | None = None)
         if not _should_include_node_id(node_id, node_ids):
             continue
 
-        # Add event and node data
-        _add_event_and_payload(node_id, event, payload_field, node_payloads)
+        # Store payload based on format
+        if return_encoded_format:
+            if node_id not in node_payloads:
+                node_payloads[node_id] = {}
+            payload = _extract_payload_encoded(event, event_type, payload_field)
+            if not payload:
+                continue
+            if payload_field == PayloadField.INPUT.value:
+                node_payloads[node_id][PayloadKey.INPUT_PAYLOAD] = payload
+            else:
+                node_payloads[node_id][PayloadKey.OUTPUT_PAYLOAD] = payload
+        else:
+            _add_event_and_payload(node_id, event, payload_field, node_payloads)
+    return node_payloads
+
+
+def extract_node_payloads(events: list[dict], node_ids: list[str] | None = None) -> dict[str, NodePayloadData]:
+    """Extract all node data including input/output payloads and all events for each node_id from workflow events."""
+    logger.info(
+        "Starting extraction of all node payloads",
+        event_count=len(events),
+        target_node_ids=node_ids,
+    )
+
+    node_payloads = _process_events_for_payloads(events, node_ids, return_encoded_format=False)
 
     logger.info(
         "Completed extraction of all node payloads",
         total_nodes=len(node_payloads),
         node_ids=list(node_payloads.keys()),
-        activity_scheduled_count=len(activity_scheduled_events),
-        child_workflow_initiated_count=len(child_workflow_initiated_events),
     )
+    return node_payloads
+
+
+def get_encoded_input_from_node_id(events: list[dict], node_id: str) -> dict | None:
+    """Get encoded input payload for a specific node ID. Returns the encoded input payload."""
+    logger.info("Getting encoded input payload for node", node_id=node_id)
+    node_data = extract_encoded_node_payloads(events, [node_id])
+    if node_id in node_data and PayloadKey.INPUT_PAYLOAD in node_data[node_id]:
+        return node_data[node_id][PayloadKey.INPUT_PAYLOAD]
+    return None
+
+
+def get_encoded_output_from_node_id(events: list[dict], node_id: str) -> dict | None:
+    """Get encoded output payload for a specific node ID. Returns the encoded output payload."""
+    logger.info("Getting encoded output payload for node", node_id=node_id)
+    node_data = extract_encoded_node_payloads(events, [node_id])
+    if node_id in node_data and PayloadKey.OUTPUT_PAYLOAD in node_data[node_id]:
+        return node_data[node_id][PayloadKey.OUTPUT_PAYLOAD]
+    return None
+
+
+def extract_encoded_node_payloads(events: list[dict], node_ids: list[str] | None = None) -> dict[str, dict]:
+    """Extract all encoded node data from workflow events."""
+    logger.info("Extracting encoded node payloads", event_count=len(events), target_node_ids=node_ids)
+
+    node_payloads = _process_events_for_payloads(events, node_ids, return_encoded_format=True)
+
+    logger.info("Completed extraction of encoded node payloads", total_nodes=len(node_payloads))
     return node_payloads
 
 

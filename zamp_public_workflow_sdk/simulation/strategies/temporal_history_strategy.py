@@ -7,7 +7,7 @@ from typing import Any
 
 import structlog
 
-
+from zamp_public_workflow_sdk.simulation.constants import PayloadKey
 from zamp_public_workflow_sdk.simulation.models.simulation_response import (
     SimulationStrategyOutput,
 )
@@ -82,7 +82,7 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
 
         self.workflow_histories_map[MAIN_WORKFLOW_IDENTIFIER] = temporal_history
 
-        output = await self._extract_node_output(node_ids)
+        output = await self._extract_node_payload(node_ids)
         return SimulationStrategyOutput(node_outputs=output)
 
     async def _fetch_temporal_history(
@@ -114,6 +114,7 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
                     workflow_id=target_workflow_id,
                     run_id=target_run_id,
                     node_ids=node_ids,
+                    decode_payloads=False,
                 ),
                 result_type=FetchTemporalWorkflowHistoryOutput,
             )
@@ -133,21 +134,21 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
                 f"Failed to fetch temporal history for workflow_id={target_workflow_id}, run_id={target_run_id}"
             ) from e
 
-    async def _extract_node_output(self, node_ids: list[str]) -> dict[str, Any | None]:
+    async def _extract_node_payload(self, node_ids: list[str]) -> dict[str, dict[str, Any | None]]:
         """
-        Extract output for specific nodes from temporal history.
+        Extract input and output payloads for specific nodes from temporal history.
 
         This method handles both main workflow nodes and child workflow nodes.
-        For child workflow nodes, it recursively fetches their history and extracts outputs.
+        For child workflow nodes, it recursively fetches their history and extracts inputs/outputs.
 
         Args:
-            node_ids: List of node execution IDs to extract output for
+            node_ids: List of node execution IDs to extract input/output for
 
         Returns:
-            Dictionary mapping node IDs to their outputs
+            Dictionary mapping node IDs to dict with PayloadKey.INPUT_PAYLOAD and PayloadKey.OUTPUT_PAYLOAD keys
 
         Raises:
-            Exception: If node outputs cannot be extracted
+            Exception: If node inputs/outputs cannot be extracted
         """
         logger.info("Extracting node outputs", node_ids=node_ids)
 
@@ -163,14 +164,14 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
         for parent_workflow_id, workflow_nodes in node_groups.items():
             if parent_workflow_id == MAIN_WORKFLOW_IDENTIFIER:
                 # Main workflow nodes - extract directly from current history
-                main_workflow_outputs = self._extract_main_workflow_node_outputs(
+                main_workflow_outputs = self._extract_main_workflow_node_payload(
                     temporal_history=temporal_history, node_ids=workflow_nodes
                 )
                 logger.info("main workflow outputs", length_of_outputs=len(main_workflow_outputs))
                 all_node_outputs.update(main_workflow_outputs)
             else:
                 # Child workflow nodes - need to fetch child workflow history
-                child_workflow_outputs = await self._extract_child_workflow_node_outputs(
+                child_workflow_outputs = await self._extract_child_workflow_node_payload(
                     temporal_history,
                     parent_workflow_id,
                     workflow_nodes,
@@ -181,39 +182,43 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
 
         return all_node_outputs
 
-    def _extract_main_workflow_node_outputs(
+    def _extract_main_workflow_node_payload(
         self, temporal_history: WorkflowHistory, node_ids: list[str]
-    ) -> dict[str, Any | None]:
+    ) -> dict[str, dict[str, Any | None]]:
         """
-        Extract outputs for nodes that belong to the main workflow.
+        Extract encoded input and output payloads for nodes that belong to the main workflow.
 
         Args:
             temporal_history: The main workflow history object
             node_ids: List of node IDs in the main workflow
 
         Returns:
-            Dictionary mapping node IDs to their outputs
+            Dictionary mapping node IDs to dict with PayloadKey.INPUT_PAYLOAD and PayloadKey.OUTPUT_PAYLOAD keys (both encoded)
         """
         node_outputs = {}
         for node_id in node_ids:
-            output = temporal_history.get_node_output(node_id)
-            node_outputs[node_id] = output
+            input_payload = temporal_history.get_node_input_encoded(node_id)
+            output_payload = temporal_history.get_node_output_encoded(node_id)
+            node_outputs[node_id] = {
+                PayloadKey.INPUT_PAYLOAD: input_payload,
+                PayloadKey.OUTPUT_PAYLOAD: output_payload,
+            }
         return node_outputs
 
-    async def _extract_child_workflow_node_outputs(
+    async def _extract_child_workflow_node_payload(
         self,
         parent_history: WorkflowHistory,
         child_workflow_id: str,
         node_ids: list[str],
         workflow_nodes_needed: dict[str, list[str]] = None,
-    ) -> dict[str, Any | None]:
+    ) -> dict[str, dict[str, Any | None]]:
         """
-        Extract outputs for nodes that belong to a child workflow.
+        Extract input and output payloads for nodes that belong to a child workflow.
 
         This method:
         1. Gets child workflow's workflow_id and run_id from parent's history
         2. Fetches the child workflow's history (or reuses cached)
-        3. Extracts node outputs from child workflow history
+        3. Extracts node input and output payloads from child workflow history
 
         Args:
             parent_history: The parent workflow history object
@@ -222,7 +227,7 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
             workflow_nodes_needed: Pre-collected map of workflow paths to their needed nodes
 
         Returns:
-            Dictionary mapping node IDs to their outputs (None if not found)
+            Dictionary mapping node IDs to dict with PayloadKey.INPUT_PAYLOAD and PayloadKey.OUTPUT_PAYLOAD keys (None if not found)
         """
         if workflow_nodes_needed is None:
             workflow_nodes_needed = {}
@@ -251,15 +256,21 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
                 f"child_workflow_id={child_workflow_id}, node_ids={node_ids}"
             )
 
-        # Extract outputs using full node IDs (workflow stores with prefix, e.g., "Parent#1.activity#1")
-        child_nodes_data = child_history.get_nodes_data()
+        # Extract encoded inputs and outputs using full node IDs (workflow stores with prefix, e.g., "Parent#1.activity#1")
+        child_nodes_data = child_history.get_nodes_data_encoded()
         node_outputs = {}
 
         for full_node_id in node_ids:
             if full_node_id in child_nodes_data:
-                node_outputs[full_node_id] = child_nodes_data[full_node_id].output_payload
+                node_outputs[full_node_id] = {
+                    PayloadKey.INPUT_PAYLOAD: child_nodes_data[full_node_id].get(PayloadKey.INPUT_PAYLOAD),
+                    PayloadKey.OUTPUT_PAYLOAD: child_nodes_data[full_node_id].get(PayloadKey.OUTPUT_PAYLOAD),
+                }
             else:
-                node_outputs[full_node_id] = None
+                node_outputs[full_node_id] = {
+                    PayloadKey.INPUT_PAYLOAD: None,
+                    PayloadKey.OUTPUT_PAYLOAD: None,
+                }
 
         return node_outputs
 

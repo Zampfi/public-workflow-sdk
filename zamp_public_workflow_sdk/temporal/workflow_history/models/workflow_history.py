@@ -1,11 +1,14 @@
 from pydantic import BaseModel, Field
 
 from zamp_public_workflow_sdk.temporal.workflow_history.helpers import (
+    extract_encoded_node_payloads,
+    get_encoded_input_from_node_id,
     get_input_from_node_id,
     get_node_data_from_node_id,
     extract_node_payloads,
     get_child_workflow_workflow_id_run_id,
     get_output_from_node_id,
+    get_encoded_output_from_node_id,
 )
 from zamp_public_workflow_sdk.temporal.workflow_history.models.node_payload_data import NodePayloadData
 
@@ -77,3 +80,39 @@ class WorkflowHistory(BaseModel):
             ValueError: If node data is not found or workflow execution details are missing
         """
         return get_child_workflow_workflow_id_run_id(self.events, node_id)
+
+    def get_node_input_encoded(self, node_id: str) -> dict | None:
+        """
+        Get encoded input payload for a specific node ID.
+
+        Args:
+            node_id: The node ID to get encoded input for
+
+        Returns:
+            Encoded input payload object (first if multiple exist, with metadata and data) if found, None otherwise
+        """
+        return get_encoded_input_from_node_id(self.events, node_id)
+
+    def get_node_output_encoded(self, node_id: str) -> dict | None:
+        """
+        Get encoded output payload for a specific node ID.
+
+        Args:
+            node_id: The node ID to get encoded output for
+
+        Returns:
+            Encoded output payload object (first if multiple exist, with metadata and data) if found, None otherwise
+        """
+        return get_encoded_output_from_node_id(self.events, node_id)
+
+    def get_nodes_data_encoded(self, target_node_ids: list[str] | None = None) -> dict[str, dict]:
+        """
+        Get all encoded node data from the workflow events.
+
+        Args:
+            target_node_ids: Optional list of node IDs to filter by
+
+        Returns:
+            Dictionary mapping node_id to encoded payload data (input/output)
+        """
+        return extract_encoded_node_payloads(self.events, target_node_ids)

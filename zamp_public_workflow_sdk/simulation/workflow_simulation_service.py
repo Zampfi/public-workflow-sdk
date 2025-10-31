@@ -2,10 +2,11 @@
 Workflow Simulation Service for managing simulation state and responses.
 """
 
+from datetime import timedelta
 from typing import Any
 
 import structlog
-
+from temporalio import workflow
 from zamp_public_workflow_sdk.simulation.models import ExecutionType, SimulationResponse
 from zamp_public_workflow_sdk.simulation.models.config import SimulationConfig
 from zamp_public_workflow_sdk.simulation.models.simulation_strategy import (
@@ -90,28 +91,56 @@ class WorkflowSimulationService:
             )
             raise
 
-    def get_simulation_response(self, node_id: str) -> SimulationResponse:
+    async def get_simulation_response(self, node_id: str, action_name: str | None = None) -> SimulationResponse:
         """
-        Get simulation response for a specific node.
+        Get simulation response for a specific node by calling return_mocked_result activity.
+
+        This method delegates the decoding of encoded payloads to the return_mocked_result activity,
+        which runs in API mode and handles both TemporalHistoryStrategy (encoded) and
+        CustomOutputStrategy (raw) outputs.
 
         Args:
             node_id: The node execution ID
+            action_name: Optional action name for activity summary
 
         Returns:
-            SimulationResponse with MOCK if node should be mocked, EXECUTE otherwise
+            SimulationResponse with MOCK if node should be mocked (decoded if needed), EXECUTE otherwise
         """
+        from zamp_public_workflow_sdk.simulation.models.mocked_result import MockedResultInput
 
         # check if node is in the response map
         is_response_mocked = node_id in self.node_id_to_response_map
+        if not is_response_mocked:
+            return SimulationResponse(execution_type=ExecutionType.EXECUTE, execution_response=None)
 
         # If node is in the response map, it should be mocked
-        if is_response_mocked:
-            return SimulationResponse(
-                execution_type=ExecutionType.MOCK,
-                execution_response=self.node_id_to_response_map[node_id],
+        # node_payloads is expected to be a dict with 'input_payload' and 'output_payload' keys
+        node_payloads = self.node_id_to_response_map[node_id]
+
+        try:
+            decoded_result = await workflow.execute_activity(
+                "return_mocked_result",
+                MockedResultInput(
+                    node_id=node_id,
+                    encoded_payload=node_payloads,
+                    action_name=action_name,
+                ),
+                summary=action_name,
+                start_to_close_timeout=timedelta(seconds=30),
             )
 
-        return SimulationResponse(execution_type=ExecutionType.EXECUTE, execution_response=None)
+            return SimulationResponse(
+                execution_type=ExecutionType.MOCK,
+                execution_response=decoded_result,
+            )
+        except Exception as e:
+            logger.error(
+                "Failed to get mocked result",
+                node_id=node_id,
+                error=str(e),
+                error_type=type(e).__name__,
+            )
+            raise
 
     @staticmethod
     def get_strategy(node_strategy: NodeStrategy) -> BaseStrategy | None:

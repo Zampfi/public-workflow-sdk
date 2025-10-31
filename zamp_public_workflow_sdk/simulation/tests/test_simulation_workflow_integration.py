@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
+from zamp_public_workflow_sdk.simulation.constants import PayloadKey
 from zamp_public_workflow_sdk.simulation.models import (
     CustomOutputConfig,
     NodeMockConfig,
@@ -327,9 +328,11 @@ class TestSimulationServiceIntegration:
         sim_config = SimulationConfig(mock_config=mock_config)
         service = WorkflowSimulationService(sim_config)
 
-        # Mock the workflow execution
+        # Mock the workflow execution - note the new data structure with input/output payloads
         mock_workflow_result = Mock()
-        mock_workflow_result.node_id_to_response_map = {"integration_node#1": "integration_test_output"}
+        mock_workflow_result.node_id_to_response_map = {
+            "integration_node#1": {PayloadKey.INPUT_PAYLOAD: None, PayloadKey.OUTPUT_PAYLOAD: "integration_test_output"}
+        }
 
         with patch("zamp_public_workflow_sdk.actions_hub.ActionsHub") as mock_actions_hub:
             mock_actions_hub.execute_child_workflow = AsyncMock(return_value=mock_workflow_result)
@@ -338,10 +341,15 @@ class TestSimulationServiceIntegration:
             await service._initialize_simulation_data()
 
             assert len(service.node_id_to_response_map) == 1
-            assert service.node_id_to_response_map["integration_node#1"] == "integration_test_output"
+            assert (
+                service.node_id_to_response_map["integration_node#1"][PayloadKey.OUTPUT_PAYLOAD]
+                == "integration_test_output"
+            )
 
-            # Test that simulation response works
-            response = service.get_simulation_response("integration_node#1")
-            assert response is not None
-            assert response.execution_type.value == "MOCK"
-            assert response.execution_response == "integration_test_output"
+            # Test that simulation response works - mock workflow.execute_activity since get_simulation_response now calls return_mocked_result
+            with patch("temporalio.workflow.execute_activity", new_callable=AsyncMock) as mock_execute:
+                mock_execute.return_value = "integration_test_output"
+                response = await service.get_simulation_response("integration_node#1")
+                assert response is not None
+                assert response.execution_type.value == "MOCK"
+                assert response.execution_response == "integration_test_output"
