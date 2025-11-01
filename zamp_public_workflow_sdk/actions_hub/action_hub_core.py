@@ -449,6 +449,34 @@ class ActionsHub:
             workflow_id=cls._get_current_workflow_id(),
         )
 
+    @staticmethod
+    def _extract_node_id_from_args(
+        args: tuple,
+        default_node_id: str,
+    ) -> tuple[dict, tuple]:
+        """
+        Extract node_id from args if provided by caller, otherwise use default.
+        
+        Convention: If the last argument is a dict containing TEMPORAL_NODE_ID_KEY,
+        use that node_id and remove the dict from args.
+        
+        Args:
+            args: The original arguments tuple
+            default_node_id: The auto-generated node_id to use if not provided
+            
+        Returns:
+            Tuple of (node_id_dict, cleaned_args)
+        """
+        if len(args) > 0 and isinstance(args[-1], dict) and TEMPORAL_NODE_ID_KEY in args[-1]:
+            # Caller provided custom node_id - use it and remove from args
+            node_id_arg = args[-1]
+            args = args[:-1]
+        else:
+            # Use auto-generated node_id
+            node_id_arg = {TEMPORAL_NODE_ID_KEY: default_node_id}
+        
+        return node_id_arg, args
+
     @classmethod
     async def execute_activity(
         cls,
@@ -520,13 +548,9 @@ class ActionsHub:
         retry_policy.initial_interval = convert_iso_to_timedelta(retry_policy.initial_interval)
         retry_policy.maximum_interval = convert_iso_to_timedelta(retry_policy.maximum_interval)
 
-        # if node_id is provided in the last argument, use it and remove from args
-        if len(args) > 0 and isinstance(args[-1], dict) and TEMPORAL_NODE_ID_KEY in args[-1]:
-            node_id_arg = args[-1]
-            node_id = args[-1][TEMPORAL_NODE_ID_KEY]
-            args = args[:-1]  
-        else:
-            node_id_arg = {TEMPORAL_NODE_ID_KEY: node_id}
+        # Check if caller provided a custom node_id in the last argument
+        # This allows specific activities to override the auto-generated node_id
+        node_id_arg, args = _extract_node_id_from_args(args, node_id)
         
         # Prepend node_id_arg to args
         args = (node_id_arg,) + args

@@ -300,6 +300,74 @@ def get_node_data_from_node_id(events: list[dict], node_id: str) -> dict[str, No
     return result
 
 
+def _extract_child_workflow_execution_details(event: dict) -> tuple[str | None, str | None]:
+    """
+    Extract workflow_id and run_id from a CHILD_WORKFLOW_EXECUTION_STARTED event.
+    
+    Args:
+        event: The workflow event dictionary
+        
+    Returns:
+        Tuple of (workflow_id, run_id) or (None, None) if not found
+    """
+    attrs_key = EventTypeToAttributesKey.CHILD_WORKFLOW_EXECUTION_STARTED.value
+    attrs = event.get(attrs_key, {})
+    workflow_execution = attrs.get(WorkflowExecutionField.WORKFLOW_EXECUTION.value, {})
+    child_workflow_id = workflow_execution.get(WorkflowExecutionField.WORKFLOW_ID.value)
+    child_run_id = workflow_execution.get(WorkflowExecutionField.RUN_ID.value)
+    return child_workflow_id, child_run_id
+
+
+def _mark_child_workflows_needing_traversal(
+    child_workflow_initiated_events: dict[int, str],
+    child_workflow_execution_details: dict[str, tuple[str, str]],
+    node_payloads: dict,
+    node_ids: list[str] | None,
+) -> None:
+    """
+    Mark child workflows that were initiated but have no output as needing traversal.
+    
+    Args:
+        child_workflow_initiated_events: Map of event IDs to child node IDs for initiated workflows
+        child_workflow_execution_details: Map of node IDs to (workflow_id, run_id) tuples
+        node_payloads: Dictionary of node payloads to update
+        node_ids: Optional list of node IDs to filter by
+    """
+    for event_id, child_node_id in child_workflow_initiated_events.items():
+        # Skip if not in target nodes
+        if not _should_include_node_id(child_node_id, node_ids):
+            continue
+        
+        # Skip if node not in payloads
+        if child_node_id not in node_payloads:
+            continue
+        
+        # Skip if already has output
+        if PayloadKey.OUTPUT_PAYLOAD in node_payloads[child_node_id]:
+            continue
+        
+        # Get child workflow execution details if available
+        if child_node_id not in child_workflow_execution_details:
+            logger.warning(
+                "Child workflow initiated but no execution details found",
+                node_id=child_node_id,
+                event_id=event_id,
+            )
+            continue
+        
+        workflow_id, run_id = child_workflow_execution_details[child_node_id]
+        logger.info(
+            "Child workflow initiated but no output found - needs traversal",
+            node_id=child_node_id,
+            event_id=event_id,
+            workflow_id=workflow_id,
+            run_id=run_id,
+        )
+        node_payloads[child_node_id][NEEDS_CHILD_TRAVERSAL] = True
+        node_payloads[child_node_id]["child_workflow_id"] = workflow_id
+        node_payloads[child_node_id]["child_run_id"] = run_id
+
+
 def _process_events_for_payloads(
     events: list[dict],
     node_ids: list[str] | None,
@@ -349,11 +417,7 @@ def _process_events_for_payloads(
                     if extracted_node_id not in node_payloads:
                         node_payloads[extracted_node_id] = {}
                     # Extract and store workflow_id and run_id from this event
-                    attrs_key = EventTypeToAttributesKey.CHILD_WORKFLOW_EXECUTION_STARTED.value
-                    attrs = event.get(attrs_key, {})
-                    workflow_execution = attrs.get(WorkflowExecutionField.WORKFLOW_EXECUTION.value, {})
-                    child_workflow_id = workflow_execution.get(WorkflowExecutionField.WORKFLOW_ID.value)
-                    child_run_id = workflow_execution.get(WorkflowExecutionField.RUN_ID.value)
+                    child_workflow_id, child_run_id = _extract_child_workflow_execution_details(event)
                     if child_workflow_id and child_run_id:
                         child_workflow_execution_details[extracted_node_id] = (child_workflow_id, child_run_id)
                         logger.info(
@@ -447,38 +511,12 @@ def _process_events_for_payloads(
     if not return_encoded_format:
         return node_payloads
     
-    for event_id, child_node_id in child_workflow_initiated_events.items():
-        # Skip if not in target nodes
-        if not _should_include_node_id(child_node_id, node_ids):
-            continue
-        
-        # Skip if node not in payloads
-        if child_node_id not in node_payloads:
-            continue
-        
-        # Skip if already has output
-        if PayloadKey.OUTPUT_PAYLOAD in node_payloads[child_node_id]:
-            continue
-        
-        # Get child workflow execution details if available
-        if child_node_id in child_workflow_execution_details:
-            workflow_id, run_id = child_workflow_execution_details[child_node_id]
-            logger.info(
-                "Child workflow initiated but no output found - needs traversal",
-                node_id=child_node_id,
-                event_id=event_id,
-                workflow_id=workflow_id,
-                run_id=run_id,
-            )
-            node_payloads[child_node_id][NEEDS_CHILD_TRAVERSAL] = True
-            node_payloads[child_node_id]["child_workflow_id"] = workflow_id
-            node_payloads[child_node_id]["child_run_id"] = run_id
-        else:
-            logger.warning(
-                "Child workflow initiated but no execution details found",
-                node_id=child_node_id,
-                event_id=event_id,
-            )
+    _mark_child_workflows_needing_traversal(
+        child_workflow_initiated_events,
+        child_workflow_execution_details,
+        node_payloads,
+        node_ids,
+    )
     
     return node_payloads
 
