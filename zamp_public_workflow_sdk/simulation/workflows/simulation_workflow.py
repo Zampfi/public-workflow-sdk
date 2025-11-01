@@ -2,7 +2,7 @@ from temporalio import workflow
 
 with workflow.unsafe.imports_passed_through():
     import structlog
-    from typing import Any, Dict
+    from typing import Any, Dict, List
     from zamp_public_workflow_sdk.actions_hub import ActionsHub
 
     from zamp_public_workflow_sdk.simulation.models.simulation_workflow import (
@@ -109,17 +109,14 @@ class SimulationWorkflow:
             has_result=workflow_result is not None,
         )
 
-        node_captures: Dict[str, NodeCaptureResult] = {}
         node_captures = await self._fetch_and_parse_node_captures(
             workflow_id=workflow_id,
             run_id=run_id,
             node_captures=input_params.output_schema.node_captures,
         )
 
-        # Step 5: Return structured output
-        result = SimulationWorkflowOutput(
-            node_captures=node_captures,
-        )
+        # Step 5: Return structured output (direct list)
+        result = SimulationWorkflowOutput(root=node_captures)
 
         logger.info(
             "SimulationCodeWorkflow completed successfully",
@@ -209,7 +206,7 @@ class SimulationWorkflow:
         workflow_id: str,
         run_id: str,
         node_captures: Dict[str, NodeCaptureMode],
-    ) -> Dict[str, NodeCaptureResult]:
+    ) -> List[NodeCaptureResult]:
         """Fetch workflow history and parse node captures based on output schema.
 
         Args:
@@ -218,7 +215,7 @@ class SimulationWorkflow:
             node_captures: Dictionary mapping node IDs to capture modes
 
         Returns:
-            Dictionary mapping node IDs to NodeCaptureResult objects
+            List of NodeCaptureResult objects
         """
         logger.info(
             "Fetching and parsing node captures",
@@ -231,9 +228,10 @@ class SimulationWorkflow:
         node_payloads = await self._fetch_node_payloads(workflow_id, run_id, list(node_captures.keys()))
 
         # Process each node capture
-        result: Dict[str, NodeCaptureResult] = {}
+        result: List[NodeCaptureResult] = []
         for node_id, capture_mode in node_captures.items():
-            result[node_id] = await self._process_node_capture(node_id, capture_mode, node_payloads)
+            capture_result = await self._process_node_capture(node_id, capture_mode, node_payloads)
+            result.append(capture_result)
 
         logger.info(
             "Completed fetching and parsing node captures",
@@ -428,7 +426,7 @@ class SimulationWorkflow:
                     node_id=node_id,
                     encoded_payload=encoded_payload,
                 ),
-                summary=f"Decoding {node_id}",
+                summary=f"{node_id}",
                 return_type=DecodeNodePayloadOutput,
             )
             logger.info(

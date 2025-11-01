@@ -6,8 +6,8 @@ and capturing activity inputs/outputs.
 """
 
 from enum import Enum
-from typing import Any, Dict, Optional
-from pydantic import BaseModel, Field
+from typing import Any, Dict, List, Optional
+from pydantic import BaseModel, ConfigDict, Field, RootModel, model_serializer
 
 from zamp_public_workflow_sdk.actions_hub.models.common_models import (
     ZampMetadataContext,
@@ -46,6 +46,7 @@ class NodeCaptureResult(BaseModel):
     """Result for a single activity capture from workflow history.
 
     Contains the captured input and/or output data for an activity execution.
+    Only includes fields that are not None.
     """
 
     node_id: str = Field(
@@ -59,6 +60,16 @@ class NodeCaptureResult(BaseModel):
         default=None,
         description="Activity output result if captured (based on capture mode)",
     )
+
+    @model_serializer
+    def serialize_model(self) -> Dict[str, Any]:
+        """Custom serializer that returns {node_id: {input/output}} format."""
+        payload = {}
+        if self.input is not None:
+            payload["input"] = self.input
+        if self.output is not None:
+            payload["output"] = self.output
+        return {self.node_id: payload}
 
 
 class SimulationWorkflowInput(BaseModel):
@@ -86,12 +97,10 @@ class SimulationWorkflowInput(BaseModel):
 
 
 
-class SimulationWorkflowOutput(BaseModel):
+class SimulationWorkflowOutput(RootModel[List[NodeCaptureResult]]):
     """Output from SimulationCodeWorkflow execution.
 
-    Contains the workflow result, captured activity data, and workflow identifiers.
+    A list of captured activity data, each containing node_id and optionally input/output.
     """
 
-    node_captures: Dict[str, NodeCaptureResult] = Field(
-        description="Captured activity data indexed by node_id"
-    )
+    root: List[NodeCaptureResult]
