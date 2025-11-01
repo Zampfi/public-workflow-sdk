@@ -4,6 +4,7 @@ Helper functions for temporal workflow history operations.
 
 import structlog
 
+from zamp_public_workflow_sdk.simulation.constants import PayloadKey
 from zamp_public_workflow_sdk.temporal.workflow_history.constants import (
     EventField,
     EventType,
@@ -421,9 +422,9 @@ def _process_events_for_payloads(
             if not payload:
                 continue
             if payload_field == PayloadField.INPUT.value:
-                node_payloads[node_id]["input_payload"] = payload
+                node_payloads[node_id][PayloadKey.INPUT_PAYLOAD] = payload
             else:
-                node_payloads[node_id]["output_payload"] = payload
+                node_payloads[node_id][PayloadKey.OUTPUT_PAYLOAD] = payload
         else:
             _add_event_and_payload(node_id, event, payload_field, node_payloads)
     return node_payloads
@@ -451,8 +452,8 @@ def get_encoded_input_from_node_id(events: list[dict], node_id: str) -> dict | N
     """Get encoded input payload for a specific node ID. Returns the encoded input payload."""
     logger.info("Getting encoded input payload for node", node_id=node_id)
     node_data = extract_encoded_node_payloads(events, [node_id])
-    if node_id in node_data and "input_payload" in node_data[node_id]:
-        return node_data[node_id]["input_payload"]
+    if node_id in node_data and PayloadKey.INPUT_PAYLOAD in node_data[node_id]:
+        return node_data[node_id][PayloadKey.INPUT_PAYLOAD]
     return None
 
 
@@ -460,8 +461,8 @@ def get_encoded_output_from_node_id(events: list[dict], node_id: str) -> dict | 
     """Get encoded output payload for a specific node ID. Returns the encoded output payload."""
     logger.info("Getting encoded output payload for node", node_id=node_id)
     node_data = extract_encoded_node_payloads(events, [node_id])
-    if node_id in node_data and "output_payload" in node_data[node_id]:
-        return node_data[node_id]["output_payload"]
+    if node_id in node_data and PayloadKey.OUTPUT_PAYLOAD in node_data[node_id]:
+        return node_data[node_id][PayloadKey.OUTPUT_PAYLOAD]
     return None
 
 

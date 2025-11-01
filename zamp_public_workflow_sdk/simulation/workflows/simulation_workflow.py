@@ -5,8 +5,8 @@ with workflow.unsafe.imports_passed_through():
 
     from zamp_public_workflow_sdk.actions_hub import ActionsHub
     from zamp_public_workflow_sdk.simulation.models.simulation_workflow import (
-        SimulationWorkflowInput,
-        SimulationWorkflowOutput,
+        SimulationFetchDataWorkflowInput,
+        SimulationFetchDataWorkflowOutput,
     )
 
 
@@ -17,12 +17,12 @@ logger = structlog.get_logger(__name__)
     "Workflow that fetches simulation data using strategy pattern",
     labels=["simulation", "strategy"],
 )
-class SimulationWorkflow:
+class SimulationFetchDataWorkflow:
     def __init__(self):
         pass
 
     @ActionsHub.register_workflow_run
-    async def execute(self, input: SimulationWorkflowInput) -> SimulationWorkflowOutput:
+    async def execute(self, input: SimulationFetchDataWorkflowInput) -> SimulationFetchDataWorkflowOutput:
         """
         Execute the simulation data workflow to fetch and process workflow history.
 
@@ -56,4 +56,4 @@ class SimulationWorkflow:
                     error_type=type(e).__name__,
                 )
 
-        return SimulationWorkflowOutput(node_id_to_response_map=node_id_to_response_map)
+        return SimulationFetchDataWorkflowOutput(node_id_to_response_map=node_id_to_response_map)

@@ -14,13 +14,13 @@ from .simulation_strategy import (
     TemporalHistoryConfig,
 )
 from .simulation_workflow import (
-    SimulationWorkflowInput,
-    SimulationWorkflowOutput,
+    SimulationFetchDataWorkflowInput,
+    SimulationFetchDataWorkflowOutput,
 )
 
 __all__ = [
-    "SimulationWorkflowInput",
-    "SimulationWorkflowOutput",
+    "SimulationFetchDataWorkflowInput",
+    "SimulationFetchDataWorkflowOutput",
     "SimulationConfig",
     "NodeMockConfig",
     "NodeStrategy",

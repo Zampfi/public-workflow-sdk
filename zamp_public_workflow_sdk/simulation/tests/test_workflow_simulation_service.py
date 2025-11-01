@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
+from zamp_public_workflow_sdk.simulation.constants import PayloadKey
 from zamp_public_workflow_sdk.simulation.models import (
     CustomOutputConfig,
     ExecutionType,
@@ -17,6 +18,7 @@ from zamp_public_workflow_sdk.simulation.models import (
     StrategyType,
     TemporalHistoryConfig,
 )
+from zamp_public_workflow_sdk.simulation.models.mocked_result import MockedResultOutput
 from zamp_public_workflow_sdk.simulation.workflow_simulation_service import (
     WorkflowSimulationService,
 )
@@ -104,13 +106,19 @@ class TestWorkflowSimulationService:
     async def test_get_simulation_response_node_found(self):
         """Test getting simulation response when node is found."""
         service = WorkflowSimulationService(None)
-        service.node_id_to_response_map = {"node1#1": "test_output"}
+        service.node_id_to_response_map = {
+            "node1#1": {PayloadKey.INPUT_PAYLOAD: None, PayloadKey.OUTPUT_PAYLOAD: "test_output"}
+        }
 
-        response = await service.get_simulation_response("node1#1")
+        with patch(
+            "zamp_public_workflow_sdk.actions_hub.action_hub_core.ActionsHub.execute_activity", new_callable=AsyncMock
+        ) as mock_execute:
+            mock_execute.return_value = MockedResultOutput(output="test_output")
+            response = await service.get_simulation_response("node1#1")
 
-        assert isinstance(response, SimulationResponse)
-        assert response.execution_type == ExecutionType.MOCK
-        assert response.execution_response is None
+            assert isinstance(response, SimulationResponse)
+            assert response.execution_type == ExecutionType.MOCK
+            assert response.execution_response == "test_output"
 
     @pytest.mark.asyncio
     async def test_get_simulation_response_node_not_found(self):
@@ -130,13 +138,19 @@ class TestWorkflowSimulationService:
         dict_output = {"key": "value", "number": 123, "list": [1, 2, 3]}
 
         service = WorkflowSimulationService(None)
-        service.node_id_to_response_map = {"node1#1": dict_output}
+        service.node_id_to_response_map = {
+            "node1#1": {PayloadKey.INPUT_PAYLOAD: None, PayloadKey.OUTPUT_PAYLOAD: dict_output}
+        }
 
-        response = await service.get_simulation_response("node1#1")
+        with patch(
+            "zamp_public_workflow_sdk.actions_hub.action_hub_core.ActionsHub.execute_activity", new_callable=AsyncMock
+        ) as mock_execute:
+            mock_execute.return_value = MockedResultOutput(output=dict_output)
+            response = await service.get_simulation_response("node1#1")
 
-        assert isinstance(response, SimulationResponse)
-        assert response.execution_type == ExecutionType.MOCK
-        assert response.execution_response is None
+            assert isinstance(response, SimulationResponse)
+            assert response.execution_type == ExecutionType.MOCK
+            assert response.execution_response == dict_output
 
     @pytest.mark.asyncio
     async def test_get_simulation_response_with_list_output(self):
@@ -144,13 +158,19 @@ class TestWorkflowSimulationService:
         list_output = [1, 2, 3, "test", {"nested": "value"}]
 
         service = WorkflowSimulationService(None)
-        service.node_id_to_response_map = {"node1#1": list_output}
+        service.node_id_to_response_map = {
+            "node1#1": {PayloadKey.INPUT_PAYLOAD: None, PayloadKey.OUTPUT_PAYLOAD: list_output}
+        }
 
-        response = await service.get_simulation_response("node1#1")
+        with patch(
+            "zamp_public_workflow_sdk.actions_hub.action_hub_core.ActionsHub.execute_activity", new_callable=AsyncMock
+        ) as mock_execute:
+            mock_execute.return_value = MockedResultOutput(output=list_output)
+            response = await service.get_simulation_response("node1#1")
 
-        assert isinstance(response, SimulationResponse)
-        assert response.execution_type == ExecutionType.MOCK
-        assert response.execution_response is None
+            assert isinstance(response, SimulationResponse)
+            assert response.execution_type == ExecutionType.MOCK
+            assert response.execution_response == list_output
 
     @pytest.mark.asyncio
     async def test_initialize_simulation_data_success(self):
@@ -171,7 +191,9 @@ class TestWorkflowSimulationService:
 
         # Mock the workflow execution
         mock_workflow_result = Mock()
-        mock_workflow_result.node_id_to_response_map = {"node1#1": "test_output"}
+        mock_workflow_result.node_id_to_response_map = {
+            "node1#1": {PayloadKey.INPUT_PAYLOAD: None, PayloadKey.OUTPUT_PAYLOAD: "test_output"}
+        }
 
         with patch("zamp_public_workflow_sdk.actions_hub.ActionsHub") as mock_actions_hub:
             mock_actions_hub.execute_child_workflow = AsyncMock(return_value=mock_workflow_result)
@@ -180,7 +202,7 @@ class TestWorkflowSimulationService:
             await service._initialize_simulation_data()
 
             assert len(service.node_id_to_response_map) == 1
-            assert service.node_id_to_response_map["node1#1"] == "test_output"
+            assert service.node_id_to_response_map["node1#1"][PayloadKey.OUTPUT_PAYLOAD] == "test_output"
             mock_actions_hub.execute_child_workflow.assert_called_once()
 
     @pytest.mark.asyncio

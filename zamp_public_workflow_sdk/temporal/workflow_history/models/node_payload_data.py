@@ -17,7 +17,25 @@ class NodePayloadData(BaseModel):
 
 
 class DecodeNodePayloadInput(BaseModel):
-    """Input model for decode_node_payload activity."""
+    """Input model for decode_node_payload activity.
+
+    The encoded_payload should be a dict with PayloadKey.INPUT_PAYLOAD and PayloadKey.OUTPUT_PAYLOAD keys:
+    {
+        PayloadKey.INPUT_PAYLOAD: {...},   # encoded input payload
+        PayloadKey.OUTPUT_PAYLOAD: {...}   # encoded output payload
+    }
+
+    Note: PayloadKey is from zamp_public_workflow_sdk.simulation.constants
+    """
 
     node_id: str = Field(..., description="The node ID")
-    encoded_payload: dict[str, Any] = Field(..., description="The encoded payload to decode")
+    encoded_payload: dict[str, Any] = Field(
+        ...,
+        description="Dict with PayloadKey.INPUT_PAYLOAD and PayloadKey.OUTPUT_PAYLOAD keys containing encoded payloads",
+    )
+
+
+class DecodeNodePayloadOutput(BaseModel):
+    """Output model for decode_node_payload activity."""
+
+    result: Any = Field(..., description="The decoded payload result")
