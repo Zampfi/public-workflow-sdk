@@ -176,8 +176,9 @@ class TestSimulationWorkflowInput:
         simulation_config = SimulationConfig(mock_config=NodeMockConfig(node_strategies=[]))
         output_schema = SimulationOutputSchema(node_captures={"activity#1": NodeCaptureMode.OUTPUT})
         metadata_context = ZampMetadataContext(
-            request_id="req-123",
+            organization_id="org-123",
             user_id="user-456",
+            process_id="proc-789",
         )
 
         input_data = SimulationWorkflowInput(
