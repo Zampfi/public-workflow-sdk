@@ -520,7 +520,15 @@ class ActionsHub:
         retry_policy.initial_interval = convert_iso_to_timedelta(retry_policy.initial_interval)
         retry_policy.maximum_interval = convert_iso_to_timedelta(retry_policy.maximum_interval)
 
-        node_id_arg = {TEMPORAL_NODE_ID_KEY: node_id}
+        # if node_id is provided in the last argument, use it and remove from args
+        if len(args) > 0 and isinstance(args[-1], dict) and TEMPORAL_NODE_ID_KEY in args[-1]:
+            node_id_arg = args[-1]
+            node_id = args[-1][TEMPORAL_NODE_ID_KEY]
+            args = args[:-1]  
+        else:
+            node_id_arg = {TEMPORAL_NODE_ID_KEY: node_id}
+        
+        # Prepend node_id_arg to args
         args = (node_id_arg,) + args
 
         # Executing in temporal mode

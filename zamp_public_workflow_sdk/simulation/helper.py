@@ -133,17 +133,11 @@ def extract_main_workflow_node_payloads(
         node_ids: List of node IDs in the main workflow
 
     Returns:
-        Dictionary mapping node IDs to dict with PayloadKey.INPUT_PAYLOAD and PayloadKey.OUTPUT_PAYLOAD keys (both encoded)
+        Dictionary mapping node IDs to dict with PayloadKey.INPUT_PAYLOAD, PayloadKey.OUTPUT_PAYLOAD,
+        and potentially other metadata keys (e.g., NEEDS_CHILD_TRAVERSAL)
     """
-    node_outputs = {}
-    for node_id in node_ids:
-        input_payload = temporal_history.get_node_input_encoded(node_id=node_id)
-        output_payload = temporal_history.get_node_output_encoded(node_id=node_id)
-        node_outputs[node_id] = {
-            PayloadKey.INPUT_PAYLOAD: input_payload,
-            PayloadKey.OUTPUT_PAYLOAD: output_payload,
-        }
-    return node_outputs
+    # Get the full encoded payloads including all metadata (like NEEDS_CHILD_TRAVERSAL)
+    return temporal_history.get_nodes_data_encoded(target_node_ids=node_ids)
 
 
 async def extract_child_workflow_node_payloads(

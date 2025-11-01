@@ -4,7 +4,7 @@ Helper functions for temporal workflow history operations.
 
 import structlog
 
-from zamp_public_workflow_sdk.simulation.constants import PayloadKey
+from zamp_public_workflow_sdk.simulation.constants import PayloadKey, NEEDS_CHILD_TRAVERSAL
 from zamp_public_workflow_sdk.temporal.workflow_history.constants import (
     EventField,
     EventType,
@@ -320,6 +320,7 @@ def _process_events_for_payloads(
     node_payloads: dict = {}
     activity_scheduled_events: dict[int, str] = {}
     child_workflow_initiated_events: dict[int, str] = {}
+    child_workflow_execution_details: dict[str, tuple[str, str]] = {}  # Maps node_id to (workflow_id, run_id)
     workflow_node_id: str | None = None
 
     for event_index, event in enumerate(events):
@@ -347,6 +348,20 @@ def _process_events_for_payloads(
                 if _should_include_node_id(extracted_node_id, node_ids):
                     if extracted_node_id not in node_payloads:
                         node_payloads[extracted_node_id] = {}
+                    # Extract and store workflow_id and run_id from this event
+                    attrs_key = EventTypeToAttributesKey.CHILD_WORKFLOW_EXECUTION_STARTED.value
+                    attrs = event.get(attrs_key, {})
+                    workflow_execution = attrs.get(WorkflowExecutionField.WORKFLOW_EXECUTION.value, {})
+                    child_workflow_id = workflow_execution.get(WorkflowExecutionField.WORKFLOW_ID.value)
+                    child_run_id = workflow_execution.get(WorkflowExecutionField.RUN_ID.value)
+                    if child_workflow_id and child_run_id:
+                        child_workflow_execution_details[extracted_node_id] = (child_workflow_id, child_run_id)
+                        logger.info(
+                            "Stored child workflow execution details",
+                            node_id=extracted_node_id,
+                            workflow_id=child_workflow_id,
+                            run_id=child_run_id,
+                        )
             else:
                 _add_event_to_node_events(extracted_node_id, event, event_type, node_ids, node_payloads)
             continue
@@ -427,6 +442,44 @@ def _process_events_for_payloads(
                 node_payloads[node_id][PayloadKey.OUTPUT_PAYLOAD] = payload
         else:
             _add_event_and_payload(node_id, event, payload_field, node_payloads)
+    
+    # Mark child workflows that were initiated but don't have output (need traversal)
+    if not return_encoded_format:
+        return node_payloads
+    
+    for event_id, child_node_id in child_workflow_initiated_events.items():
+        # Skip if not in target nodes
+        if not _should_include_node_id(child_node_id, node_ids):
+            continue
+        
+        # Skip if node not in payloads
+        if child_node_id not in node_payloads:
+            continue
+        
+        # Skip if already has output
+        if PayloadKey.OUTPUT_PAYLOAD in node_payloads[child_node_id]:
+            continue
+        
+        # Get child workflow execution details if available
+        if child_node_id in child_workflow_execution_details:
+            workflow_id, run_id = child_workflow_execution_details[child_node_id]
+            logger.info(
+                "Child workflow initiated but no output found - needs traversal",
+                node_id=child_node_id,
+                event_id=event_id,
+                workflow_id=workflow_id,
+                run_id=run_id,
+            )
+            node_payloads[child_node_id][NEEDS_CHILD_TRAVERSAL] = True
+            node_payloads[child_node_id]["child_workflow_id"] = workflow_id
+            node_payloads[child_node_id]["child_run_id"] = run_id
+        else:
+            logger.warning(
+                "Child workflow initiated but no execution details found",
+                node_id=child_node_id,
+                event_id=event_id,
+            )
+    
     return node_payloads
 
 
