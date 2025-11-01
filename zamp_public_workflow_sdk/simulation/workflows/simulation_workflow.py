@@ -4,13 +4,9 @@ with workflow.unsafe.imports_passed_through():
     import structlog
     from typing import Any
     from zamp_public_workflow_sdk.actions_hub import ActionsHub
-
     from zamp_public_workflow_sdk.simulation.models.simulation_workflow import (
         NodeCaptureResult,
         SimulationWorkflowOutput,
-    )
-
-    from zamp_public_workflow_sdk.simulation.models.simulation_workflow import (
         SimulationWorkflowInput,
         NodeCaptureMode,
     )
@@ -29,7 +25,7 @@ with workflow.unsafe.imports_passed_through():
         DECODED_OUTPUT,
     )
 
-    logger = structlog.get_logger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 @ActionsHub.register_workflow_defn(

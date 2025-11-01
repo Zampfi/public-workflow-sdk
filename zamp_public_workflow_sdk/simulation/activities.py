@@ -1,10 +1,3 @@
-"""
-Activities for simulation support.
-
-This module contains activities that are used to support simulation functionality,
-such as making mocked operations visible in the Temporal UI.
-"""
-
 import structlog
 from zamp_public_workflow_sdk.actions_hub.action_hub_core import ActionsHub
 from zamp_public_workflow_sdk.actions_hub.constants import ExecutionMode
