@@ -1,14 +1,7 @@
-"""
-Activities for simulation support.
-
-This module contains activities that are used to support simulation functionality,
-such as making mocked operations visible in the Temporal UI.
-"""
-
 import structlog
 from zamp_public_workflow_sdk.actions_hub.action_hub_core import ActionsHub
 from zamp_public_workflow_sdk.actions_hub.constants import ExecutionMode
-from zamp_public_workflow_sdk.simulation.constants import PayloadKey
+from zamp_public_workflow_sdk.simulation.constants import PayloadKey, DECODED_OUTPUT
 from zamp_public_workflow_sdk.simulation.models.mocked_result import MockedResultInput, MockedResultOutput
 from zamp_public_workflow_sdk.temporal.workflow_history.models.node_payload_data import (
     DecodeNodePayloadInput,
@@ -70,7 +63,7 @@ async def return_mocked_result(input_data: MockedResultInput) -> MockedResultOut
         )
 
         logger.info("Successfully decoded mocked result", node_id=input_data.node_id)
-        return MockedResultOutput(output=decoded_payload.result)
+        return MockedResultOutput(output=decoded_payload.result.get(DECODED_OUTPUT))
 
     except Exception as e:
         logger.error(

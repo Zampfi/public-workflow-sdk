@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from zamp_public_workflow_sdk.actions_hub.constants import ExecutionMode
-from zamp_public_workflow_sdk.simulation.constants import PayloadKey
+from zamp_public_workflow_sdk.simulation.constants import PayloadKey, DECODED_INPUT, DECODED_OUTPUT
 from zamp_public_workflow_sdk.simulation.models.mocked_result import MockedResultInput, MockedResultOutput
 from zamp_public_workflow_sdk.simulation.activities import return_mocked_result
 from zamp_public_workflow_sdk.temporal.workflow_history.models.node_payload_data import DecodeNodePayloadOutput
@@ -107,7 +107,9 @@ class TestReturnMockedResult:
             "zamp_public_workflow_sdk.simulation.activities.ActionsHub.execute_activity",
             new_callable=AsyncMock,
         ) as mock_execute:
-            mock_execute.return_value = DecodeNodePayloadOutput(result=decoded_result)
+            mock_execute.return_value = DecodeNodePayloadOutput(
+                result={DECODED_INPUT: None, DECODED_OUTPUT: decoded_result}
+            )
 
             result = await return_mocked_result(input_data)
 
@@ -142,7 +144,9 @@ class TestReturnMockedResult:
             "zamp_public_workflow_sdk.simulation.activities.ActionsHub.execute_activity",
             new_callable=AsyncMock,
         ) as mock_execute:
-            mock_execute.return_value = DecodeNodePayloadOutput(result=decoded_result)
+            mock_execute.return_value = DecodeNodePayloadOutput(
+                result={DECODED_INPUT: "decoded_input_value", DECODED_OUTPUT: decoded_result}
+            )
 
             result = await return_mocked_result(input_data)
 
@@ -178,7 +182,9 @@ class TestReturnMockedResult:
             "zamp_public_workflow_sdk.simulation.activities.ActionsHub.execute_activity",
             new_callable=AsyncMock,
         ) as mock_execute:
-            mock_execute.return_value = DecodeNodePayloadOutput(result=decoded_result)
+            mock_execute.return_value = DecodeNodePayloadOutput(
+                result={DECODED_INPUT: "decoded_input_value", DECODED_OUTPUT: decoded_result}
+            )
 
             result = await return_mocked_result(input_data)
 

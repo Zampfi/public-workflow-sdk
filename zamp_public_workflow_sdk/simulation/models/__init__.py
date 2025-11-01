@@ -13,7 +13,7 @@ from .simulation_strategy import (
     StrategyType,
     TemporalHistoryConfig,
 )
-from .simulation_workflow import (
+from .simulation_fetch_data_workflow import (
     SimulationFetchDataWorkflowInput,
     SimulationFetchDataWorkflowOutput,
 )

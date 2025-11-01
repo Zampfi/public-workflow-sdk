@@ -24,7 +24,7 @@ from zamp_public_workflow_sdk.simulation.models.simulation_response import (
 from zamp_public_workflow_sdk.simulation.workflow_simulation_service import (
     WorkflowSimulationService,
 )
-from zamp_public_workflow_sdk.simulation.workflows.simulation_workflow import (
+from zamp_public_workflow_sdk.simulation.workflows.simulation_fetch_data_workflow import (
     SimulationFetchDataWorkflow,
 )
 
@@ -107,9 +107,9 @@ class TestSimulationWorkflowIntegration:
 
         assert isinstance(result, SimulationFetchDataWorkflowOutput)
         assert len(result.node_id_to_response_map) == 3
-        assert result.node_id_to_response_map["node1#1"] == "output1"
-        assert result.node_id_to_response_map["node2#1"] == "output1"
-        assert result.node_id_to_response_map["node3#1"] == "output2"
+        assert result.node_id_to_response_map["node1#1"][PayloadKey.OUTPUT_PAYLOAD] == "output1"
+        assert result.node_id_to_response_map["node2#1"][PayloadKey.OUTPUT_PAYLOAD] == "output1"
+        assert result.node_id_to_response_map["node3#1"][PayloadKey.OUTPUT_PAYLOAD] == "output2"
 
     @pytest.mark.asyncio
     async def test_execute_with_temporal_history_strategies(self):
@@ -200,7 +200,7 @@ class TestSimulationWorkflowIntegration:
 
             assert isinstance(result, SimulationFetchDataWorkflowOutput)
             assert len(result.node_id_to_response_map) == 2
-            assert result.node_id_to_response_map["node1#1"] == "custom_output"
+            assert result.node_id_to_response_map["node1#1"][PayloadKey.OUTPUT_PAYLOAD] == "custom_output"
             assert result.node_id_to_response_map["node2#1"] == "history_output"
 
     @pytest.mark.asyncio
