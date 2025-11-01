@@ -426,7 +426,7 @@ class TestTemporalHistoryStrategyHandler:
             )
 
             assert result == mock_child_history
-            mock_parent_history.get_child_workflow_workflow_id_run_id.assert_called_once_with("Child#1")
+            mock_parent_history.get_child_workflow_workflow_id_run_id.assert_called_once_with(node_id="Child#1")
 
     @pytest.mark.asyncio
     async def test_fetch_nested_child_workflow_history_with_cache(self):
