@@ -16,4 +16,3 @@ NEEDS_CHILD_TRAVERSAL = "needs_child_traversal"
 # Keys for decoded payload data
 DECODED_INPUT = "decoded_input"
 DECODED_OUTPUT = "decoded_output"
-

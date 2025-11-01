@@ -303,10 +303,10 @@ def get_node_data_from_node_id(events: list[dict], node_id: str) -> dict[str, No
 def _extract_child_workflow_execution_details(event: dict) -> tuple[str | None, str | None]:
     """
     Extract workflow_id and run_id from a CHILD_WORKFLOW_EXECUTION_STARTED event.
-    
+
     Args:
         event: The workflow event dictionary
-        
+
     Returns:
         Tuple of (workflow_id, run_id) or (None, None) if not found
     """
@@ -326,7 +326,7 @@ def _mark_child_workflows_needing_traversal(
 ) -> None:
     """
     Mark child workflows that were initiated but have no output as needing traversal.
-    
+
     Args:
         child_workflow_initiated_events: Map of event IDs to child node IDs for initiated workflows
         child_workflow_execution_details: Map of node IDs to (workflow_id, run_id) tuples
@@ -337,15 +337,15 @@ def _mark_child_workflows_needing_traversal(
         # Skip if not in target nodes
         if not _should_include_node_id(child_node_id, node_ids):
             continue
-        
+
         # Skip if node not in payloads
         if child_node_id not in node_payloads:
             continue
-        
+
         # Skip if already has output
         if PayloadKey.OUTPUT_PAYLOAD in node_payloads[child_node_id]:
             continue
-        
+
         # Get child workflow execution details if available
         if child_node_id not in child_workflow_execution_details:
             logger.warning(
@@ -354,7 +354,7 @@ def _mark_child_workflows_needing_traversal(
                 event_id=event_id,
             )
             continue
-        
+
         workflow_id, run_id = child_workflow_execution_details[child_node_id]
         logger.info(
             "Child workflow initiated but no output found - needs traversal",
@@ -506,18 +506,18 @@ def _process_events_for_payloads(
                 node_payloads[node_id][PayloadKey.OUTPUT_PAYLOAD] = payload
         else:
             _add_event_and_payload(node_id, event, payload_field, node_payloads)
-    
+
     # Mark child workflows that were initiated but don't have output (need traversal)
     if not return_encoded_format:
         return node_payloads
-    
+
     _mark_child_workflows_needing_traversal(
         child_workflow_initiated_events,
         child_workflow_execution_details,
         node_payloads,
         node_ids,
     )
-    
+
     return node_payloads
 
 

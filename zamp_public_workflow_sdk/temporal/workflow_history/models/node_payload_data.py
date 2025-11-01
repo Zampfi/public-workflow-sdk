@@ -39,6 +39,5 @@ class DecodeNodePayloadOutput(BaseModel):
     """Output model for decode_node_payload activity."""
 
     result: dict[str, Any] = Field(
-        ...,
-        description="Dict containing 'decoded_input' and 'decoded_output' keys with their respective payloads"
+        ..., description="Dict containing 'decoded_input' and 'decoded_output' keys with their respective payloads"
     )

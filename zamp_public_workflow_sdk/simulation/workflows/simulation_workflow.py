@@ -2,7 +2,7 @@ from temporalio import workflow
 
 with workflow.unsafe.imports_passed_through():
     import structlog
-    from typing import Any, Dict
+    from typing import Any
     from zamp_public_workflow_sdk.actions_hub import ActionsHub
 
     from zamp_public_workflow_sdk.simulation.models.simulation_workflow import (
@@ -25,7 +25,6 @@ with workflow.unsafe.imports_passed_through():
     )
     from zamp_public_workflow_sdk.simulation.constants import (
         NEEDS_CHILD_TRAVERSAL,
-        PayloadKey,
         DECODED_INPUT,
         DECODED_OUTPUT,
     )
@@ -70,9 +69,7 @@ class SimulationWorkflow:
     """
 
     @ActionsHub.register_workflow_run
-    async def execute(
-        self, input_params: SimulationWorkflowInput
-    ) -> SimulationWorkflowOutput:
+    async def execute(self, input_params: SimulationWorkflowInput) -> SimulationWorkflowOutput:
         """Execute workflow in simulation mode and capture activity data.
 
         Args:
@@ -109,7 +106,7 @@ class SimulationWorkflow:
             has_result=workflow_result is not None,
         )
 
-        node_captures: Dict[str, NodeCaptureResult] = {}
+        node_captures: dict[str, NodeCaptureResult] = {}
         node_captures = await self._fetch_and_parse_node_captures(
             workflow_id=workflow_id,
             run_id=run_id,
@@ -130,9 +127,7 @@ class SimulationWorkflow:
 
         return result
 
-    def _prepare_workflow_params(
-        self, input_params: SimulationWorkflowInput
-    ) -> Dict[str, Any]:
+    def _prepare_workflow_params(self, input_params: SimulationWorkflowInput) -> dict[str, Any]:
         """Prepare workflow parameters with simulation_config.
 
         Args:
@@ -146,20 +141,15 @@ class SimulationWorkflow:
         workflow_params["simulation_config"] = input_params.simulation_config
 
         # Add zamp_metadata_context if provided and not already in params
-        if (
-            input_params.zamp_metadata_context
-            and "zamp_metadata_context" not in workflow_params
-        ):
-            workflow_params["zamp_metadata_context"] = (
-                input_params.zamp_metadata_context
-            )
+        if input_params.zamp_metadata_context and "zamp_metadata_context" not in workflow_params:
+            workflow_params["zamp_metadata_context"] = input_params.zamp_metadata_context
 
         return workflow_params
 
     async def _execute_child_workflow(
         self,
         workflow_class: Any,
-        workflow_params: Dict[str, Any],
+        workflow_params: dict[str, Any],
         workflow_name: str,
     ) -> tuple[Any, str, str]:
         """Execute child workflow in simulation mode.
@@ -177,9 +167,7 @@ class SimulationWorkflow:
             workflow_name=workflow_name,
         )
 
-        child_handle: workflow.ChildWorkflowHandle[
-            Any, Any
-        ] = await workflow.start_child_workflow(
+        child_handle: workflow.ChildWorkflowHandle[Any, Any] = await workflow.start_child_workflow(
             workflow_class,
             workflow_params,
             static_summary=f"Simulation: {workflow_name}",
@@ -208,8 +196,8 @@ class SimulationWorkflow:
         self,
         workflow_id: str,
         run_id: str,
-        node_captures: Dict[str, NodeCaptureMode],
-    ) -> Dict[str, NodeCaptureResult]:
+        node_captures: dict[str, NodeCaptureMode],
+    ) -> dict[str, NodeCaptureResult]:
         """Fetch workflow history and parse node captures based on output schema.
 
         Args:
@@ -231,7 +219,7 @@ class SimulationWorkflow:
         node_payloads = await self._fetch_node_payloads(workflow_id, run_id, list(node_captures.keys()))
 
         # Process each node capture
-        result: Dict[str, NodeCaptureResult] = {}
+        result: dict[str, NodeCaptureResult] = {}
         for node_id, capture_mode in node_captures.items():
             result[node_id] = await self._process_node_capture(node_id, capture_mode, node_payloads)
 
@@ -243,19 +231,17 @@ class SimulationWorkflow:
         )
         return result
 
-    async def _fetch_node_payloads(
-        self, workflow_id: str, run_id: str, node_ids: list[str]
-    ) -> Dict[str, Any]:
+    async def _fetch_node_payloads(self, workflow_id: str, run_id: str, node_ids: list[str]) -> dict[str, Any]:
         """Fetch temporal history and extract node payloads.
-        
+
         Args:
             workflow_id: The workflow ID
             run_id: The run ID
             node_ids: List of node IDs to extract
-            
+
         Returns:
             Dictionary mapping node IDs to encoded payloads
-            
+
         Raises:
             Exception: If fetch or extraction fails
         """
@@ -265,6 +251,10 @@ class SimulationWorkflow:
                 workflow_id=workflow_id,
                 run_id=run_id,
             )
+            if temporal_history is None:
+                raise Exception(
+                    f"Failed to fetch temporal history for workflow_id={workflow_id}, run_id={run_id}: returned None"
+                )
         except Exception as e:
             logger.error(
                 "Failed to fetch temporal history",
@@ -272,9 +262,7 @@ class SimulationWorkflow:
                 run_id=run_id,
                 error=str(e),
             )
-            raise Exception(
-                f"Failed to fetch temporal history for workflow_id={workflow_id}, run_id={run_id}"
-            ) from e
+            raise Exception(f"Failed to fetch temporal history for workflow_id={workflow_id}, run_id={run_id}") from e
 
         try:
             node_payloads = await extract_node_payload(
@@ -289,23 +277,21 @@ class SimulationWorkflow:
                 workflow_id=workflow_id,
                 error=str(e),
             )
-            raise Exception(
-                f"Failed to extract node payloads for workflow_id={workflow_id}, run_id={run_id}"
-            ) from e
+            raise Exception(f"Failed to extract node payloads for workflow_id={workflow_id}, run_id={run_id}") from e
 
     async def _process_node_capture(
         self,
         node_id: str,
         capture_mode: NodeCaptureMode,
-        node_payloads: Dict[str, Any],
+        node_payloads: dict[str, Any],
     ) -> NodeCaptureResult:
         """Process a single node capture: traverse child if needed, decode, and build result.
-        
+
         Args:
             node_id: The node ID to process
             capture_mode: The capture mode (INPUT, OUTPUT, or INPUT_OUTPUT)
             node_payloads: Dictionary of all node payloads
-            
+
         Returns:
             NodeCaptureResult with decoded input/output based on capture mode
         """
@@ -328,15 +314,13 @@ class SimulationWorkflow:
         # Build result based on capture mode
         return self._build_capture_result(node_id, capture_mode, decoded_data)
 
-    async def _traverse_child_workflow_if_needed(
-        self, node_id: str, encoded_payload: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    async def _traverse_child_workflow_if_needed(self, node_id: str, encoded_payload: dict[str, Any]) -> dict[str, Any]:
         """Traverse into child workflow if the node needs it and return child's main node payload.
-        
+
         Args:
             node_id: The parent node ID
             encoded_payload: The encoded payload which may contain traversal metadata
-            
+
         Returns:
             The child workflow's main node payload if traversal needed, otherwise original payload
         """
@@ -346,7 +330,7 @@ class SimulationWorkflow:
 
         child_workflow_id = encoded_payload.get("child_workflow_id")
         child_run_id = encoded_payload.get("child_run_id")
-        
+
         if not child_workflow_id or not child_run_id:
             return encoded_payload
 
@@ -363,39 +347,39 @@ class SimulationWorkflow:
                 workflow_id=child_workflow_id,
                 run_id=child_run_id,
             )
-            
+
             child_payloads = child_history.get_nodes_data_encoded(target_node_ids=None)
             logger.info(
                 "Child workflow payloads extracted",
                 node_id=node_id,
                 child_payloads_count=len(child_payloads),
             )
-            
+
             child_main_node = self._find_main_workflow_node(child_payloads, node_id)
-            
+
             if child_main_node:
                 logger.info("Successfully extracted child workflow output", node_id=node_id)
                 return child_main_node
-            
+
             logger.warning("No main workflow node found in child history", node_id=node_id)
-            
+
         except Exception as e:
             logger.error(
                 "Failed to fetch child workflow history",
                 node_id=node_id,
                 error=str(e),
             )
-        
+
         return encoded_payload
 
     @staticmethod
-    def _find_main_workflow_node(child_payloads: Dict[str, Any], parent_node_id: str) -> Dict[str, Any] | None:
+    def _find_main_workflow_node(child_payloads: dict[str, Any], parent_node_id: str) -> dict[str, Any] | None:
         """Find the main workflow node in child payloads (node without '.' separator).
-        
+
         Args:
             child_payloads: Dictionary of child workflow payloads
             parent_node_id: Parent node ID for logging
-            
+
         Returns:
             The main workflow node payload or None if not found
         """
@@ -409,15 +393,13 @@ class SimulationWorkflow:
                 return child_payload
         return None
 
-    async def _decode_node_payload(
-        self, node_id: str, encoded_payload: Dict[str, Any]
-    ) -> Dict[str, Any] | None:
+    async def _decode_node_payload(self, node_id: str, encoded_payload: dict[str, Any]) -> dict[str, Any] | None:
         """Decode node payload using decode_node_payload activity.
-        
+
         Args:
             node_id: The node ID
             encoded_payload: The encoded payload to decode
-            
+
         Returns:
             Decoded payload result or None if decoding fails
         """
@@ -444,15 +426,15 @@ class SimulationWorkflow:
 
     @staticmethod
     def _build_capture_result(
-        node_id: str, capture_mode: NodeCaptureMode, decoded_data: Dict[str, Any]
+        node_id: str, capture_mode: NodeCaptureMode, decoded_data: dict[str, Any]
     ) -> NodeCaptureResult:
         """Build NodeCaptureResult based on capture mode.
-        
+
         Args:
             node_id: The node ID
             capture_mode: The capture mode (INPUT, OUTPUT, or INPUT_OUTPUT)
             decoded_data: The decoded payload data
-            
+
         Returns:
             NodeCaptureResult with appropriate input/output based on capture mode
         """

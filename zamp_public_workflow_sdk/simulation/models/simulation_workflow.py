@@ -6,7 +6,7 @@ and capturing activity inputs/outputs.
 """
 
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any
 from pydantic import BaseModel, Field
 
 from zamp_public_workflow_sdk.actions_hub.models.common_models import (
@@ -37,7 +37,7 @@ class SimulationOutputSchema(BaseModel):
         }
     """
 
-    node_captures: Dict[str, NodeCaptureMode] = Field(
+    node_captures: dict[str, NodeCaptureMode] = Field(
         description="Map of node IDs to capture modes (INPUT, OUTPUT, or INPUT_OUTPUT)"
     )
 
@@ -48,14 +48,12 @@ class NodeCaptureResult(BaseModel):
     Contains the captured input and/or output data for an activity execution.
     """
 
-    node_id: str = Field(
-        description="Node ID of the activity (e.g., 'activity_name#1')"
-    )
-    input: Optional[Any] = Field(
+    node_id: str = Field(description="Node ID of the activity (e.g., 'activity_name#1')")
+    input: Any | None = Field(
         default=None,
         description="Activity input parameters if captured (based on capture mode)",
     )
-    output: Optional[Any] = Field(
+    output: Any | None = Field(
         default=None,
         description="Activity output result if captured (based on capture mode)",
     )
@@ -71,19 +69,14 @@ class SimulationWorkflowInput(BaseModel):
     workflow_name: str = Field(
         description="Fully qualified name of the workflow to execute (e.g., 'StripeFetchInvoicesWorkflow')"
     )
-    workflow_params: Dict[str, Any] = Field(
-        description="Parameters to pass to the original workflow execution"
-    )
-    simulation_config: SimulationConfig = Field(
-        description="Simulation configuration with mock settings"
-    )
+    workflow_params: dict[str, Any] = Field(description="Parameters to pass to the original workflow execution")
+    simulation_config: SimulationConfig = Field(description="Simulation configuration with mock settings")
     output_schema: SimulationOutputSchema = Field(
         description="Schema defining which activities to capture and what data to return"
     )
-    zamp_metadata_context: Optional[ZampMetadataContext] = Field(
+    zamp_metadata_context: ZampMetadataContext | None = Field(
         default=None, description="Metadata context for logging and tracing"
     )
-
 
 
 class SimulationWorkflowOutput(BaseModel):
@@ -92,6 +85,4 @@ class SimulationWorkflowOutput(BaseModel):
     Contains the workflow result, captured activity data, and workflow identifiers.
     """
 
-    node_captures: Dict[str, NodeCaptureResult] = Field(
-        description="Captured activity data indexed by node_id"
-    )
+    node_captures: dict[str, NodeCaptureResult] = Field(description="Captured activity data indexed by node_id")
