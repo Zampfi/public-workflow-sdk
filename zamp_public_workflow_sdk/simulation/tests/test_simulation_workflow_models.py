@@ -257,55 +257,55 @@ class TestSimulationWorkflowOutput:
 
     def test_simulation_workflow_output_valid(self):
         """Test creating valid simulation workflow output."""
-        node_captures = {
-            "activity#1": NodeCaptureResult(
+        node_captures = [
+            NodeCaptureResult(
                 node_id="activity#1",
                 input={"param": "value"},
                 output={"result": "success"},
             ),
-            "activity#2": NodeCaptureResult(
+            NodeCaptureResult(
                 node_id="activity#2",
                 output={"result": "done"},
             ),
-        }
+        ]
 
-        output = SimulationWorkflowOutput(node_captures=node_captures)
+        output = SimulationWorkflowOutput(root=node_captures)
 
-        assert len(output.node_captures) == 2
-        assert output.node_captures["activity#1"].node_id == "activity#1"
-        assert output.node_captures["activity#1"].input == {"param": "value"}
-        assert output.node_captures["activity#1"].output == {"result": "success"}
-        assert output.node_captures["activity#2"].node_id == "activity#2"
-        assert output.node_captures["activity#2"].input is None
-        assert output.node_captures["activity#2"].output == {"result": "done"}
+        assert len(output.root) == 2
+        assert output.root[0].node_id == "activity#1"
+        assert output.root[0].input == {"param": "value"}
+        assert output.root[0].output == {"result": "success"}
+        assert output.root[1].node_id == "activity#2"
+        assert output.root[1].input is None
+        assert output.root[1].output == {"result": "done"}
 
     def test_simulation_workflow_output_empty(self):
         """Test creating simulation workflow output with empty node_captures."""
-        output = SimulationWorkflowOutput(node_captures={})
+        output = SimulationWorkflowOutput(root=[])
 
-        assert len(output.node_captures) == 0
-        assert output.node_captures == {}
+        assert len(output.root) == 0
+        assert output.root == []
 
     def test_simulation_workflow_output_missing_field(self):
-        """Test validation error when node_captures is missing."""
+        """Test validation error when root is missing."""
         with pytest.raises(ValidationError):
-            SimulationWorkflowOutput()  # Missing required node_captures field
+            SimulationWorkflowOutput()  # Missing required root field
 
     def test_simulation_workflow_output_multiple_nodes(self):
         """Test creating simulation workflow output with multiple node captures."""
-        node_captures = {
-            f"activity#{i}": NodeCaptureResult(
+        node_captures = [
+            NodeCaptureResult(
                 node_id=f"activity#{i}",
                 input={"index": i},
                 output={"result": i * 2},
             )
             for i in range(1, 6)
-        }
+        ]
 
-        output = SimulationWorkflowOutput(node_captures=node_captures)
+        output = SimulationWorkflowOutput(root=node_captures)
 
-        assert len(output.node_captures) == 5
+        assert len(output.root) == 5
         for i in range(1, 6):
-            assert output.node_captures[f"activity#{i}"].node_id == f"activity#{i}"
-            assert output.node_captures[f"activity#{i}"].input == {"index": i}
-            assert output.node_captures[f"activity#{i}"].output == {"result": i * 2}
+            assert output.root[i - 1].node_id == f"activity#{i}"
+            assert output.root[i - 1].input == {"index": i}
+            assert output.root[i - 1].output == {"result": i * 2}

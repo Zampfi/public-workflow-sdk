@@ -2,7 +2,7 @@ from temporalio import workflow
 
 with workflow.unsafe.imports_passed_through():
     import structlog
-    from typing import Any, Dict, List
+    from typing import Any
     from zamp_public_workflow_sdk.actions_hub import ActionsHub
     from zamp_public_workflow_sdk.simulation.models.simulation_workflow import (
         NodeCaptureResult,
@@ -189,8 +189,8 @@ class SimulationWorkflow:
         self,
         workflow_id: str,
         run_id: str,
-        node_captures: Dict[str, NodeCaptureMode],
-    ) -> List[NodeCaptureResult]:
+        node_captures: dict[str, NodeCaptureMode],
+    ) -> list[NodeCaptureResult]:
         """Fetch workflow history and parse node captures based on output schema.
 
         Args:
@@ -212,7 +212,7 @@ class SimulationWorkflow:
         node_payloads = await self._fetch_node_payloads(workflow_id, run_id, list(node_captures.keys()))
 
         # Process each node capture
-        result: List[NodeCaptureResult] = []
+        result: list[NodeCaptureResult] = []
         for node_id, capture_mode in node_captures.items():
             capture_result = await self._process_node_capture(node_id, capture_mode, node_payloads)
             result.append(capture_result)

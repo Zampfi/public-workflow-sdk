@@ -6,8 +6,8 @@ and capturing activity inputs/outputs.
 """
 
 from enum import Enum
-from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, ConfigDict, Field, RootModel, model_serializer
+from typing import Any
+from pydantic import BaseModel, Field, RootModel, model_serializer
 
 from zamp_public_workflow_sdk.actions_hub.models.common_models import (
     ZampMetadataContext,
@@ -60,7 +60,7 @@ class NodeCaptureResult(BaseModel):
     )
 
     @model_serializer
-    def serialize_model(self) -> Dict[str, Any]:
+    def serialize_model(self) -> dict[str, Any]:
         """Custom serializer that returns {node_id: {input/output}} format."""
         payload = {}
         if self.input is not None:
@@ -90,11 +90,10 @@ class SimulationWorkflowInput(BaseModel):
     )
 
 
-
-class SimulationWorkflowOutput(RootModel[List[NodeCaptureResult]]):
+class SimulationWorkflowOutput(RootModel[list[NodeCaptureResult]]):
     """Output from SimulationCodeWorkflow execution.
 
     A list of captured activity data, each containing node_id and optionally input/output.
     """
 
-    root: List[NodeCaptureResult]
+    root: list[NodeCaptureResult]
