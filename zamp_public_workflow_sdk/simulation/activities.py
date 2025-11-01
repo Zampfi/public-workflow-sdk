@@ -70,7 +70,7 @@ async def return_mocked_result(input_data: MockedResultInput) -> MockedResultOut
         )
 
         logger.info("Successfully decoded mocked result", node_id=input_data.node_id)
-        return MockedResultOutput(output=decoded_payload.result)
+        return MockedResultOutput(output=decoded_payload.result.get("decoded_output"))
 
     except Exception as e:
         logger.error(

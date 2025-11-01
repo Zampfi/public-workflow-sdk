@@ -107,7 +107,9 @@ class TestReturnMockedResult:
             "zamp_public_workflow_sdk.simulation.activities.ActionsHub.execute_activity",
             new_callable=AsyncMock,
         ) as mock_execute:
-            mock_execute.return_value = DecodeNodePayloadOutput(result=decoded_result)
+            mock_execute.return_value = DecodeNodePayloadOutput(
+                result={"decoded_input": None, "decoded_output": decoded_result}
+            )
 
             result = await return_mocked_result(input_data)
 
@@ -142,7 +144,9 @@ class TestReturnMockedResult:
             "zamp_public_workflow_sdk.simulation.activities.ActionsHub.execute_activity",
             new_callable=AsyncMock,
         ) as mock_execute:
-            mock_execute.return_value = DecodeNodePayloadOutput(result=decoded_result)
+            mock_execute.return_value = DecodeNodePayloadOutput(
+                result={"decoded_input": "decoded_input_value", "decoded_output": decoded_result}
+            )
 
             result = await return_mocked_result(input_data)
 
@@ -178,7 +182,9 @@ class TestReturnMockedResult:
             "zamp_public_workflow_sdk.simulation.activities.ActionsHub.execute_activity",
             new_callable=AsyncMock,
         ) as mock_execute:
-            mock_execute.return_value = DecodeNodePayloadOutput(result=decoded_result)
+            mock_execute.return_value = DecodeNodePayloadOutput(
+                result={"decoded_input": "decoded_input_value", "decoded_output": decoded_result}
+            )
 
             result = await return_mocked_result(input_data)
 
