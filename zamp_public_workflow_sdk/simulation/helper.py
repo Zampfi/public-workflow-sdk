@@ -95,7 +95,7 @@ async def extract_node_payload(
     logger.info("Node groups", node_groups=node_groups)
     all_node_outputs = {}
 
-    workflow_nodes_needed = collect_nodes_per_workflow(node_ids)
+    workflow_nodes_needed = collect_nodes_per_workflow(node_ids=node_ids)
     logger.info("Workflow nodes needed to mock", workflow_nodes_needed=workflow_nodes_needed)
     temporal_history = workflow_histories_map[MAIN_WORKFLOW_IDENTIFIER]
 
@@ -110,11 +110,11 @@ async def extract_node_payload(
         else:
             # Child workflow nodes - need to fetch child workflow history
             child_workflow_outputs = await extract_child_workflow_node_payloads(
-                temporal_history,
-                parent_workflow_id,
-                workflow_nodes,
-                workflow_nodes_needed,
-                workflow_histories_map,
+                parent_history=temporal_history,
+                child_workflow_id=parent_workflow_id,
+                node_ids=workflow_nodes,
+                workflow_nodes_needed=workflow_nodes_needed,
+                workflow_histories_map=workflow_histories_map,
             )
             logger.info("child workflow outputs", length_of_outputs=len(child_workflow_outputs))
             all_node_outputs.update(child_workflow_outputs)
@@ -137,8 +137,8 @@ def extract_main_workflow_node_payloads(
     """
     node_outputs = {}
     for node_id in node_ids:
-        input_payload = temporal_history.get_node_input_encoded(node_id)
-        output_payload = temporal_history.get_node_output_encoded(node_id)
+        input_payload = temporal_history.get_node_input_encoded(node_id=node_id)
+        output_payload = temporal_history.get_node_output_encoded(node_id=node_id)
         node_outputs[node_id] = {
             PayloadKey.INPUT_PAYLOAD: input_payload,
             PayloadKey.OUTPUT_PAYLOAD: output_payload,
@@ -177,7 +177,7 @@ async def extract_child_workflow_node_payloads(
     # Extract the full path to the child workflow by finding where it appears in the node ID
     # Given a node like "Parent#1.Child#1.activity#1" and child_workflow_id "Child#1",
     # this returns "Parent#1.Child#1" (the path up to and including the child workflow)
-    full_child_path = get_workflow_path_from_node(node_ids[0], child_workflow_id)
+    full_child_path = get_workflow_path_from_node(node_id=node_ids[0], child_workflow_id=child_workflow_id)
     logger.info("full child path", full_child_path=full_child_path)
 
     # Fetch child workflow history (traverses nested paths if needed)
@@ -255,7 +255,7 @@ async def fetch_nested_child_workflow_history(
 
         # Get workflow_id and run_id from parent using full prefixed node_id
         try:
-            workflow_id_run_id = current_history.get_child_workflow_workflow_id_run_id(current_path)
+            workflow_id_run_id = current_history.get_child_workflow_workflow_id_run_id(node_id=current_path)
             workflow_id, run_id = workflow_id_run_id
         except ValueError as e:
             raise Exception(
