@@ -41,13 +41,13 @@ class TestActionsHubSimulation:
     async def test_get_simulation_response_action_should_skip(self):
         """Test _get_simulation_response when action should skip simulation."""
 
-        class SimulationWorkflow:
+        class SimulationFetchDataWorkflow:
             pass
 
         result = await ActionsHub._get_simulation_response(
             workflow_id="test_wf",
             node_id="node_1",
-            action=SimulationWorkflow,
+            action=SimulationFetchDataWorkflow,
             return_type=None,
         )
 

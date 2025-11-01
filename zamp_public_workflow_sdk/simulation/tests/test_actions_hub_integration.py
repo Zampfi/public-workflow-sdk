@@ -331,7 +331,7 @@ class TestActionsHubSimulationIntegration:
         )
 
         expected_workflows = [
-            "SimulationWorkflow",
+            "SimulationFetchDataWorkflow",
             "FetchTemporalWorkflowHistoryWorkflow",
         ]
 

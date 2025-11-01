@@ -12,7 +12,7 @@ from zamp_public_workflow_sdk.simulation.models.simulation_strategy import (
     StrategyType,
 )
 from zamp_public_workflow_sdk.simulation.models.simulation_workflow import (
-    SimulationWorkflowInput,
+    SimulationFetchDataWorkflowInput,
 )
 from zamp_public_workflow_sdk.simulation.strategies.base_strategy import BaseStrategy
 from zamp_public_workflow_sdk.simulation.strategies.custom_output_strategy import (
@@ -59,17 +59,17 @@ class WorkflowSimulationService:
 
         from zamp_public_workflow_sdk.actions_hub import ActionsHub
         from zamp_public_workflow_sdk.simulation.workflows.simulation_workflow import (
-            SimulationWorkflow,
+            SimulationFetchDataWorkflow,
         )
 
         try:
             workflow_result = await ActionsHub.execute_child_workflow(
-                SimulationWorkflow,
-                SimulationWorkflowInput(simulation_config=self.simulation_config),
+                SimulationFetchDataWorkflow,
+                SimulationFetchDataWorkflowInput(simulation_config=self.simulation_config),
             )
 
             logger.info(
-                "SimulationWorkflow completed",
+                "SimulationFetchDataWorkflow completed",
                 workflow_result=workflow_result,
                 has_node_id_to_response_map=workflow_result is not None
                 and hasattr(workflow_result, "node_id_to_response_map"),
@@ -84,7 +84,7 @@ class WorkflowSimulationService:
 
         except Exception as e:
             logger.error(
-                "Failed to execute SimulationWorkflow",
+                "Failed to execute SimulationFetchDataWorkflow",
                 error=str(e),
                 error_type=type(e).__name__,
             )

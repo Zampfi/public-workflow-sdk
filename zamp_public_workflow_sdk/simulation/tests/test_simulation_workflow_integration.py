@@ -13,8 +13,8 @@ from zamp_public_workflow_sdk.simulation.models import (
     NodeStrategy,
     SimulationConfig,
     SimulationStrategyConfig,
-    SimulationWorkflowInput,
-    SimulationWorkflowOutput,
+    SimulationFetchDataWorkflowInput,
+    SimulationFetchDataWorkflowOutput,
     StrategyType,
     TemporalHistoryConfig,
 )
@@ -25,12 +25,12 @@ from zamp_public_workflow_sdk.simulation.workflow_simulation_service import (
     WorkflowSimulationService,
 )
 from zamp_public_workflow_sdk.simulation.workflows.simulation_workflow import (
-    SimulationWorkflow,
+    SimulationFetchDataWorkflow,
 )
 
 
 class TestSimulationWorkflowIntegration:
-    """Integration tests for SimulationWorkflow."""
+    """Integration tests for SimulationFetchDataWorkflow."""
 
     def test_create_strategy_custom_output(self):
         """Test create_strategy method with custom output strategy."""
@@ -79,7 +79,7 @@ class TestSimulationWorkflowIntegration:
     @pytest.mark.asyncio
     async def test_execute_with_custom_output_strategies(self):
         """Test execute method with custom output strategies."""
-        workflow = SimulationWorkflow()
+        workflow = SimulationFetchDataWorkflow()
 
         mock_config = NodeMockConfig(
             node_strategies=[
@@ -101,11 +101,11 @@ class TestSimulationWorkflowIntegration:
         )
 
         sim_config = SimulationConfig(mock_config=mock_config)
-        input_data = SimulationWorkflowInput(simulation_config=sim_config)
+        input_data = SimulationFetchDataWorkflowInput(simulation_config=sim_config)
 
         result = await workflow.execute(input_data)
 
-        assert isinstance(result, SimulationWorkflowOutput)
+        assert isinstance(result, SimulationFetchDataWorkflowOutput)
         assert len(result.node_id_to_response_map) == 3
         assert result.node_id_to_response_map["node1#1"] == "output1"
         assert result.node_id_to_response_map["node2#1"] == "output1"
@@ -114,7 +114,7 @@ class TestSimulationWorkflowIntegration:
     @pytest.mark.asyncio
     async def test_execute_with_temporal_history_strategies(self):
         """Test execute method with temporal history strategies."""
-        workflow = SimulationWorkflow()
+        workflow = SimulationFetchDataWorkflow()
 
         mock_config = NodeMockConfig(
             node_strategies=[
@@ -132,7 +132,7 @@ class TestSimulationWorkflowIntegration:
         )
 
         sim_config = SimulationConfig(mock_config=mock_config)
-        input_data = SimulationWorkflowInput(simulation_config=sim_config)
+        input_data = SimulationFetchDataWorkflowInput(simulation_config=sim_config)
 
         # Mock the temporal history strategy at the point where it's created
         with patch(
@@ -151,7 +151,7 @@ class TestSimulationWorkflowIntegration:
 
             result = await workflow.execute(input_data)
 
-            assert isinstance(result, SimulationWorkflowOutput)
+            assert isinstance(result, SimulationFetchDataWorkflowOutput)
             assert len(result.node_id_to_response_map) == 2
             assert result.node_id_to_response_map["node1#1"] == "history_output"
             assert result.node_id_to_response_map["node2#1"] == "history_output"
@@ -159,7 +159,7 @@ class TestSimulationWorkflowIntegration:
     @pytest.mark.asyncio
     async def test_execute_with_mixed_strategies(self):
         """Test execute method with mixed strategy types."""
-        workflow = SimulationWorkflow()
+        workflow = SimulationFetchDataWorkflow()
 
         mock_config = NodeMockConfig(
             node_strategies=[
@@ -184,7 +184,7 @@ class TestSimulationWorkflowIntegration:
         )
 
         sim_config = SimulationConfig(mock_config=mock_config)
-        input_data = SimulationWorkflowInput(simulation_config=sim_config)
+        input_data = SimulationFetchDataWorkflowInput(simulation_config=sim_config)
 
         # Mock the temporal history strategy at the point where it's created
         with patch(
@@ -198,7 +198,7 @@ class TestSimulationWorkflowIntegration:
 
             result = await workflow.execute(input_data)
 
-            assert isinstance(result, SimulationWorkflowOutput)
+            assert isinstance(result, SimulationFetchDataWorkflowOutput)
             assert len(result.node_id_to_response_map) == 2
             assert result.node_id_to_response_map["node1#1"] == "custom_output"
             assert result.node_id_to_response_map["node2#1"] == "history_output"
@@ -206,7 +206,7 @@ class TestSimulationWorkflowIntegration:
     @pytest.mark.asyncio
     async def test_execute_strategy_execution_failure(self):
         """Test execute method when strategy execution fails."""
-        workflow = SimulationWorkflow()
+        workflow = SimulationFetchDataWorkflow()
 
         mock_config = NodeMockConfig(
             node_strategies=[
@@ -221,7 +221,7 @@ class TestSimulationWorkflowIntegration:
         )
 
         sim_config = SimulationConfig(mock_config=mock_config)
-        input_data = SimulationWorkflowInput(simulation_config=sim_config)
+        input_data = SimulationFetchDataWorkflowInput(simulation_config=sim_config)
 
         # Mock strategy to raise exception at the point where it's created
         with patch(
@@ -233,13 +233,13 @@ class TestSimulationWorkflowIntegration:
 
             result = await workflow.execute(input_data)
 
-            assert isinstance(result, SimulationWorkflowOutput)
+            assert isinstance(result, SimulationFetchDataWorkflowOutput)
             assert len(result.node_id_to_response_map) == 0  # No successful executions
 
     @pytest.mark.asyncio
     async def test_execute_strategy_returns_empty_outputs(self):
         """Test execute method when strategy returns empty node_outputs."""
-        workflow = SimulationWorkflow()
+        workflow = SimulationFetchDataWorkflow()
 
         mock_config = NodeMockConfig(
             node_strategies=[
@@ -254,7 +254,7 @@ class TestSimulationWorkflowIntegration:
         )
 
         sim_config = SimulationConfig(mock_config=mock_config)
-        input_data = SimulationWorkflowInput(simulation_config=sim_config)
+        input_data = SimulationFetchDataWorkflowInput(simulation_config=sim_config)
 
         # Mock strategy to return empty node_outputs at the point where it's created
         with patch(
@@ -266,13 +266,13 @@ class TestSimulationWorkflowIntegration:
 
             result = await workflow.execute(input_data)
 
-            assert isinstance(result, SimulationWorkflowOutput)
+            assert isinstance(result, SimulationFetchDataWorkflowOutput)
             assert len(result.node_id_to_response_map) == 0  # No mock outputs
 
     @pytest.mark.asyncio
     async def test_execute_strategy_returns_none_output(self):
         """Test execute method when strategy returns None output."""
-        workflow = SimulationWorkflow()
+        workflow = SimulationFetchDataWorkflow()
 
         mock_config = NodeMockConfig(
             node_strategies=[
@@ -287,7 +287,7 @@ class TestSimulationWorkflowIntegration:
         )
 
         sim_config = SimulationConfig(mock_config=mock_config)
-        input_data = SimulationWorkflowInput(simulation_config=sim_config)
+        input_data = SimulationFetchDataWorkflowInput(simulation_config=sim_config)
 
         # Mock strategy to return None output at the point where it's created
         with patch(
@@ -299,7 +299,7 @@ class TestSimulationWorkflowIntegration:
 
             result = await workflow.execute(input_data)
 
-            assert isinstance(result, SimulationWorkflowOutput)
+            assert isinstance(result, SimulationFetchDataWorkflowOutput)
             assert len(result.node_id_to_response_map) == 0  # No mock outputs
 
 
