@@ -24,7 +24,7 @@ from zamp_public_workflow_sdk.simulation.models.simulation_response import (
 from zamp_public_workflow_sdk.simulation.workflow_simulation_service import (
     WorkflowSimulationService,
 )
-from zamp_public_workflow_sdk.simulation.workflows.simulation_workflow import (
+from zamp_public_workflow_sdk.simulation.workflows.simulation_fetch_data_workflow import (
     SimulationFetchDataWorkflow,
 )
 

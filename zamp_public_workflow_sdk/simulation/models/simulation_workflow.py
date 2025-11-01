@@ -37,7 +37,7 @@ class SimulationOutputSchema(BaseModel):
         }
     """
 
-    node_captures: Dict[str, NodeCaptureMode] = Field(
+    node_captures: dict[str, NodeCaptureMode] = Field(
         description="Map of node IDs to capture modes (INPUT, OUTPUT, or INPUT_OUTPUT)"
     )
 
@@ -49,14 +49,12 @@ class NodeCaptureResult(BaseModel):
     Only includes fields that are not None.
     """
 
-    node_id: str = Field(
-        description="Node ID of the activity (e.g., 'activity_name#1')"
-    )
-    input: Optional[Any] = Field(
+    node_id: str = Field(description="Node ID of the activity (e.g., 'activity_name#1')")
+    input: Any | None = Field(
         default=None,
         description="Activity input parameters if captured (based on capture mode)",
     )
-    output: Optional[Any] = Field(
+    output: Any | None = Field(
         default=None,
         description="Activity output result if captured (based on capture mode)",
     )
@@ -82,16 +80,12 @@ class SimulationWorkflowInput(BaseModel):
     workflow_name: str = Field(
         description="Fully qualified name of the workflow to execute (e.g., 'StripeFetchInvoicesWorkflow')"
     )
-    workflow_params: Dict[str, Any] = Field(
-        description="Parameters to pass to the original workflow execution"
-    )
-    simulation_config: SimulationConfig = Field(
-        description="Simulation configuration with mock settings"
-    )
+    workflow_params: dict[str, Any] = Field(description="Parameters to pass to the original workflow execution")
+    simulation_config: SimulationConfig = Field(description="Simulation configuration with mock settings")
     output_schema: SimulationOutputSchema = Field(
         description="Schema defining which activities to capture and what data to return"
     )
-    zamp_metadata_context: Optional[ZampMetadataContext] = Field(
+    zamp_metadata_context: ZampMetadataContext | None = Field(
         default=None, description="Metadata context for logging and tracing"
     )
 

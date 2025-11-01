@@ -526,7 +526,7 @@ class ActionsHub:
             args = args[:-1]
         else:
             node_id_arg = {TEMPORAL_NODE_ID_KEY: node_id}
-        
+
         # Prepend node_id_arg to args
         args = (node_id_arg,) + args
 
