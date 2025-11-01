@@ -11,7 +11,7 @@ from zamp_public_workflow_sdk.simulation.models.simulation_strategy import (
     NodeStrategy,
     StrategyType,
 )
-from zamp_public_workflow_sdk.simulation.models.simulation_workflow import (
+from zamp_public_workflow_sdk.simulation.models import (
     SimulationFetchDataWorkflowInput,
 )
 from zamp_public_workflow_sdk.simulation.strategies.base_strategy import BaseStrategy
@@ -59,7 +59,7 @@ class WorkflowSimulationService:
         )
 
         from zamp_public_workflow_sdk.actions_hub import ActionsHub
-        from zamp_public_workflow_sdk.simulation.workflows.simulation_workflow import (
+        from zamp_public_workflow_sdk.simulation.workflows.simulation_fetch_data_workflow import (
             SimulationFetchDataWorkflow,
         )
 

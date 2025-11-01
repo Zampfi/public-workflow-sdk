@@ -57,14 +57,13 @@ class SimulationConfigBuilderWorkflow:
         """
         self.workflow_histories: dict[str, WorkflowHistory] = {}
         # List of node IDs to skip
-        # self.nodes_to_skip = [
-        #     "generate_llm_model_response",
-        #     "generate_embeddings",
-        #     "generate_with_template",
-        #     "extract_ocr_data",
-        #     "fetch_from_responses_api",
-        # ]
-        self.nodes_to_skip = []
+        self.nodes_to_skip = [
+            "generate_llm_model_response",
+            "generate_embeddings",
+            "generate_with_template",
+            "extract_ocr_data",
+            "fetch_from_responses_api",
+        ]
 
     @ActionsHub.register_workflow_run
     async def execute(self, input: SimulationConfigBuilderInput) -> SimulationConfigBuilderOutput:
