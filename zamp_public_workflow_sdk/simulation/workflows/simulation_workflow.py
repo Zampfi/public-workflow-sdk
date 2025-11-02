@@ -364,25 +364,29 @@ class SimulationWorkflow:
 
         return encoded_payload
 
-    @staticmethod
-    def _find_main_workflow_node(child_payloads: dict[str, Any], parent_node_id: str) -> dict[str, Any] | None:
-        """Find the main workflow node in child payloads (node without '.' separator).
+    def _find_main_workflow_node(self, child_payloads: dict[str, Any], parent_node_id: str) -> dict[str, Any] | None:
+        """Find the main workflow node in child payloads.
+
+        The main workflow node is the full workflow path that contains the activity.
+        This is everything before the last segment (the activity name).
 
         Args:
             child_payloads: Dictionary of child workflow payloads
-            parent_node_id: Parent node ID for logging
+            parent_node_id: Parent node ID (full path including activity)
 
         Returns:
             The main workflow node payload or None if not found
         """
+        parts = parent_node_id.split(".")
+        target_workflow_path = ".".join(parts[:-1]) if len(parts) > 1 else parts[0]
+
+        if target_workflow_path in child_payloads:
+            return child_payloads[target_workflow_path]
+
         for child_node_id, child_payload in child_payloads.items():
-            if "." not in child_node_id:
-                logger.info(
-                    "Found main workflow node in child",
-                    parent_node_id=parent_node_id,
-                    child_node_id=child_node_id,
-                )
+            if child_node_id.startswith(target_workflow_path + "."):
                 return child_payload
+
         return None
 
     async def _decode_node_payload(
@@ -419,9 +423,8 @@ class SimulationWorkflow:
             logger.error("Failed to decode node payload", node_id=node_id, error=str(e))
             return None
 
-    @staticmethod
     def _build_payload_result(
-        node_id: str, payload_type: NodePayloadType, decoded_data: DecodeNodePayloadOutput
+        self, node_id: str, payload_type: NodePayloadType, decoded_data: DecodeNodePayloadOutput
     ) -> NodePayloadResult:
         """Build NodePayloadResult based on payload type.
 

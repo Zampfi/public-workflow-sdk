@@ -5,6 +5,7 @@ Workflow Simulation Service for managing simulation state and responses.
 from typing import Any
 
 import structlog
+from zamp_public_workflow_sdk.simulation.constants.simulation import PayloadKey
 from zamp_public_workflow_sdk.simulation.models import ExecutionType, SimulationResponse
 from zamp_public_workflow_sdk.simulation.models.config import SimulationConfig
 from zamp_public_workflow_sdk.simulation.models.simulation_strategy import (
@@ -122,8 +123,8 @@ class WorkflowSimulationService:
                 "return_mocked_result",
                 MockedResultInput(
                     node_id=node_id,
-                    input_payload=node_payloads.get("input_payload"),
-                    output_payload=node_payloads.get("output_payload"),
+                    input_payload=node_payloads.get(PayloadKey.INPUT_PAYLOAD),
+                    output_payload=node_payloads.get(PayloadKey.OUTPUT_PAYLOAD),
                     action_name=action_name,
                 ),
                 {TEMPORAL_NODE_ID_KEY: node_id},

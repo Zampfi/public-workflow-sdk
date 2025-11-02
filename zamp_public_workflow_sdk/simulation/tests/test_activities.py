@@ -118,11 +118,15 @@ class TestReturnMockedResult:
             "metadata": {"encoding": "json/plain"},
             "data": "encoded_input_data",
         }
+        encoded_output = {
+            "metadata": {"encoding": "json/plain"},
+            "data": "encoded_output_data",
+        }
 
         input_params = MockedResultInput(
             node_id="test_node#1",
             input_payload=encoded_input,
-            output_payload={"result": "raw_output"},
+            output_payload=encoded_output,
             action_name="test_action",
         )
 

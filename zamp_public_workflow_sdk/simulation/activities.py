@@ -13,12 +13,12 @@ logger = structlog.get_logger(__name__)
 @ActionsHub.register_activity("Return mocked result with decoded payloads for simulation")
 async def return_mocked_result(input_params: MockedResultInput) -> MockedResultOutput:
     """
-    Activity to return mocked results with payload decoding.
+    Activity to return mocked results with output payload decoding.
     This makes mocked operations visible in Temporal UI.
 
     This activity:
-    1. Checks if payloads need decoding (have "metadata" with "encoding")
-    2. Decodes both input and output payloads using decode_node_payload activity in API mode
+    1. Checks if output payload needs decoding (has "metadata" with "encoding")
+    2. Decodes only the output payload using decode_node_payload activity in API mode
     3. Returns the decoded output payload wrapped in MockedResultOutput
 
     Args:
@@ -32,22 +32,16 @@ async def return_mocked_result(input_params: MockedResultInput) -> MockedResultO
     """
     logger.info("Processing mocked result", node_id=input_params.node_id)
 
-    input_payload = input_params.input_payload
     output_payload = input_params.output_payload
 
-    input_needs_decoding = (
-        input_payload
-        and isinstance(input_payload, dict)
-        and input_payload.get("metadata", {}).get("encoding") is not None
-    )
     output_needs_decoding = (
         output_payload
         and isinstance(output_payload, dict)
         and output_payload.get("metadata", {}).get("encoding") is not None
     )
 
-    if not input_needs_decoding and not output_needs_decoding:
-        logger.info("No decoding needed, returning raw output", node_id=input_params.node_id)
+    if not output_needs_decoding:
+        logger.info("No output decoding needed, returning raw output", node_id=input_params.node_id)
         return MockedResultOutput(output=output_payload)
 
     try:
@@ -55,19 +49,19 @@ async def return_mocked_result(input_params: MockedResultInput) -> MockedResultO
             "decode_node_payload",
             DecodeNodePayloadInput(
                 node_id=input_params.node_id,
-                input_payload=input_params.input_payload,
+                input_payload=None,
                 output_payload=input_params.output_payload,
             ),
             return_type=DecodeNodePayloadOutput,
             execution_mode=ExecutionMode.API,
         )
 
-        logger.info("Successfully decoded mocked result", node_id=input_params.node_id)
+        logger.info("Successfully decoded mocked result output", node_id=input_params.node_id)
         return MockedResultOutput(output=decoded_payload.decoded_output)
 
     except Exception as e:
         logger.error(
-            "Failed to decode mocked result payloads",
+            "Failed to decode mocked result output payload",
             node_id=input_params.node_id,
             error=str(e),
             error_type=type(e).__name__,
