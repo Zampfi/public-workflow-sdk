@@ -29,7 +29,7 @@ from zamp_public_workflow_sdk.simulation.workflows.simulation_fetch_data_workflo
 )
 
 
-class TestSimulationWorkflowIntegration:
+class TestSimulationFetchDataIntegration:
     """Integration tests for SimulationFetchDataWorkflow."""
 
     def test_create_strategy_custom_output(self):
