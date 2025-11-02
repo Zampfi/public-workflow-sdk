@@ -17,10 +17,7 @@ class NodePayloadData(BaseModel):
 
 
 class DecodeNodePayloadInput(BaseModel):
-    """Input model for decode_node_payload activity.
-
-    Contains separate input and output payloads that may or may not be encoded.
-    """
+    """Input model for decode_node_payload activity."""
 
     node_id: str = Field(..., description="The node ID")
     input_payload: Any = Field(
@@ -34,10 +31,7 @@ class DecodeNodePayloadInput(BaseModel):
 
 
 class DecodeNodePayloadOutput(BaseModel):
-    """Output model for decode_node_payload activity.
-
-    Contains the decoded input and output payloads separately.
-    """
+    """Output model for decode_node_payload activity."""
 
     decoded_input: Any = Field(
         default=None,

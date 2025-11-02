@@ -30,10 +30,10 @@ async def return_mocked_result(input_params: MockedResultInput) -> MockedResultO
     Raises:
         Exception: If decoding fails
     """
+
     logger.info("Processing mocked result", node_id=input_params.node_id)
 
     output_payload = input_params.output_payload
-
     output_needs_decoding = (
         output_payload
         and isinstance(output_payload, dict)
