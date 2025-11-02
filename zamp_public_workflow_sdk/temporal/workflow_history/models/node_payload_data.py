@@ -35,7 +35,7 @@ class DecodeNodePayloadInput(BaseModel):
 
 class DecodeNodePayloadOutput(BaseModel):
     """Output model for decode_node_payload activity.
-    
+
     Contains the decoded input and output payloads separately.
     """
 

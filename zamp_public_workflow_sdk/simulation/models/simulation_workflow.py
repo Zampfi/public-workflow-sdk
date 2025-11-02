@@ -6,7 +6,7 @@ and extracting activity inputs/outputs.
 """
 
 from enum import Enum
-from typing import Any, Dict
+from typing import Any
 from pydantic import BaseModel, Field, model_serializer
 
 from zamp_public_workflow_sdk.actions_hub.models.common_models import (
@@ -60,7 +60,7 @@ class NodePayloadResult(BaseModel):
     )
 
     @model_serializer
-    def serialize_model(self) -> Dict[str, Any]:
+    def serialize_model(self) -> dict[str, Any]:
         """Custom serializer that returns {node_id: {input/output}} format."""
         payload = {}
         if self.input is not None:

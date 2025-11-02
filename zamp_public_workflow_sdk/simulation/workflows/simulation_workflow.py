@@ -2,7 +2,7 @@ from temporalio import workflow
 
 with workflow.unsafe.imports_passed_through():
     import structlog
-    from typing import Any, Dict, List
+    from typing import Any
     from zamp_public_workflow_sdk.actions_hub import ActionsHub
     from zamp_public_workflow_sdk.simulation.models.simulation_workflow import (
         NodePayloadResult,
@@ -187,8 +187,8 @@ class SimulationWorkflow:
         self,
         workflow_id: str,
         run_id: str,
-        node_payloads: Dict[str, NodePayloadType],
-    ) -> List[NodePayloadResult]:
+        node_payloads: dict[str, NodePayloadType],
+    ) -> list[NodePayloadResult]:
         """Fetch workflow history and parse node payloads based on output schema.
 
         Args:
@@ -210,7 +210,7 @@ class SimulationWorkflow:
         encoded_node_payloads = await self._fetch_node_payloads(workflow_id, run_id, list(node_payloads.keys()))
 
         # Process each node payload
-        result: List[NodePayloadResult] = []
+        result: list[NodePayloadResult] = []
         for node_id, payload_type in node_payloads.items():
             payload_result = await self._process_node_payload(node_id, payload_type, encoded_node_payloads)
             result.append(payload_result)
@@ -385,7 +385,9 @@ class SimulationWorkflow:
                 return child_payload
         return None
 
-    async def _decode_node_payload(self, node_id: str, encoded_payload: dict[str, Any]) -> DecodeNodePayloadOutput | None:
+    async def _decode_node_payload(
+        self, node_id: str, encoded_payload: dict[str, Any]
+    ) -> DecodeNodePayloadOutput | None:
         """Decode node payload using decode_node_payload activity.
 
         Args:
