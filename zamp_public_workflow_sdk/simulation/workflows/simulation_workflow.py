@@ -1,5 +1,7 @@
 from temporalio import workflow
 
+from zamp_public_workflow_sdk.simulation.constants.simulation import PayloadKey
+
 with workflow.unsafe.imports_passed_through():
     import structlog
     from typing import Any
@@ -414,8 +416,8 @@ class SimulationWorkflow:
                 "decode_node_payload",
                 DecodeNodePayloadInput(
                     node_id=node_id,
-                    input_payload=encoded_payload.get("input_payload"),
-                    output_payload=encoded_payload.get("output_payload"),
+                    input_payload=encoded_payload.get(PayloadKey.INPUT_PAYLOAD),
+                    output_payload=encoded_payload.get(PayloadKey.OUTPUT_PAYLOAD),
                 ),
                 summary=f"{node_id}",
                 return_type=DecodeNodePayloadOutput,
