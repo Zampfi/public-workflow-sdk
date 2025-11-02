@@ -513,9 +513,6 @@ def _process_events_for_payloads(
             _add_event_and_payload(node_id, event, payload_field, node_payloads)
 
     # Mark child workflows that were initiated but don't have output (need traversal)
-    if not return_encoded_format:
-        return node_payloads
-
     _mark_child_workflows_needing_traversal(
         child_workflow_initiated_events,
         child_workflow_execution_details,
