@@ -4,7 +4,12 @@ Helper functions for temporal workflow history operations.
 
 import structlog
 
-from zamp_public_workflow_sdk.simulation.constants import PayloadKey, NEEDS_CHILD_TRAVERSAL
+from zamp_public_workflow_sdk.simulation.constants import (
+    PayloadKey,
+    NEEDS_CHILD_TRAVERSAL,
+    CHILD_WORKFLOW_ID,
+    CHILD_RUN_ID,
+)
 from zamp_public_workflow_sdk.temporal.workflow_history.constants import (
     EventField,
     EventType,
@@ -364,8 +369,8 @@ def _mark_child_workflows_needing_traversal(
             run_id=run_id,
         )
         node_payloads[child_node_id][NEEDS_CHILD_TRAVERSAL] = True
-        node_payloads[child_node_id]["child_workflow_id"] = workflow_id
-        node_payloads[child_node_id]["child_run_id"] = run_id
+        node_payloads[child_node_id][CHILD_WORKFLOW_ID] = workflow_id
+        node_payloads[child_node_id][CHILD_RUN_ID] = run_id
 
 
 def _process_events_for_payloads(

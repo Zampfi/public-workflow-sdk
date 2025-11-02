@@ -21,6 +21,8 @@ with workflow.unsafe.imports_passed_through():
     )
     from zamp_public_workflow_sdk.simulation.constants import (
         NEEDS_CHILD_TRAVERSAL,
+        CHILD_WORKFLOW_ID,
+        CHILD_RUN_ID,
     )
 
 logger = structlog.get_logger(__name__)
@@ -159,8 +161,8 @@ class SimulationWorkflow:
         )
 
         child_handle: workflow.ChildWorkflowHandle[Any, Any] = await workflow.start_child_workflow(
-            workflow_class,
-            workflow_params,
+            workflow=workflow_class,
+            args=workflow_params,
             static_summary=f"Simulation: {workflow_name}",
         )
         workflow_id = child_handle.id
@@ -207,12 +209,16 @@ class SimulationWorkflow:
         )
 
         # Fetch and extract node payloads from workflow history
-        encoded_node_payloads = await self._fetch_node_payloads(workflow_id, run_id, list(node_payloads.keys()))
+        encoded_node_payloads = await self._fetch_node_payloads(
+            workflow_id=workflow_id, run_id=run_id, node_ids=list(node_payloads.keys())
+        )
 
         # Process each node payload
         result: list[NodePayloadResult] = []
         for node_id, payload_type in node_payloads.items():
-            payload_result = await self._process_node_payload(node_id, payload_type, encoded_node_payloads)
+            payload_result = await self._process_node_payload(
+                node_id=node_id, payload_type=payload_type, node_payloads=encoded_node_payloads
+            )
             result.append(payload_result)
 
         logger.info(
@@ -296,15 +302,17 @@ class SimulationWorkflow:
             return NodePayloadResult(node_id=node_id, input=None, output=None)
 
         # Traverse child workflow if needed
-        encoded_payload = await self._traverse_child_workflow_if_needed(node_id, encoded_payload)
+        encoded_payload = await self._traverse_child_workflow_if_needed(
+            node_id=node_id, encoded_payload=encoded_payload
+        )
 
         # Decode payload - returns DecodeNodePayloadOutput or None
-        decoded_output = await self._decode_node_payload(node_id, encoded_payload)
+        decoded_output = await self._decode_node_payload(node_id=node_id, encoded_payload=encoded_payload)
         if not decoded_output:
             return NodePayloadResult(node_id=node_id, input=None, output=None)
 
         # Build result based on payload type
-        return self._build_payload_result(node_id, payload_type, decoded_output)
+        return self._build_payload_result(node_id=node_id, payload_type=payload_type, decoded_data=decoded_output)
 
     async def _traverse_child_workflow_if_needed(self, node_id: str, encoded_payload: dict[str, Any]) -> dict[str, Any]:
         """Traverse into child workflow if the node needs it and return child's main node payload.
@@ -320,8 +328,8 @@ class SimulationWorkflow:
         if not isinstance(encoded_payload, dict) or not encoded_payload.get(NEEDS_CHILD_TRAVERSAL):
             return encoded_payload
 
-        child_workflow_id = encoded_payload.get("child_workflow_id")
-        child_run_id = encoded_payload.get("child_run_id")
+        child_workflow_id = encoded_payload.get(CHILD_WORKFLOW_ID)
+        child_run_id = encoded_payload.get(CHILD_RUN_ID)
 
         if not child_workflow_id or not child_run_id:
             return encoded_payload
@@ -347,7 +355,7 @@ class SimulationWorkflow:
                 child_payloads_count=len(child_payloads),
             )
 
-            child_main_node = self._find_main_workflow_node(child_payloads, node_id)
+            child_main_node = self._find_main_workflow_node(child_payloads=child_payloads, parent_node_id=node_id)
 
             if child_main_node:
                 logger.info("Successfully extracted child workflow output", node_id=node_id)
