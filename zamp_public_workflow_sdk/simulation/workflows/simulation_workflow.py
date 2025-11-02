@@ -1,7 +1,5 @@
 from temporalio import workflow
 
-from zamp_public_workflow_sdk.simulation.constants import PayloadKey
-
 with workflow.unsafe.imports_passed_through():
     import structlog
     from typing import Any
@@ -26,6 +24,8 @@ with workflow.unsafe.imports_passed_through():
         CHILD_WORKFLOW_ID,
         CHILD_RUN_ID,
     )
+    from zamp_public_workflow_sdk.simulation.constants import PayloadKey
+
 
 logger = structlog.get_logger(__name__)
 
