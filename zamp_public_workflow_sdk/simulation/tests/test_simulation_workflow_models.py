@@ -1,7 +1,7 @@
 """
 Unit tests for simulation workflow models.
 
-This module tests the Pydantic models for SimulationCodeWorkflow.
+This module tests the Pydantic models for SimulationWorkflow.
 """
 
 import pytest
@@ -10,32 +10,32 @@ from pydantic import ValidationError
 from zamp_public_workflow_sdk.actions_hub.models.common_models import ZampMetadataContext
 from zamp_public_workflow_sdk.simulation.models import SimulationConfig, NodeMockConfig
 from zamp_public_workflow_sdk.simulation.models.simulation_workflow import (
-    NodeCaptureMode,
+    NodePayloadType,
     SimulationOutputSchema,
-    NodeCaptureResult,
+    NodePayloadResult,
     SimulationWorkflowInput,
     SimulationWorkflowOutput,
 )
 
 
-class TestNodeCaptureMode:
-    """Test NodeCaptureMode enum."""
+class TestNodePayloadType:
+    """Test NodePayloadType enum."""
 
-    def test_node_capture_mode_values(self):
-        """Test that node capture mode values are correct."""
-        assert NodeCaptureMode.INPUT == "INPUT"
-        assert NodeCaptureMode.OUTPUT == "OUTPUT"
-        assert NodeCaptureMode.INPUT_OUTPUT == "INPUT_OUTPUT"
+    def test_node_payload_type_values(self):
+        """Test that node payload type values are correct."""
+        assert NodePayloadType.INPUT == "INPUT"
+        assert NodePayloadType.OUTPUT == "OUTPUT"
+        assert NodePayloadType.INPUT_OUTPUT == "INPUT_OUTPUT"
 
-    def test_node_capture_mode_enum_behavior(self):
-        """Test that node capture mode behaves as string enum."""
-        assert isinstance(NodeCaptureMode.INPUT, str)
-        assert isinstance(NodeCaptureMode.OUTPUT, str)
-        assert isinstance(NodeCaptureMode.INPUT_OUTPUT, str)
+    def test_node_payload_type_enum_behavior(self):
+        """Test that node payload type behaves as string enum."""
+        assert isinstance(NodePayloadType.INPUT, str)
+        assert isinstance(NodePayloadType.OUTPUT, str)
+        assert isinstance(NodePayloadType.INPUT_OUTPUT, str)
         # For string enums, the value should be the string itself
-        assert NodeCaptureMode.INPUT == "INPUT"
-        assert NodeCaptureMode.OUTPUT == "OUTPUT"
-        assert NodeCaptureMode.INPUT_OUTPUT == "INPUT_OUTPUT"
+        assert NodePayloadType.INPUT == "INPUT"
+        assert NodePayloadType.OUTPUT == "OUTPUT"
+        assert NodePayloadType.INPUT_OUTPUT == "INPUT_OUTPUT"
 
 
 class TestSimulationOutputSchema:
@@ -44,51 +44,51 @@ class TestSimulationOutputSchema:
     def test_simulation_output_schema_valid(self):
         """Test creating valid simulation output schema."""
         schema = SimulationOutputSchema(
-            node_captures={
-                "activity#1": NodeCaptureMode.INPUT,
-                "activity#2": NodeCaptureMode.OUTPUT,
-                "activity#3": NodeCaptureMode.INPUT_OUTPUT,
+            node_payloads={
+                "activity#1": NodePayloadType.INPUT,
+                "activity#2": NodePayloadType.OUTPUT,
+                "activity#3": NodePayloadType.INPUT_OUTPUT,
             }
         )
 
-        assert len(schema.node_captures) == 3
-        assert schema.node_captures["activity#1"] == NodeCaptureMode.INPUT
-        assert schema.node_captures["activity#2"] == NodeCaptureMode.OUTPUT
-        assert schema.node_captures["activity#3"] == NodeCaptureMode.INPUT_OUTPUT
+        assert len(schema.node_payloads) == 3
+        assert schema.node_payloads["activity#1"] == NodePayloadType.INPUT
+        assert schema.node_payloads["activity#2"] == NodePayloadType.OUTPUT
+        assert schema.node_payloads["activity#3"] == NodePayloadType.INPUT_OUTPUT
 
     def test_simulation_output_schema_empty(self):
-        """Test creating simulation output schema with empty node_captures."""
-        schema = SimulationOutputSchema(node_captures={})
+        """Test creating simulation output schema with empty node_payloads."""
+        schema = SimulationOutputSchema(node_payloads={})
 
-        assert len(schema.node_captures) == 0
-        assert schema.node_captures == {}
+        assert len(schema.node_payloads) == 0
+        assert schema.node_payloads == {}
 
     def test_simulation_output_schema_missing_field(self):
-        """Test validation error when node_captures is missing."""
+        """Test validation error when node_payloads is missing."""
         with pytest.raises(ValidationError):
-            SimulationOutputSchema()  # Missing required node_captures field
+            SimulationOutputSchema()  # Missing required node_payloads field
 
     def test_simulation_output_schema_with_string_values(self):
-        """Test that string values can be used for node capture modes."""
+        """Test that string values can be used for node payload types."""
         schema = SimulationOutputSchema(
-            node_captures={
+            node_payloads={
                 "activity#1": "INPUT",
                 "activity#2": "OUTPUT",
                 "activity#3": "INPUT_OUTPUT",
             }
         )
 
-        assert schema.node_captures["activity#1"] == NodeCaptureMode.INPUT
-        assert schema.node_captures["activity#2"] == NodeCaptureMode.OUTPUT
-        assert schema.node_captures["activity#3"] == NodeCaptureMode.INPUT_OUTPUT
+        assert schema.node_payloads["activity#1"] == NodePayloadType.INPUT
+        assert schema.node_payloads["activity#2"] == NodePayloadType.OUTPUT
+        assert schema.node_payloads["activity#3"] == NodePayloadType.INPUT_OUTPUT
 
 
-class TestNodeCaptureResult:
-    """Test NodeCaptureResult model."""
+class TestNodePayloadResult:
+    """Test NodePayloadResult model."""
 
-    def test_node_capture_result_with_both_input_output(self):
-        """Test creating node capture result with both input and output."""
-        result = NodeCaptureResult(
+    def test_node_payload_result_with_both_input_output(self):
+        """Test creating node payload result with both input and output."""
+        result = NodePayloadResult(
             node_id="activity#1",
             input={"param1": "value1"},
             output={"result": "success"},
@@ -98,9 +98,9 @@ class TestNodeCaptureResult:
         assert result.input == {"param1": "value1"}
         assert result.output == {"result": "success"}
 
-    def test_node_capture_result_with_input_only(self):
-        """Test creating node capture result with input only."""
-        result = NodeCaptureResult(
+    def test_node_payload_result_with_input_only(self):
+        """Test creating node payload result with input only."""
+        result = NodePayloadResult(
             node_id="activity#2",
             input={"param1": "value1"},
         )
@@ -109,9 +109,9 @@ class TestNodeCaptureResult:
         assert result.input == {"param1": "value1"}
         assert result.output is None
 
-    def test_node_capture_result_with_output_only(self):
-        """Test creating node capture result with output only."""
-        result = NodeCaptureResult(
+    def test_node_payload_result_with_output_only(self):
+        """Test creating node payload result with output only."""
+        result = NodePayloadResult(
             node_id="activity#3",
             output={"result": "success"},
         )
@@ -120,9 +120,9 @@ class TestNodeCaptureResult:
         assert result.input is None
         assert result.output == {"result": "success"}
 
-    def test_node_capture_result_with_none_values(self):
-        """Test creating node capture result with None values."""
-        result = NodeCaptureResult(
+    def test_node_payload_result_with_none_values(self):
+        """Test creating node payload result with None values."""
+        result = NodePayloadResult(
             node_id="activity#4",
             input=None,
             output=None,
@@ -132,14 +132,14 @@ class TestNodeCaptureResult:
         assert result.input is None
         assert result.output is None
 
-    def test_node_capture_result_missing_node_id(self):
+    def test_node_payload_result_missing_node_id(self):
         """Test validation error when node_id is missing."""
         with pytest.raises(ValidationError):
-            NodeCaptureResult()  # Missing required node_id field
+            NodePayloadResult()  # Missing required node_id field
 
-    def test_node_capture_result_with_complex_data(self):
-        """Test creating node capture result with complex data types."""
-        result = NodeCaptureResult(
+    def test_node_payload_result_with_complex_data(self):
+        """Test creating node payload result with complex data types."""
+        result = NodePayloadResult(
             node_id="activity#5",
             input={"nested": {"key": "value"}, "list": [1, 2, 3]},
             output={"status": True, "count": 42},
@@ -156,7 +156,7 @@ class TestSimulationWorkflowInput:
     def test_simulation_workflow_input_valid(self):
         """Test creating valid simulation workflow input."""
         simulation_config = SimulationConfig(mock_config=NodeMockConfig(node_strategies=[]))
-        output_schema = SimulationOutputSchema(node_captures={"activity#1": NodeCaptureMode.INPUT_OUTPUT})
+        output_schema = SimulationOutputSchema(node_payloads={"activity#1": NodePayloadType.INPUT_OUTPUT})
 
         input_data = SimulationWorkflowInput(
             workflow_name="TestWorkflow",
@@ -174,7 +174,7 @@ class TestSimulationWorkflowInput:
     def test_simulation_workflow_input_with_metadata_context(self):
         """Test creating simulation workflow input with metadata context."""
         simulation_config = SimulationConfig(mock_config=NodeMockConfig(node_strategies=[]))
-        output_schema = SimulationOutputSchema(node_captures={"activity#1": NodeCaptureMode.OUTPUT})
+        output_schema = SimulationOutputSchema(node_payloads={"activity#1": NodePayloadType.OUTPUT})
         metadata_context = ZampMetadataContext(
             organization_id="org-123",
             user_id="user-456",
@@ -194,7 +194,7 @@ class TestSimulationWorkflowInput:
     def test_simulation_workflow_input_missing_workflow_name(self):
         """Test validation error when workflow_name is missing."""
         simulation_config = SimulationConfig(mock_config=NodeMockConfig(node_strategies=[]))
-        output_schema = SimulationOutputSchema(node_captures={})
+        output_schema = SimulationOutputSchema(node_payloads={})
 
         with pytest.raises(ValidationError):
             SimulationWorkflowInput(
@@ -206,7 +206,7 @@ class TestSimulationWorkflowInput:
     def test_simulation_workflow_input_missing_workflow_params(self):
         """Test validation error when workflow_params is missing."""
         simulation_config = SimulationConfig(mock_config=NodeMockConfig(node_strategies=[]))
-        output_schema = SimulationOutputSchema(node_captures={})
+        output_schema = SimulationOutputSchema(node_payloads={})
 
         with pytest.raises(ValidationError):
             SimulationWorkflowInput(
@@ -217,7 +217,7 @@ class TestSimulationWorkflowInput:
 
     def test_simulation_workflow_input_missing_simulation_config(self):
         """Test validation error when simulation_config is missing."""
-        output_schema = SimulationOutputSchema(node_captures={})
+        output_schema = SimulationOutputSchema(node_payloads={})
 
         with pytest.raises(ValidationError):
             SimulationWorkflowInput(
@@ -240,7 +240,7 @@ class TestSimulationWorkflowInput:
     def test_simulation_workflow_input_empty_workflow_params(self):
         """Test creating simulation workflow input with empty workflow_params."""
         simulation_config = SimulationConfig(mock_config=NodeMockConfig(node_strategies=[]))
-        output_schema = SimulationOutputSchema(node_captures={})
+        output_schema = SimulationOutputSchema(node_payloads={})
 
         input_data = SimulationWorkflowInput(
             workflow_name="TestWorkflow",
@@ -257,55 +257,55 @@ class TestSimulationWorkflowOutput:
 
     def test_simulation_workflow_output_valid(self):
         """Test creating valid simulation workflow output."""
-        node_captures = {
-            "activity#1": NodeCaptureResult(
+        node_payloads = [
+            NodePayloadResult(
                 node_id="activity#1",
                 input={"param": "value"},
                 output={"result": "success"},
             ),
-            "activity#2": NodeCaptureResult(
+            NodePayloadResult(
                 node_id="activity#2",
                 output={"result": "done"},
             ),
-        }
+        ]
 
-        output = SimulationWorkflowOutput(node_captures=node_captures)
+        output = SimulationWorkflowOutput(node_payloads=node_payloads)
 
-        assert len(output.node_captures) == 2
-        assert output.node_captures["activity#1"].node_id == "activity#1"
-        assert output.node_captures["activity#1"].input == {"param": "value"}
-        assert output.node_captures["activity#1"].output == {"result": "success"}
-        assert output.node_captures["activity#2"].node_id == "activity#2"
-        assert output.node_captures["activity#2"].input is None
-        assert output.node_captures["activity#2"].output == {"result": "done"}
+        assert len(output.node_payloads) == 2
+        assert output.node_payloads[0].node_id == "activity#1"
+        assert output.node_payloads[0].input == {"param": "value"}
+        assert output.node_payloads[0].output == {"result": "success"}
+        assert output.node_payloads[1].node_id == "activity#2"
+        assert output.node_payloads[1].input is None
+        assert output.node_payloads[1].output == {"result": "done"}
 
     def test_simulation_workflow_output_empty(self):
-        """Test creating simulation workflow output with empty node_captures."""
-        output = SimulationWorkflowOutput(node_captures={})
+        """Test creating simulation workflow output with empty node_payloads."""
+        output = SimulationWorkflowOutput(node_payloads=[])
 
-        assert len(output.node_captures) == 0
-        assert output.node_captures == {}
+        assert len(output.node_payloads) == 0
+        assert output.node_payloads == []
 
     def test_simulation_workflow_output_missing_field(self):
-        """Test validation error when node_captures is missing."""
+        """Test validation error when node_payloads is missing."""
         with pytest.raises(ValidationError):
-            SimulationWorkflowOutput()  # Missing required node_captures field
+            SimulationWorkflowOutput()  # Missing required node_payloads field
 
     def test_simulation_workflow_output_multiple_nodes(self):
-        """Test creating simulation workflow output with multiple node captures."""
-        node_captures = {
-            f"activity#{i}": NodeCaptureResult(
+        """Test creating simulation workflow output with multiple node payloads."""
+        node_payloads = [
+            NodePayloadResult(
                 node_id=f"activity#{i}",
                 input={"index": i},
                 output={"result": i * 2},
             )
             for i in range(1, 6)
-        }
+        ]
 
-        output = SimulationWorkflowOutput(node_captures=node_captures)
+        output = SimulationWorkflowOutput(node_payloads=node_payloads)
 
-        assert len(output.node_captures) == 5
+        assert len(output.node_payloads) == 5
         for i in range(1, 6):
-            assert output.node_captures[f"activity#{i}"].node_id == f"activity#{i}"
-            assert output.node_captures[f"activity#{i}"].input == {"index": i}
-            assert output.node_captures[f"activity#{i}"].output == {"result": i * 2}
+            assert output.node_payloads[i - 1].node_id == f"activity#{i}"
+            assert output.node_payloads[i - 1].input == {"index": i}
+            assert output.node_payloads[i - 1].output == {"result": i * 2}

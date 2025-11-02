@@ -4,7 +4,7 @@ from enum import Enum
 
 
 class PayloadKey(str, Enum):
-    """Keys for accessing input/output payloads in simulation data structures."""
+    """Keys for accessing input/output payloads."""
 
     INPUT_PAYLOAD = "input_payload"
     OUTPUT_PAYLOAD = "output_payload"

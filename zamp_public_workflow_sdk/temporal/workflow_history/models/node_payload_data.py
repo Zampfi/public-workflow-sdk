@@ -19,25 +19,31 @@ class NodePayloadData(BaseModel):
 class DecodeNodePayloadInput(BaseModel):
     """Input model for decode_node_payload activity.
 
-    The encoded_payload should be a dict with PayloadKey.INPUT_PAYLOAD and PayloadKey.OUTPUT_PAYLOAD keys:
-    {
-        PayloadKey.INPUT_PAYLOAD: {...},   # encoded input payload
-        PayloadKey.OUTPUT_PAYLOAD: {...}   # encoded output payload
-    }
-
-    Note: PayloadKey is from zamp_public_workflow_sdk.simulation.constants
+    Contains separate input and output payloads that may or may not be encoded.
     """
 
     node_id: str = Field(..., description="The node ID")
-    encoded_payload: dict[str, Any] = Field(
-        ...,
-        description="Dict with PayloadKey.INPUT_PAYLOAD and PayloadKey.OUTPUT_PAYLOAD keys containing encoded payloads",
+    input_payload: Any = Field(
+        default=None,
+        description="Input payload data (may be encoded or raw)",
+    )
+    output_payload: Any = Field(
+        default=None,
+        description="Output payload data (may be encoded or raw)",
     )
 
 
 class DecodeNodePayloadOutput(BaseModel):
-    """Output model for decode_node_payload activity."""
+    """Output model for decode_node_payload activity.
+    
+    Contains the decoded input and output payloads separately.
+    """
 
-    result: dict[str, Any] = Field(
-        ..., description="Dict containing 'decoded_input' and 'decoded_output' keys with their respective payloads"
+    decoded_input: Any = Field(
+        default=None,
+        description="Decoded input payload data",
+    )
+    decoded_output: Any = Field(
+        default=None,
+        description="Decoded output payload data",
     )

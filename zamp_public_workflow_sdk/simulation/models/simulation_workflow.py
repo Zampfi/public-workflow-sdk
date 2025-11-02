@@ -2,12 +2,12 @@
 Models for SimulationCodeWorkflow.
 
 This module contains Pydantic models for executing workflows in simulation mode
-and capturing activity inputs/outputs.
+and extracting activity inputs/outputs.
 """
 
 from enum import Enum
-from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, ConfigDict, Field, RootModel, model_serializer
+from typing import Any, Dict
+from pydantic import BaseModel, Field, model_serializer
 
 from zamp_public_workflow_sdk.actions_hub.models.common_models import (
     ZampMetadataContext,
@@ -15,8 +15,8 @@ from zamp_public_workflow_sdk.actions_hub.models.common_models import (
 from zamp_public_workflow_sdk.simulation.models import SimulationConfig
 
 
-class NodeCaptureMode(str, Enum):
-    """Mode for capturing activity data from workflow history."""
+class NodePayloadType(str, Enum):
+    """Type of payload data to extract from workflow history."""
 
     INPUT = "INPUT"
     OUTPUT = "OUTPUT"
@@ -24,9 +24,9 @@ class NodeCaptureMode(str, Enum):
 
 
 class SimulationOutputSchema(BaseModel):
-    """Schema defining which activities to capture and what data to return.
+    """Schema defining which activities to extract and what data to return.
 
-    Maps node IDs to capture modes to specify which activity inputs/outputs
+    Maps node IDs to payload types to specify which activity inputs/outputs
     should be extracted from workflow history.
 
     Example:
@@ -37,26 +37,26 @@ class SimulationOutputSchema(BaseModel):
         }
     """
 
-    node_captures: dict[str, NodeCaptureMode] = Field(
-        description="Map of node IDs to capture modes (INPUT, OUTPUT, or INPUT_OUTPUT)"
+    node_payloads: dict[str, NodePayloadType] = Field(
+        description="Map of node IDs to payload types (INPUT, OUTPUT, or INPUT_OUTPUT)"
     )
 
 
-class NodeCaptureResult(BaseModel):
-    """Result for a single activity capture from workflow history.
+class NodePayloadResult(BaseModel):
+    """Result for a single activity payload extraction from workflow history.
 
-    Contains the captured input and/or output data for an activity execution.
+    Contains the extracted input and/or output data for an activity execution.
     Only includes fields that are not None.
     """
 
     node_id: str = Field(description="Node ID of the activity (e.g., 'activity_name#1')")
     input: Any | None = Field(
         default=None,
-        description="Activity input parameters if captured (based on capture mode)",
+        description="Activity input parameters if extracted (based on payload type)",
     )
     output: Any | None = Field(
         default=None,
-        description="Activity output result if captured (based on capture mode)",
+        description="Activity output result if extracted (based on payload type)",
     )
 
     @model_serializer
@@ -74,7 +74,7 @@ class SimulationWorkflowInput(BaseModel):
     """Input parameters for SimulationCodeWorkflow.
 
     Defines which workflow to execute, its parameters, simulation configuration,
-    and which activity data to capture.
+    and which activity data to extract.
     """
 
     workflow_name: str = Field(
@@ -83,18 +83,19 @@ class SimulationWorkflowInput(BaseModel):
     workflow_params: dict[str, Any] = Field(description="Parameters to pass to the original workflow execution")
     simulation_config: SimulationConfig = Field(description="Simulation configuration with mock settings")
     output_schema: SimulationOutputSchema = Field(
-        description="Schema defining which activities to capture and what data to return"
+        description="Schema defining which activities to extract and what data to return"
     )
     zamp_metadata_context: ZampMetadataContext | None = Field(
         default=None, description="Metadata context for logging and tracing"
     )
 
 
-
-class SimulationWorkflowOutput(RootModel[List[NodeCaptureResult]]):
+class SimulationWorkflowOutput(BaseModel):
     """Output from SimulationCodeWorkflow execution.
 
-    A list of captured activity data, each containing node_id and optionally input/output.
+    Contains a list of extracted activity payload data, each with node_id and optionally input/output.
     """
 
-    root: List[NodeCaptureResult]
+    node_payloads: list[NodePayloadResult] = Field(
+        description="List of extracted activity payloads with their inputs and/or outputs"
+    )

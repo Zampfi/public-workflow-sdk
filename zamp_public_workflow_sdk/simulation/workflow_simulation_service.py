@@ -122,7 +122,8 @@ class WorkflowSimulationService:
                 "return_mocked_result",
                 MockedResultInput(
                     node_id=node_id,
-                    encoded_payload=node_payloads,
+                    input_payload=node_payloads.get("input_payload"),
+                    output_payload=node_payloads.get("output_payload"),
                     action_name=action_name,
                 ),
                 {TEMPORAL_NODE_ID_KEY: node_id},

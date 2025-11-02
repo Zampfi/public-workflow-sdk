@@ -5,10 +5,10 @@ with workflow.unsafe.imports_passed_through():
     from typing import Any, Dict, List
     from zamp_public_workflow_sdk.actions_hub import ActionsHub
     from zamp_public_workflow_sdk.simulation.models.simulation_workflow import (
-        NodeCaptureResult,
+        NodePayloadResult,
         SimulationWorkflowOutput,
         SimulationWorkflowInput,
-        NodeCaptureMode,
+        NodePayloadType,
     )
     from zamp_public_workflow_sdk.simulation.helper import (
         MAIN_WORKFLOW_IDENTIFIER,
@@ -21,20 +21,18 @@ with workflow.unsafe.imports_passed_through():
     )
     from zamp_public_workflow_sdk.simulation.constants import (
         NEEDS_CHILD_TRAVERSAL,
-        DECODED_INPUT,
-        DECODED_OUTPUT,
     )
 
 logger = structlog.get_logger(__name__)
 
 
 @ActionsHub.register_workflow_defn(
-    "Wrapper workflow that executes workflows in simulation mode and captures activity data",
+    "Wrapper workflow that executes workflows in simulation mode and extracts activity data",
     labels=["core", "simulation"],
 )
 class SimulationWorkflow:
     """
-    Wrapper workflow for executing workflows with simulation and activity capture.
+    Wrapper workflow for executing workflows with simulation and activity payload extraction.
 
     This workflow:
     1. Resolves the target workflow class from workflow name
@@ -42,7 +40,7 @@ class SimulationWorkflow:
     4. Fetches workflow history from Temporal API (not S3)
     5. Traverses into child workflow executions recursively
     6. Parses history to extract activity inputs/outputs based on output_schema
-    7. Returns structured activity data including captures from child workflows
+    7. Returns structured activity data including payloads from child workflows
 
     Example usage:
         input = SimulationCodeWorkflowInput(
@@ -55,7 +53,7 @@ class SimulationWorkflow:
                 mock_config=NodeMockConfig(...)
             ),
             output_schema=SimulationOutputSchema(
-                node_captures={
+                node_payloads={
                     "gmail_search_messages#1": "INPUT_OUTPUT",
                     "parse_email#3": "OUTPUT"
                 }
@@ -66,13 +64,13 @@ class SimulationWorkflow:
 
     @ActionsHub.register_workflow_run
     async def execute(self, input_params: SimulationWorkflowInput) -> SimulationWorkflowOutput:
-        """Execute workflow in simulation mode and capture activity data.
+        """Execute workflow in simulation mode and extract activity data.
 
         Args:
             input_params: Input parameters including workflow name, params, and output schema
 
         Returns:
-            SimulationCodeWorkflowOutput with workflow result and captured activity data
+            SimulationWorkflowOutput with workflow result and extracted activity data
 
         Raises:
             NonRetryableError: If workflow resolution fails
@@ -102,20 +100,20 @@ class SimulationWorkflow:
             has_result=workflow_result is not None,
         )
 
-        node_captures = await self._fetch_and_parse_node_captures(
+        node_payloads = await self._fetch_and_parse_node_payloads(
             workflow_id=workflow_id,
             run_id=run_id,
-            node_captures=input_params.output_schema.node_captures,
+            node_payloads=input_params.output_schema.node_payloads,
         )
 
-        # Step 5: Return structured output (direct list)
-        result = SimulationWorkflowOutput(root=node_captures)
+        # Step 5: Return structured output
+        result = SimulationWorkflowOutput(node_payloads=node_payloads)
 
         logger.info(
-            "SimulationCodeWorkflow completed successfully",
+            "SimulationWorkflow completed successfully",
             workflow_id=workflow_id,
             run_id=run_id,
-            captures_count=len(node_captures),
+            payloads_count=len(node_payloads),
         )
 
         return result
@@ -185,43 +183,43 @@ class SimulationWorkflow:
         )
         return workflow_result, workflow_id, run_id
 
-    async def _fetch_and_parse_node_captures(
+    async def _fetch_and_parse_node_payloads(
         self,
         workflow_id: str,
         run_id: str,
-        node_captures: Dict[str, NodeCaptureMode],
-    ) -> List[NodeCaptureResult]:
-        """Fetch workflow history and parse node captures based on output schema.
+        node_payloads: Dict[str, NodePayloadType],
+    ) -> List[NodePayloadResult]:
+        """Fetch workflow history and parse node payloads based on output schema.
 
         Args:
             workflow_id: The workflow ID to fetch history for
             run_id: The run ID to fetch history for
-            node_captures: Dictionary mapping node IDs to capture modes
+            node_payloads: Dictionary mapping node IDs to payload types
 
         Returns:
-            List of NodeCaptureResult objects
+            List of NodePayloadResult objects
         """
         logger.info(
-            "Fetching and parsing node captures",
+            "Fetching and parsing node payloads",
             workflow_id=workflow_id,
             run_id=run_id,
-            node_count=len(node_captures),
+            node_count=len(node_payloads),
         )
 
         # Fetch and extract node payloads from workflow history
-        node_payloads = await self._fetch_node_payloads(workflow_id, run_id, list(node_captures.keys()))
+        encoded_node_payloads = await self._fetch_node_payloads(workflow_id, run_id, list(node_payloads.keys()))
 
-        # Process each node capture
-        result: List[NodeCaptureResult] = []
-        for node_id, capture_mode in node_captures.items():
-            capture_result = await self._process_node_capture(node_id, capture_mode, node_payloads)
-            result.append(capture_result)
+        # Process each node payload
+        result: List[NodePayloadResult] = []
+        for node_id, payload_type in node_payloads.items():
+            payload_result = await self._process_node_payload(node_id, payload_type, encoded_node_payloads)
+            result.append(payload_result)
 
         logger.info(
-            "Completed fetching and parsing node captures",
+            "Completed fetching and parsing node payloads",
             workflow_id=workflow_id,
             run_id=run_id,
-            captures_count=len(result),
+            payloads_count=len(result),
         )
         return result
 
@@ -273,40 +271,40 @@ class SimulationWorkflow:
             )
             raise Exception(f"Failed to extract node payloads for workflow_id={workflow_id}, run_id={run_id}") from e
 
-    async def _process_node_capture(
+    async def _process_node_payload(
         self,
         node_id: str,
-        capture_mode: NodeCaptureMode,
+        payload_type: NodePayloadType,
         node_payloads: dict[str, Any],
-    ) -> NodeCaptureResult:
-        """Process a single node capture: traverse child if needed, decode, and build result.
+    ) -> NodePayloadResult:
+        """Process a single node payload: traverse child if needed, decode, and build result.
 
         Args:
             node_id: The node ID to process
-            capture_mode: The capture mode (INPUT, OUTPUT, or INPUT_OUTPUT)
+            payload_type: The payload type (INPUT, OUTPUT, or INPUT_OUTPUT)
             node_payloads: Dictionary of all node payloads
 
         Returns:
-            NodeCaptureResult with decoded input/output based on capture mode
+            NodePayloadResult with decoded input/output based on payload type
         """
-        logger.info("Processing node capture", node_id=node_id, capture_mode=capture_mode)
+        logger.info("Processing node payload", node_id=node_id, payload_type=payload_type)
 
         # Get encoded payload
         encoded_payload = node_payloads.get(node_id)
         if not encoded_payload:
             logger.warning("No encoded payload found for node", node_id=node_id)
-            return NodeCaptureResult(node_id=node_id, input=None, output=None)
+            return NodePayloadResult(node_id=node_id, input=None, output=None)
 
         # Traverse child workflow if needed
         encoded_payload = await self._traverse_child_workflow_if_needed(node_id, encoded_payload)
 
-        # Decode payload
-        decoded_data = await self._decode_node_payload(node_id, encoded_payload)
-        if not decoded_data:
-            return NodeCaptureResult(node_id=node_id, input=None, output=None)
+        # Decode payload - returns DecodeNodePayloadOutput or None
+        decoded_output = await self._decode_node_payload(node_id, encoded_payload)
+        if not decoded_output:
+            return NodePayloadResult(node_id=node_id, input=None, output=None)
 
-        # Build result based on capture mode
-        return self._build_capture_result(node_id, capture_mode, decoded_data)
+        # Build result based on payload type
+        return self._build_payload_result(node_id, payload_type, decoded_output)
 
     async def _traverse_child_workflow_if_needed(self, node_id: str, encoded_payload: dict[str, Any]) -> dict[str, Any]:
         """Traverse into child workflow if the node needs it and return child's main node payload.
@@ -387,12 +385,12 @@ class SimulationWorkflow:
                 return child_payload
         return None
 
-    async def _decode_node_payload(self, node_id: str, encoded_payload: dict[str, Any]) -> dict[str, Any] | None:
+    async def _decode_node_payload(self, node_id: str, encoded_payload: dict[str, Any]) -> DecodeNodePayloadOutput | None:
         """Decode node payload using decode_node_payload activity.
 
         Args:
             node_id: The node ID
-            encoded_payload: The encoded payload to decode
+            encoded_payload: Dict containing 'input_payload' and 'output_payload' keys
 
         Returns:
             Decoded payload result or None if decoding fails
@@ -402,7 +400,8 @@ class SimulationWorkflow:
                 "decode_node_payload",
                 DecodeNodePayloadInput(
                     node_id=node_id,
-                    encoded_payload=encoded_payload,
+                    input_payload=encoded_payload.get("input_payload"),
+                    output_payload=encoded_payload.get("output_payload"),
                 ),
                 summary=f"{node_id}",
                 return_type=DecodeNodePayloadOutput,
@@ -410,38 +409,38 @@ class SimulationWorkflow:
             logger.info(
                 "Successfully decoded node payload",
                 node_id=node_id,
-                has_input=decoded_data.result.get(DECODED_INPUT) is not None,
-                has_output=decoded_data.result.get(DECODED_OUTPUT) is not None,
+                has_input=decoded_data.decoded_input is not None,
+                has_output=decoded_data.decoded_output is not None,
             )
-            return decoded_data.result
+            return decoded_data
         except Exception as e:
             logger.error("Failed to decode node payload", node_id=node_id, error=str(e))
             return None
 
     @staticmethod
-    def _build_capture_result(
-        node_id: str, capture_mode: NodeCaptureMode, decoded_data: dict[str, Any]
-    ) -> NodeCaptureResult:
-        """Build NodeCaptureResult based on capture mode.
+    def _build_payload_result(
+        node_id: str, payload_type: NodePayloadType, decoded_data: DecodeNodePayloadOutput
+    ) -> NodePayloadResult:
+        """Build NodePayloadResult based on payload type.
 
         Args:
             node_id: The node ID
-            capture_mode: The capture mode (INPUT, OUTPUT, or INPUT_OUTPUT)
-            decoded_data: The decoded payload data
+            payload_type: The payload type (INPUT, OUTPUT, or INPUT_OUTPUT)
+            decoded_data: The decoded payload data output
 
         Returns:
-            NodeCaptureResult with appropriate input/output based on capture mode
+            NodePayloadResult with appropriate input/output based on payload type
         """
         decoded_input = None
         decoded_output = None
 
-        if capture_mode in [NodeCaptureMode.INPUT, NodeCaptureMode.INPUT_OUTPUT]:
-            decoded_input = decoded_data.get(DECODED_INPUT)
+        if payload_type in [NodePayloadType.INPUT, NodePayloadType.INPUT_OUTPUT]:
+            decoded_input = decoded_data.decoded_input
 
-        if capture_mode in [NodeCaptureMode.OUTPUT, NodeCaptureMode.INPUT_OUTPUT]:
-            decoded_output = decoded_data.get(DECODED_OUTPUT)
+        if payload_type in [NodePayloadType.OUTPUT, NodePayloadType.INPUT_OUTPUT]:
+            decoded_output = decoded_data.decoded_output
 
-        return NodeCaptureResult(
+        return NodePayloadResult(
             node_id=node_id,
             input=decoded_input,
             output=decoded_output,
