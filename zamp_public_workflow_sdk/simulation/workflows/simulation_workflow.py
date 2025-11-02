@@ -1,6 +1,6 @@
 from temporalio import workflow
 
-from zamp_public_workflow_sdk.simulation.constants.simulation import PayloadKey
+from zamp_public_workflow_sdk.simulation.constants import PayloadKey
 
 with workflow.unsafe.imports_passed_through():
     import structlog
@@ -163,8 +163,8 @@ class SimulationWorkflow:
         )
 
         child_handle: workflow.ChildWorkflowHandle[Any, Any] = await workflow.start_child_workflow(
-            workflow=workflow_class,
-            args=workflow_params,
+            workflow_class,
+            workflow_params,
             static_summary=f"Simulation: {workflow_name}",
         )
         workflow_id = child_handle.id
@@ -308,8 +308,10 @@ class SimulationWorkflow:
             node_id=node_id, encoded_payload=encoded_payload
         )
 
-        # Decode payload - returns DecodeNodePayloadOutput or None
-        decoded_output = await self._decode_node_payload(node_id=node_id, encoded_payload=encoded_payload)
+        # Decode only what's needed based on payload_type
+        decoded_output = await self._decode_node_payload(
+            node_id=node_id, encoded_payload=encoded_payload, payload_type=payload_type
+        )
         if not decoded_output:
             return NodePayloadResult(node_id=node_id, input=None, output=None)
 
@@ -400,24 +402,37 @@ class SimulationWorkflow:
         return None
 
     async def _decode_node_payload(
-        self, node_id: str, encoded_payload: dict[str, Any]
+        self, node_id: str, encoded_payload: dict[str, Any], payload_type: NodePayloadType
     ) -> DecodeNodePayloadOutput | None:
         """Decode node payload using decode_node_payload activity.
+
+        Only decodes the payloads needed based on payload_type to optimize performance.
 
         Args:
             node_id: The node ID
             encoded_payload: Dict containing 'input_payload' and 'output_payload' keys
+            payload_type: The payload type (INPUT, OUTPUT, or INPUT_OUTPUT)
 
         Returns:
             Decoded payload result or None if decoding fails
         """
         try:
+            # Determine what to decode based on payload_type
+            input_to_decode = None
+            output_to_decode = None
+
+            if payload_type in [NodePayloadType.INPUT, NodePayloadType.INPUT_OUTPUT]:
+                input_to_decode = encoded_payload.get(PayloadKey.INPUT_PAYLOAD)
+
+            if payload_type in [NodePayloadType.OUTPUT, NodePayloadType.INPUT_OUTPUT]:
+                output_to_decode = encoded_payload.get(PayloadKey.OUTPUT_PAYLOAD)
+
             decoded_data = await ActionsHub.execute_activity(
                 "decode_node_payload",
                 DecodeNodePayloadInput(
                     node_id=node_id,
-                    input_payload=encoded_payload.get(PayloadKey.INPUT_PAYLOAD),
-                    output_payload=encoded_payload.get(PayloadKey.OUTPUT_PAYLOAD),
+                    input_payload=input_to_decode,
+                    output_payload=output_to_decode,
                 ),
                 summary=f"{node_id}",
                 return_type=DecodeNodePayloadOutput,
@@ -425,6 +440,7 @@ class SimulationWorkflow:
             logger.info(
                 "Successfully decoded node payload",
                 node_id=node_id,
+                payload_type=payload_type.value,
                 has_input=decoded_data.decoded_input is not None,
                 has_output=decoded_data.decoded_output is not None,
             )
