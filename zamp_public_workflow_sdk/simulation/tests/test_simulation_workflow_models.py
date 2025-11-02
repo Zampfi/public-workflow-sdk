@@ -268,6 +268,7 @@ class TestSimulationWorkflowOutput:
                 output={"result": "done"},
             ),
         ]
+        ]
 
         output = SimulationWorkflowOutput(node_payloads=node_payloads)
 
@@ -300,6 +301,7 @@ class TestSimulationWorkflowOutput:
                 output={"result": i * 2},
             )
             for i in range(1, 6)
+        ]
         ]
 
         output = SimulationWorkflowOutput(node_payloads=node_payloads)
