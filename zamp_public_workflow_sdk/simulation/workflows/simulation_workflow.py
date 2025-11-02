@@ -359,7 +359,7 @@ class SimulationWorkflow:
                 child_payloads_count=len(child_payloads),
             )
 
-            child_main_node = self._find_main_workflow_node(child_payloads=child_payloads, parent_node_id=node_id)
+            child_main_node = self._find_main_workflow_node(child_payloads=child_payloads, node_id=node_id)
 
             if child_main_node:
                 logger.info("Successfully extracted child workflow output", node_id=node_id)
@@ -376,20 +376,28 @@ class SimulationWorkflow:
 
         return encoded_payload
 
-    def _find_main_workflow_node(self, child_payloads: dict[str, Any], parent_node_id: str) -> dict[str, Any] | None:
+    def _find_main_workflow_node(self, child_payloads: dict[str, Any], node_id: str) -> dict[str, Any] | None:
         """Find the main workflow node in child payloads.
 
         The main workflow node is the full workflow path that contains the activity.
         This is everything before the last segment (the activity name).
 
+        Examples:
+            - node_id="EnhancedStripeInvoiceProcessingWorkflow#1.query_data#1"
+              -> extracts "EnhancedStripeInvoiceProcessingWorkflow#1" and searches for it in child_payloads
+            - node_id="EnhancedStripeInvoiceProcessingWorkflow#1.POBackedInvoiceProcessingWorkflow#1.emit_custom_log#1"
+              -> extracts "EnhancedStripeInvoiceProcessingWorkflow#1.POBackedInvoiceProcessingWorkflow#1" and searches for it in child_payloads
+            - node_id="Parent#1.Child#1.GrandChild#1.activity#1"
+              -> extracts "Parent#1.Child#1.GrandChild#1" and searches for it in child_payloads
+
         Args:
             child_payloads: Dictionary of child workflow payloads
-            parent_node_id: Parent node ID (full path including activity)
+            node_id: Node ID (full path including activity)
 
         Returns:
             The main workflow node payload or None if not found
         """
-        parts = parent_node_id.split(".")
+        parts = node_id.split(".")
         target_workflow_path = ".".join(parts[:-1]) if len(parts) > 1 else parts[0]
 
         if target_workflow_path in child_payloads:
