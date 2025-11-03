@@ -142,8 +142,8 @@ class TestSimulationFetchDataIntegration:
             mock_strategy.execute = AsyncMock(
                 return_value=SimulationStrategyOutput(
                     node_outputs={
-                        "node1#1": "history_output",
-                        "node2#1": "history_output",
+                        "node1#1": NodePayload(input_payload=None, output_payload="history_output"),
+                        "node2#1": NodePayload(input_payload=None, output_payload="history_output"),
                     }
                 )
             )
@@ -153,8 +153,10 @@ class TestSimulationFetchDataIntegration:
 
             assert isinstance(result, SimulationFetchDataWorkflowOutput)
             assert len(result.node_id_to_response_map) == 2
-            assert result.node_id_to_response_map["node1#1"] == "history_output"
-            assert result.node_id_to_response_map["node2#1"] == "history_output"
+            assert isinstance(result.node_id_to_response_map["node1#1"], NodePayload)
+            assert result.node_id_to_response_map["node1#1"].output_payload == "history_output"
+            assert isinstance(result.node_id_to_response_map["node2#1"], NodePayload)
+            assert result.node_id_to_response_map["node2#1"].output_payload == "history_output"
 
     @pytest.mark.asyncio
     async def test_execute_with_mixed_strategies(self):
@@ -192,16 +194,18 @@ class TestSimulationFetchDataIntegration:
         ) as mock_handler_class:
             mock_strategy = Mock()
             mock_strategy.execute = AsyncMock(
-                return_value=SimulationStrategyOutput(node_outputs={"node2#1": "history_output"})
+                return_value=SimulationStrategyOutput(
+                    node_outputs={"node2#1": NodePayload(input_payload=None, output_payload="history_output")}
+                )
             )
             mock_handler_class.return_value = mock_strategy
 
             result = await workflow.execute(input_data)
 
-            assert isinstance(result, SimulationFetchDataWorkflowOutput)
-            assert len(result.node_id_to_response_map) == 2
-            assert result.node_id_to_response_map["node1#1"].output_payload == "custom_output"
-            assert result.node_id_to_response_map["node2#1"] == "history_output"
+        assert isinstance(result, SimulationFetchDataWorkflowOutput)
+        assert len(result.node_id_to_response_map) == 2
+        assert result.node_id_to_response_map["node1#1"].output_payload == "custom_output"
+        assert result.node_id_to_response_map["node2#1"].output_payload == "history_output"
 
     @pytest.mark.asyncio
     async def test_execute_strategy_execution_failure(self):
@@ -347,10 +351,7 @@ class TestSimulationServiceIntegration:
             await service._initialize_simulation_data()
 
             assert len(service.node_id_to_response_map) == 1
-            assert (
-                service.node_id_to_response_map["integration_node#1"].output_payload
-                == "integration_test_output"
-            )
+            assert service.node_id_to_response_map["integration_node#1"].output_payload == "integration_test_output"
 
             # Test that simulation response works - mock ActionsHub.execute_activity since get_simulation_response now calls return_mocked_result
             response = await service.get_simulation_response("integration_node#1")

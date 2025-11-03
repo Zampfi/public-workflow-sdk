@@ -814,7 +814,6 @@ class ActionsHub:
         skip_node_id_gen: bool = False,
         **kwargs,
     ):
-
         if skip_node_id_gen:
             return await workflow.start_child_workflow(
                 workflow_name,
@@ -822,7 +821,7 @@ class ActionsHub:
                 args=args,
                 **kwargs,
             )
-            
+
         # Generate node_id for this child workflow execution
         child_workflow_name, workflow_id, node_id = cls._generate_node_id_for_action(workflow_name)
 

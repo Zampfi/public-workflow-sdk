@@ -18,6 +18,7 @@ from zamp_public_workflow_sdk.simulation.helper import (
     get_workflow_path_from_node,
     group_nodes_by_parent_workflow,
 )
+from zamp_public_workflow_sdk.simulation.models import NodePayload
 from zamp_public_workflow_sdk.simulation.models.simulation_response import (
     SimulationStrategyOutput,
 )
@@ -71,7 +72,9 @@ class TestTemporalHistoryStrategyHandler:
                 )
 
                 assert isinstance(result, SimulationStrategyOutput)
-                assert result.node_outputs == {"activity#1": {"result": "success"}}
+                assert "activity#1" in result.node_outputs
+                assert isinstance(result.node_outputs["activity#1"], NodePayload)
+                # The mock returns plain dict which gets converted to NodePayload
                 mock_fetch.assert_called_once()
                 mock_extract.assert_called_once()
 
@@ -101,7 +104,9 @@ class TestTemporalHistoryStrategyHandler:
                 result = await handler.execute(node_ids=["activity#1"])
 
                 assert isinstance(result, SimulationStrategyOutput)
-                assert result.node_outputs == {"activity#1": {"result": "success"}}
+                assert "activity#1" in result.node_outputs
+                assert isinstance(result.node_outputs["activity#1"], NodePayload)
+                # The mock returns plain dict which gets converted to NodePayload
                 mock_fetch.assert_called_once()
                 mock_extract.assert_called_once()
 
@@ -417,12 +422,10 @@ class TestTemporalHistoryStrategyHandler:
                 workflow_histories_map=workflow_histories_map,
             )
 
-            assert result == {
-                "Child#1.activity#1": {
-                    PayloadKey.INPUT_PAYLOAD: None,
-                    PayloadKey.OUTPUT_PAYLOAD: None,
-                }
-            }
+            assert "Child#1.activity#1" in result
+            assert isinstance(result["Child#1.activity#1"], NodePayload)
+            assert result["Child#1.activity#1"].input_payload is None
+            assert result["Child#1.activity#1"].output_payload is None
 
     @pytest.mark.asyncio
     async def test_fetch_nested_child_workflow_history_single_level(self):

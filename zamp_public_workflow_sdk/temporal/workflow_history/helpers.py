@@ -543,18 +543,20 @@ def get_encoded_input_from_node_id(events: list[dict], node_id: str) -> dict | N
     """Get encoded input payload for a specific node ID. Returns the encoded input payload."""
     logger.info("Getting encoded input payload for node", node_id=node_id)
     node_data = extract_encoded_node_payloads(events, [node_id])
-    if node_id in node_data and PayloadKey.INPUT_PAYLOAD in node_data[node_id]:
-        return node_data[node_id][PayloadKey.INPUT_PAYLOAD]
-    return None
+    if node_id not in node_data:
+        return None
+    node_payload = node_data[node_id]
+    return node_payload.input_payload
 
 
 def get_encoded_output_from_node_id(events: list[dict], node_id: str) -> dict | None:
     """Get encoded output payload for a specific node ID. Returns the encoded output payload."""
     logger.info("Getting encoded output payload for node", node_id=node_id)
     node_data = extract_encoded_node_payloads(events, [node_id])
-    if node_id in node_data and PayloadKey.OUTPUT_PAYLOAD in node_data[node_id]:
-        return node_data[node_id][PayloadKey.OUTPUT_PAYLOAD]
-    return None
+    if node_id not in node_data:
+        return None
+    node_payload = node_data[node_id]
+    return node_payload.output_payload
 
 
 def extract_encoded_node_payloads(events: list[dict], node_ids: list[str] | None = None) -> dict[str, NodePayload]:

@@ -5,7 +5,6 @@ These functions can be used by other modules that need to work with Temporal wor
 """
 
 from collections import defaultdict
-from typing import Any
 
 import structlog
 

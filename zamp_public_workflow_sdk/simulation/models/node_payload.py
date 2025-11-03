@@ -1,5 +1,3 @@
-
-
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -8,7 +6,7 @@ from pydantic import BaseModel, Field
 class NodePayload(BaseModel):
     """
     Represents input and output payloads for a node in simulation.
-    
+
     This model is used to store the payloads that will be used to mock
     activity/workflow executions during simulation.
     """
@@ -34,4 +32,3 @@ class NodePayload(BaseModel):
         default=None,
         description="Child workflow run ID if traversal is needed",
     )
-
