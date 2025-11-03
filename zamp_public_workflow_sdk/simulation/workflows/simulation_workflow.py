@@ -43,8 +43,8 @@ class SimulationWorkflow:
 
     Example usage:
         input = SimulationWorkflowInput(
-            original_workflow_name="StripeFetchInvoicesWorkflow",
-            original_workflow_params={
+            workflow_name="StripeFetchInvoicesWorkflow",
+            workflow_params={
                 "newer_than": "2024-01-01",
                 "zamp_metadata_context": {...}
             },
@@ -208,13 +208,7 @@ class SimulationWorkflow:
                 node_id=node_id, payload_type=payload_type, node_payloads=encoded_node_payloads
             )
             result.append(payload_result)
-
-        logger.info(
-            "Completed fetching and parsing node payloads",
-            workflow_id=workflow_id,
-            run_id=run_id,
-            payloads_count=len(result),
-        )
+            
         return result
 
     async def _fetch_node_payloads(self, workflow_id: str, run_id: str, node_ids: list[str]) -> dict[str, NodePayload]:

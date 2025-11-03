@@ -1,6 +1,7 @@
 import pytest
 
 from zamp_public_workflow_sdk.temporal.workflow_history.models.workflow_history import WorkflowHistory
+from zamp_public_workflow_sdk.simulation.models import NodePayload
 
 
 class TestWorkflowHistory:
@@ -216,8 +217,6 @@ class TestWorkflowHistory:
 
         result = history.get_nodes_data_encoded(["activity#1"])
 
-        # Should return encoded node data as NodePayload objects
-        from zamp_public_workflow_sdk.simulation.models import NodePayload
 
         assert "activity#1" in result
         assert isinstance(result["activity#1"], NodePayload)
@@ -244,8 +243,6 @@ class TestWorkflowHistory:
 
         result = history.get_nodes_data_encoded()
 
-        # Should return all encoded node data as NodePayload objects
-        from zamp_public_workflow_sdk.simulation.models import NodePayload
 
         assert "activity#1" in result
         assert isinstance(result["activity#1"], NodePayload)
