@@ -23,7 +23,6 @@ from zamp_public_workflow_sdk.simulation.strategies.temporal_history_strategy im
     TemporalHistoryStrategyHandler,
 )
 from zamp_public_workflow_sdk.simulation.models.mocked_result import MockedResultInput, MockedResultOutput
-from zamp_public_workflow_sdk.temporal.interceptors.node_id_interceptor import TEMPORAL_NODE_ID_KEY
 
 logger = structlog.get_logger(__name__)
 
@@ -127,8 +126,8 @@ class WorkflowSimulationService:
                     output_payload=node_payloads.get(PayloadKey.OUTPUT_PAYLOAD),
                     action_name=action_name,
                 ),
-                {TEMPORAL_NODE_ID_KEY: node_id},
                 return_type=MockedResultOutput,
+                custom_node_id=node_id,
                 summary=action_name,
             )
 

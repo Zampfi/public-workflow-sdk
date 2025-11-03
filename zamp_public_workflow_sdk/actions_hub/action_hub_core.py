@@ -458,6 +458,7 @@ class ActionsHub:
         return_type: type | None = None,
         start_to_close_timeout: timedelta = timedelta(minutes=10),
         retry_policy: RetryPolicy = RetryPolicy.default(),
+        custom_node_id: str | None = None,
         task_queue: str | None = None,
         **kwargs,
     ):
@@ -520,13 +521,10 @@ class ActionsHub:
         retry_policy.initial_interval = convert_iso_to_timedelta(retry_policy.initial_interval)
         retry_policy.maximum_interval = convert_iso_to_timedelta(retry_policy.maximum_interval)
 
-        # Check if caller provided a custom node_id in the last argument
-        if len(args) > 0 and isinstance(args[-1], dict) and TEMPORAL_NODE_ID_KEY in args[-1]:
-            node_id_arg = args[-1]
-            args = args[:-1]
+        if custom_node_id:
+            node_id_arg = {TEMPORAL_NODE_ID_KEY: custom_node_id}
         else:
             node_id_arg = {TEMPORAL_NODE_ID_KEY: node_id}
-
         # Prepend node_id_arg to args
         args = (node_id_arg,) + args
 
