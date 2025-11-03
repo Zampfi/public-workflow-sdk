@@ -41,13 +41,13 @@ class SimulationWorkflow:
     This workflow:
     1. Resolves the target workflow class from workflow name
     2. Executes the workflow as a child workflow with simulation_config
-    4. Fetches workflow history from Temporal API (not S3)
+    4. Fetches workflow history from s3 if not available, otherwise from temporal API
     5. Traverses into child workflow executions recursively
     6. Parses history to extract activity inputs/outputs based on output_schema
     7. Returns structured activity data including payloads from child workflows
 
     Example usage:
-        input = SimulationCodeWorkflowInput(
+        input = SimulationWorkflowInput(
             original_workflow_name="StripeFetchInvoicesWorkflow",
             original_workflow_params={
                 "newer_than": "2024-01-01",
@@ -80,16 +80,7 @@ class SimulationWorkflow:
             NonRetryableError: If workflow resolution fails
         """
 
-        # Step 1: Prepare workflow parameters with simulation_config
         workflow_params = self._prepare_workflow_params(input_params)
-        logger.info("Workflow parameters prepared")
-
-        # Step 3: Execute child workflow
-        logger.info(
-            "About to execute child workflow",
-            workflow_name=input_params.workflow_name,
-            workflow_params_keys=list(workflow_params.keys()),
-        )
 
         workflow_result, workflow_id, run_id = await self._execute_child_workflow(
             workflow_class=input_params.workflow_name,
@@ -110,7 +101,6 @@ class SimulationWorkflow:
             node_payloads=input_params.output_schema.node_payloads,
         )
 
-        # Step 5: Return structured output
         result = SimulationWorkflowOutput(node_payloads=node_payloads)
 
         logger.info(
@@ -126,7 +116,7 @@ class SimulationWorkflow:
         """Prepare workflow parameters with simulation_config.
 
         Args:
-            input_params: Input parameters for SimulationCodeWorkflow
+            input_params: Input parameters for SimulationWorkflow
 
         Returns:
             Dictionary of workflow parameters with simulation_config added
@@ -162,7 +152,7 @@ class SimulationWorkflow:
             workflow_name=workflow_name,
         )
 
-        child_handle: workflow.ChildWorkflowHandle[Any, Any] = await workflow.start_child_workflow(
+        child_handle: workflow.ChildWorkflowHandle[Any, Any] = await ActionsHub.start_child_workflow(
             workflow_class,
             workflow_params,
             static_summary=f"Simulation: {workflow_name}",
@@ -339,7 +329,7 @@ class SimulationWorkflow:
             return encoded_payload
 
         logger.info(
-            "Child workflow needs traversal",
+            "Traversing child workflow",
             node_id=node_id,
             child_workflow_id=child_workflow_id,
         )

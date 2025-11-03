@@ -1,10 +1,3 @@
-"""
-Models for SimulationCodeWorkflow.
-
-This module contains Pydantic models for executing workflows in simulation mode
-and extracting activity inputs/outputs.
-"""
-
 from enum import Enum
 from typing import Any
 from pydantic import BaseModel, Field, model_serializer
@@ -71,7 +64,7 @@ class NodePayloadResult(BaseModel):
 
 
 class SimulationWorkflowInput(BaseModel):
-    """Input parameters for SimulationCodeWorkflow.
+    """Input parameters for SimulationWorkflow.
 
     Defines which workflow to execute, its parameters, simulation configuration,
     and which activity data to extract.
@@ -91,7 +84,7 @@ class SimulationWorkflowInput(BaseModel):
 
 
 class SimulationWorkflowOutput(BaseModel):
-    """Output from SimulationCodeWorkflow execution.
+    """Output from SimulationWorkflow execution.
 
     Contains a list of extracted activity payload data, each with node_id and optionally input/output.
     """

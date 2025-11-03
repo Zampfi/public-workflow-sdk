@@ -15,7 +15,7 @@ from zamp_public_workflow_sdk.temporal.interceptors.node_id_interceptor import (
     NODE_ID_HEADER_KEY,
 )
 
-from .constants import DEFAULT_MODE, SKIP_SIMULATION_WORKFLOWS, LogMode
+from .constants import DEFAULT_MODE, SKIP_NODE_ID_GENERATION, SKIP_SIMULATION_WORKFLOWS, LogMode
 from .models.mcp_models import MCPConfig
 
 with workflow.unsafe.imports_passed_through():
@@ -521,12 +521,15 @@ class ActionsHub:
         retry_policy.initial_interval = convert_iso_to_timedelta(retry_policy.initial_interval)
         retry_policy.maximum_interval = convert_iso_to_timedelta(retry_policy.maximum_interval)
 
+        node_id_to_use = None
         if custom_node_id:
-            node_id_arg = {TEMPORAL_NODE_ID_KEY: custom_node_id}
-        else:
-            node_id_arg = {TEMPORAL_NODE_ID_KEY: node_id}
-        # Prepend node_id_arg to args
-        args = (node_id_arg,) + args
+            node_id_to_use = custom_node_id
+        elif activity_name not in SKIP_NODE_ID_GENERATION:
+            node_id_to_use = node_id
+
+        if node_id_to_use is not None:
+            node_id_arg = {TEMPORAL_NODE_ID_KEY: node_id_to_use}
+            args = (node_id_arg,) + args
 
         # Executing in temporal mode
         logger.info(
@@ -778,9 +781,9 @@ class ActionsHub:
             )
             return simulation_result.execution_response
 
-        # Temporal execution mode
-        node_id_arg = {TEMPORAL_NODE_ID_KEY: node_id}
-        args = (node_id_arg,) + args
+        if child_workflow_name not in SKIP_NODE_ID_GENERATION:
+            node_id_arg = {TEMPORAL_NODE_ID_KEY: node_id}
+            args = (node_id_arg,) + args
 
         # Executing in temporal mode
         logger.info(
@@ -840,8 +843,9 @@ class ActionsHub:
             workflow_id=workflow_id,
         )
 
-        node_id_arg = {TEMPORAL_NODE_ID_KEY: node_id}
-        args = (node_id_arg,) + args
+        if child_workflow_name not in SKIP_NODE_ID_GENERATION:
+            node_id_arg = {TEMPORAL_NODE_ID_KEY: node_id}
+            args = (node_id_arg,) + args
 
         return await workflow.start_child_workflow(
             workflow_name,

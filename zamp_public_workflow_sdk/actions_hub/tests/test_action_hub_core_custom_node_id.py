@@ -63,13 +63,11 @@ class TestActionsHubCustomNodeId:
         mock_execute_activity.assert_called_once()
         call_args = mock_execute_activity.call_args
 
-        # Current behavior: When custom_node_id is provided, it uses the generated node_id
         assert len(call_args[1]["args"]) > 0
         first_arg = call_args[1]["args"][0]
         assert isinstance(first_arg, dict)
         assert TEMPORAL_NODE_ID_KEY in first_arg
-        # Current behavior: uses generated node_id even when custom_node_id is provided
-        assert first_arg[TEMPORAL_NODE_ID_KEY] == "test_activity#1"
+        assert first_arg[TEMPORAL_NODE_ID_KEY] == "custom_node_id#123"
 
         # Verify that "arg1_value" is still in the args (as second argument)
         assert len(call_args[1]["args"]) >= 2
@@ -109,12 +107,11 @@ class TestActionsHubCustomNodeId:
         mock_execute_activity.assert_called_once()
         call_args = mock_execute_activity.call_args
 
-        # Current behavior: When custom_node_id is None, it uses None
         assert len(call_args[1]["args"]) > 0
         first_arg = call_args[1]["args"][0]
         assert isinstance(first_arg, dict)
         assert TEMPORAL_NODE_ID_KEY in first_arg
-        assert first_arg[TEMPORAL_NODE_ID_KEY] is None  # Current behavior
+        assert first_arg[TEMPORAL_NODE_ID_KEY] == "test_activity#1"  # Generated node_id
 
         # Verify that "arg1_value" is still in the args
         assert len(call_args[1]["args"]) >= 2
@@ -155,12 +152,11 @@ class TestActionsHubCustomNodeId:
         mock_execute_activity.assert_called_once()
         call_args = mock_execute_activity.call_args
 
-        # Current behavior: When custom_node_id is None, it uses None
         assert len(call_args[1]["args"]) > 0
         first_arg = call_args[1]["args"][0]
         assert isinstance(first_arg, dict)
         assert TEMPORAL_NODE_ID_KEY in first_arg
-        assert first_arg[TEMPORAL_NODE_ID_KEY] is None  # Current behavior
+        assert first_arg[TEMPORAL_NODE_ID_KEY] == "test_activity#1"  # Generated node_id
 
         # Verify that regular arguments are preserved
         assert len(call_args[1]["args"]) >= 3
@@ -201,12 +197,11 @@ class TestActionsHubCustomNodeId:
         mock_execute_activity.assert_called_once()
         call_args = mock_execute_activity.call_args
 
-        # Current behavior: When custom_node_id is None, it uses None
         assert len(call_args[1]["args"]) == 1
         first_arg = call_args[1]["args"][0]
         assert isinstance(first_arg, dict)
         assert TEMPORAL_NODE_ID_KEY in first_arg
-        assert first_arg[TEMPORAL_NODE_ID_KEY] is None  # Current behavior
+        assert first_arg[TEMPORAL_NODE_ID_KEY] == "test_activity#1"  # Generated node_id
 
     @pytest.mark.asyncio
     @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.execute_activity")
@@ -244,12 +239,11 @@ class TestActionsHubCustomNodeId:
         mock_execute_activity.assert_called_once()
         call_args = mock_execute_activity.call_args
 
-        # Current behavior: When custom_node_id is provided, it uses the generated node_id
         assert len(call_args[1]["args"]) > 0
         first_arg = call_args[1]["args"][0]
         assert isinstance(first_arg, dict)
         assert TEMPORAL_NODE_ID_KEY in first_arg
-        assert first_arg[TEMPORAL_NODE_ID_KEY] == "test_activity#1"  # Current behavior
+        assert first_arg[TEMPORAL_NODE_ID_KEY] == "custom_node_id#999"  # Custom node_id
 
         # Verify all other args are still present
         assert len(call_args[1]["args"]) >= 4

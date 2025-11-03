@@ -9,8 +9,7 @@ with workflow.unsafe.imports_passed_through():
         SimulationFetchDataWorkflowOutput,
     )
 
-
-logger = structlog.get_logger(__name__)
+    logger = structlog.get_logger(__name__)
 
 
 @ActionsHub.register_workflow_defn(
@@ -41,6 +40,11 @@ class SimulationFetchDataWorkflow:
         for node_strategy in input.simulation_config.mock_config.node_strategies:
             strategy = WorkflowSimulationService.get_strategy(node_strategy)
             if strategy is None:
+                logger.error(
+                    "Strategy not found for node",
+                    node_ids=node_strategy.nodes,
+                    strategy_type=node_strategy.strategy.type,
+                )
                 continue
             try:
                 result = await strategy.execute(
