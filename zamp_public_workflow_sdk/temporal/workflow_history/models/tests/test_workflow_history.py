@@ -217,7 +217,6 @@ class TestWorkflowHistory:
 
         result = history.get_nodes_data_encoded(["activity#1"])
 
-
         assert "activity#1" in result
         assert isinstance(result["activity#1"], NodePayload)
         assert result["activity#1"].input_payload["data"] == "test input"
@@ -242,7 +241,6 @@ class TestWorkflowHistory:
         )
 
         result = history.get_nodes_data_encoded()
-
 
         assert "activity#1" in result
         assert isinstance(result["activity#1"], NodePayload)
