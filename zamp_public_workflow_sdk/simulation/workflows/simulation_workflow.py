@@ -19,12 +19,7 @@ with workflow.unsafe.imports_passed_through():
         DecodeNodePayloadInput,
         DecodeNodePayloadOutput,
     )
-    from zamp_public_workflow_sdk.simulation.constants import (
-        NEEDS_CHILD_TRAVERSAL,
-        CHILD_WORKFLOW_ID,
-        CHILD_RUN_ID,
-    )
-    from zamp_public_workflow_sdk.simulation.constants import PayloadKey
+    from zamp_public_workflow_sdk.simulation.models.node_payload import NodePayload
 
 
 logger = structlog.get_logger(__name__)
@@ -41,15 +36,15 @@ class SimulationWorkflow:
     This workflow:
     1. Resolves the target workflow class from workflow name
     2. Executes the workflow as a child workflow with simulation_config
-    4. Fetches workflow history from Temporal API (not S3)
+    4. Fetches workflow history from s3 if not available, otherwise from temporal API
     5. Traverses into child workflow executions recursively
     6. Parses history to extract activity inputs/outputs based on output_schema
     7. Returns structured activity data including payloads from child workflows
 
     Example usage:
-        input = SimulationCodeWorkflowInput(
-            original_workflow_name="StripeFetchInvoicesWorkflow",
-            original_workflow_params={
+        input = SimulationWorkflowInput(
+            workflow_name="StripeFetchInvoicesWorkflow",
+            workflow_params={
                 "newer_than": "2024-01-01",
                 "zamp_metadata_context": {...}
             },
@@ -80,16 +75,7 @@ class SimulationWorkflow:
             NonRetryableError: If workflow resolution fails
         """
 
-        # Step 1: Prepare workflow parameters with simulation_config
         workflow_params = self._prepare_workflow_params(input_params)
-        logger.info("Workflow parameters prepared")
-
-        # Step 3: Execute child workflow
-        logger.info(
-            "About to execute child workflow",
-            workflow_name=input_params.workflow_name,
-            workflow_params_keys=list(workflow_params.keys()),
-        )
 
         workflow_result, workflow_id, run_id = await self._execute_child_workflow(
             workflow_class=input_params.workflow_name,
@@ -110,7 +96,6 @@ class SimulationWorkflow:
             node_payloads=input_params.output_schema.node_payloads,
         )
 
-        # Step 5: Return structured output
         result = SimulationWorkflowOutput(node_payloads=node_payloads)
 
         logger.info(
@@ -126,7 +111,7 @@ class SimulationWorkflow:
         """Prepare workflow parameters with simulation_config.
 
         Args:
-            input_params: Input parameters for SimulationCodeWorkflow
+            input_params: Input parameters for SimulationWorkflow
 
         Returns:
             Dictionary of workflow parameters with simulation_config added
@@ -162,10 +147,11 @@ class SimulationWorkflow:
             workflow_name=workflow_name,
         )
 
-        child_handle: workflow.ChildWorkflowHandle[Any, Any] = await workflow.start_child_workflow(
+        child_handle: workflow.ChildWorkflowHandle[Any, Any] = await ActionsHub.start_child_workflow(
             workflow_class,
             workflow_params,
             static_summary=f"Simulation: {workflow_name}",
+            skip_node_id_gen=True,
         )
         workflow_id = child_handle.id
         run_id = child_handle.first_execution_run_id
@@ -222,16 +208,10 @@ class SimulationWorkflow:
                 node_id=node_id, payload_type=payload_type, node_payloads=encoded_node_payloads
             )
             result.append(payload_result)
-
-        logger.info(
-            "Completed fetching and parsing node payloads",
-            workflow_id=workflow_id,
-            run_id=run_id,
-            payloads_count=len(result),
-        )
+            
         return result
 
-    async def _fetch_node_payloads(self, workflow_id: str, run_id: str, node_ids: list[str]) -> dict[str, Any]:
+    async def _fetch_node_payloads(self, workflow_id: str, run_id: str, node_ids: list[str]) -> dict[str, NodePayload]:
         """Fetch temporal history and extract node payloads.
 
         Args:
@@ -240,7 +220,7 @@ class SimulationWorkflow:
             node_ids: List of node IDs to extract
 
         Returns:
-            Dictionary mapping node IDs to encoded payloads
+            Dictionary mapping node IDs to NodePayload instances with encoded data
 
         Raises:
             Exception: If fetch or extraction fails
@@ -283,14 +263,14 @@ class SimulationWorkflow:
         self,
         node_id: str,
         payload_type: NodePayloadType,
-        node_payloads: dict[str, Any],
+        node_payloads: dict[str, NodePayload],
     ) -> NodePayloadResult:
         """Process a single node payload: traverse child if needed, decode, and build result.
 
         Args:
             node_id: The node ID to process
             payload_type: The payload type (INPUT, OUTPUT, or INPUT_OUTPUT)
-            node_payloads: Dictionary of all node payloads
+            node_payloads: Dictionary mapping node IDs to NodePayload instances
 
         Returns:
             NodePayloadResult with decoded input/output based on payload type
@@ -318,28 +298,28 @@ class SimulationWorkflow:
         # Build result based on payload type
         return self._build_payload_result(node_id=node_id, payload_type=payload_type, decoded_data=decoded_output)
 
-    async def _traverse_child_workflow_if_needed(self, node_id: str, encoded_payload: dict[str, Any]) -> dict[str, Any]:
+    async def _traverse_child_workflow_if_needed(self, node_id: str, encoded_payload: NodePayload) -> NodePayload:
         """Traverse into child workflow if the node needs it and return child's main node payload.
 
         Args:
             node_id: The parent node ID
-            encoded_payload: The encoded payload which may contain traversal metadata
+            encoded_payload: The NodePayload instance which may contain traversal metadata
 
         Returns:
-            The child workflow's main node payload if traversal needed, otherwise original payload
+            The child workflow's main node NodePayload if traversal needed, otherwise original payload
         """
         # Check if traversal is needed
-        if not isinstance(encoded_payload, dict) or not encoded_payload.get(NEEDS_CHILD_TRAVERSAL):
+        if not encoded_payload.needs_child_traversal:
             return encoded_payload
 
-        child_workflow_id = encoded_payload.get(CHILD_WORKFLOW_ID)
-        child_run_id = encoded_payload.get(CHILD_RUN_ID)
+        child_workflow_id = encoded_payload.child_workflow_id
+        child_run_id = encoded_payload.child_run_id
 
         if not child_workflow_id or not child_run_id:
             return encoded_payload
 
         logger.info(
-            "Child workflow needs traversal",
+            "Traversing child workflow",
             node_id=node_id,
             child_workflow_id=child_workflow_id,
         )
@@ -376,7 +356,7 @@ class SimulationWorkflow:
 
         return encoded_payload
 
-    def _find_main_workflow_node(self, child_payloads: dict[str, Any], node_id: str) -> dict[str, Any] | None:
+    def _find_main_workflow_node(self, child_payloads: dict[str, NodePayload], node_id: str) -> NodePayload | None:
         """Find the main workflow node in child payloads.
 
         The main workflow node is the full workflow path that contains the activity.
@@ -391,11 +371,11 @@ class SimulationWorkflow:
               -> extracts "Parent#1.Child#1.GrandChild#1" and searches for it in child_payloads
 
         Args:
-            child_payloads: Dictionary of child workflow payloads
+            child_payloads: Dictionary mapping node IDs to NodePayload instances
             node_id: Node ID (full path including activity)
 
         Returns:
-            The main workflow node payload or None if not found
+            The main workflow NodePayload or None if not found
         """
         parts = node_id.split(".")
         target_workflow_path = ".".join(parts[:-1]) if len(parts) > 1 else parts[0]
@@ -410,7 +390,7 @@ class SimulationWorkflow:
         return None
 
     async def _decode_node_payload(
-        self, node_id: str, encoded_payload: dict[str, Any], payload_type: NodePayloadType
+        self, node_id: str, encoded_payload: NodePayload, payload_type: NodePayloadType
     ) -> DecodeNodePayloadOutput | None:
         """Decode node payload using decode_node_payload activity.
 
@@ -418,7 +398,7 @@ class SimulationWorkflow:
 
         Args:
             node_id: The node ID
-            encoded_payload: Dict containing 'input_payload' and 'output_payload' keys
+            encoded_payload: NodePayload instance containing input_payload and output_payload
             payload_type: The payload type (INPUT, OUTPUT, or INPUT_OUTPUT)
 
         Returns:
@@ -430,10 +410,10 @@ class SimulationWorkflow:
             output_to_decode = None
 
             if payload_type in [NodePayloadType.INPUT, NodePayloadType.INPUT_OUTPUT]:
-                input_to_decode = encoded_payload.get(PayloadKey.INPUT_PAYLOAD)
+                input_to_decode = encoded_payload.input_payload
 
             if payload_type in [NodePayloadType.OUTPUT, NodePayloadType.INPUT_OUTPUT]:
-                output_to_decode = encoded_payload.get(PayloadKey.OUTPUT_PAYLOAD)
+                output_to_decode = encoded_payload.output_payload
 
             decoded_data = await ActionsHub.execute_activity(
                 "decode_node_payload",

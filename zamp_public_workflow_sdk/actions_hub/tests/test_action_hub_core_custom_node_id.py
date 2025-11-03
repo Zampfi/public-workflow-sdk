@@ -63,12 +63,10 @@ class TestActionsHubCustomNodeId:
         mock_execute_activity.assert_called_once()
         call_args = mock_execute_activity.call_args
 
-        # Correct behavior: When custom_node_id is provided, it uses the custom_node_id
         assert len(call_args[1]["args"]) > 0
         first_arg = call_args[1]["args"][0]
         assert isinstance(first_arg, dict)
         assert TEMPORAL_NODE_ID_KEY in first_arg
-        # Should use the custom_node_id when provided
         assert first_arg[TEMPORAL_NODE_ID_KEY] == "custom_node_id#123"
 
         # Verify that "arg1_value" is still in the args (as second argument)
@@ -109,7 +107,6 @@ class TestActionsHubCustomNodeId:
         mock_execute_activity.assert_called_once()
         call_args = mock_execute_activity.call_args
 
-        # Correct behavior: When custom_node_id is None, it uses the generated node_id
         assert len(call_args[1]["args"]) > 0
         first_arg = call_args[1]["args"][0]
         assert isinstance(first_arg, dict)
@@ -155,7 +152,6 @@ class TestActionsHubCustomNodeId:
         mock_execute_activity.assert_called_once()
         call_args = mock_execute_activity.call_args
 
-        # Correct behavior: When custom_node_id is None, it uses the generated node_id
         assert len(call_args[1]["args"]) > 0
         first_arg = call_args[1]["args"][0]
         assert isinstance(first_arg, dict)
@@ -201,7 +197,6 @@ class TestActionsHubCustomNodeId:
         mock_execute_activity.assert_called_once()
         call_args = mock_execute_activity.call_args
 
-        # Correct behavior: When custom_node_id is None, it uses the generated node_id
         assert len(call_args[1]["args"]) == 1
         first_arg = call_args[1]["args"][0]
         assert isinstance(first_arg, dict)
@@ -244,7 +239,6 @@ class TestActionsHubCustomNodeId:
         mock_execute_activity.assert_called_once()
         call_args = mock_execute_activity.call_args
 
-        # Correct behavior: When custom_node_id is provided, it uses the custom_node_id
         assert len(call_args[1]["args"]) > 0
         first_arg = call_args[1]["args"][0]
         assert isinstance(first_arg, dict)

@@ -5,11 +5,10 @@ These functions can be used by other modules that need to work with Temporal wor
 """
 
 from collections import defaultdict
-from typing import Any
 
 import structlog
 
-from zamp_public_workflow_sdk.simulation.constants import PayloadKey
+from zamp_public_workflow_sdk.simulation.models.node_payload import NodePayload
 from zamp_public_workflow_sdk.temporal.workflow_history.models import (
     WorkflowHistory,
 )
@@ -71,7 +70,7 @@ async def fetch_temporal_history(
 async def extract_node_payload(
     node_ids: list[str],
     workflow_histories_map: dict[str, WorkflowHistory],
-) -> dict[str, dict[str, Any | None]]:
+) -> dict[str, NodePayload]:
     """
     Extract input and output payloads for specific nodes from temporal history.
 
@@ -83,7 +82,7 @@ async def extract_node_payload(
         workflow_histories_map: Dictionary mapping workflow paths to their histories
 
     Returns:
-        Dictionary mapping node IDs to dict with PayloadKey.INPUT_PAYLOAD and PayloadKey.OUTPUT_PAYLOAD keys
+        Dictionary mapping node IDs to NodePayload instances with input_payload and output_payload
 
     Raises:
         Exception: If node inputs/outputs cannot be extracted
@@ -124,7 +123,7 @@ async def extract_node_payload(
 
 def extract_main_workflow_node_payloads(
     temporal_history: WorkflowHistory, node_ids: list[str]
-) -> dict[str, dict[str, Any | None]]:
+) -> dict[str, NodePayload]:
     """
     Extract encoded input and output payloads for nodes that belong to the main workflow.
 
@@ -133,11 +132,10 @@ def extract_main_workflow_node_payloads(
         node_ids: List of node IDs in the main workflow
 
     Returns:
-        Dictionary mapping node IDs to dict with PayloadKey.INPUT_PAYLOAD, PayloadKey.OUTPUT_PAYLOAD,
-        and potentially other metadata keys (e.g., NEEDS_CHILD_TRAVERSAL)
+        Dictionary mapping node IDs to NodePayload instances with input_payload and output_payload
     """
-    # Get the full encoded payloads including all metadata (like NEEDS_CHILD_TRAVERSAL)
-    return temporal_history.get_nodes_data_encoded(target_node_ids=node_ids)
+    nodes_data = temporal_history.get_nodes_data_encoded(target_node_ids=node_ids)
+    return nodes_data
 
 
 async def extract_child_workflow_node_payloads(
@@ -146,7 +144,7 @@ async def extract_child_workflow_node_payloads(
     node_ids: list[str],
     workflow_nodes_needed: dict[str, list[str]] | None,
     workflow_histories_map: dict[str, WorkflowHistory],
-) -> dict[str, dict[str, Any | None]]:
+) -> dict[str, NodePayload]:
     """
     Extract input and output payloads for nodes that belong to a child workflow.
 
@@ -163,7 +161,7 @@ async def extract_child_workflow_node_payloads(
         workflow_histories_map: Dictionary mapping workflow paths to their histories
 
     Returns:
-        Dictionary mapping node IDs to dict with PayloadKey.INPUT_PAYLOAD and PayloadKey.OUTPUT_PAYLOAD keys (None if not found)
+        Dictionary mapping node IDs to NodePayload instances with input_payload and output_payload
     """
     if workflow_nodes_needed is None:
         workflow_nodes_needed = {}
@@ -199,15 +197,12 @@ async def extract_child_workflow_node_payloads(
 
     for full_node_id in node_ids:
         if full_node_id in child_nodes_data:
-            node_outputs[full_node_id] = {
-                PayloadKey.INPUT_PAYLOAD: child_nodes_data[full_node_id].get(PayloadKey.INPUT_PAYLOAD),
-                PayloadKey.OUTPUT_PAYLOAD: child_nodes_data[full_node_id].get(PayloadKey.OUTPUT_PAYLOAD),
-            }
+            node_outputs[full_node_id] = child_nodes_data[full_node_id]
         else:
-            node_outputs[full_node_id] = {
-                PayloadKey.INPUT_PAYLOAD: None,
-                PayloadKey.OUTPUT_PAYLOAD: None,
-            }
+            node_outputs[full_node_id] = NodePayload(
+                input_payload=None,
+                output_payload=None,
+            )
 
     return node_outputs
 

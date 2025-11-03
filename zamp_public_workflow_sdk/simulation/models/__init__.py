@@ -17,6 +17,9 @@ from .simulation_fetch_data_workflow import (
     SimulationFetchDataWorkflowInput,
     SimulationFetchDataWorkflowOutput,
 )
+from .node_payload import (
+    NodePayload,
+)
 
 __all__ = [
     "SimulationFetchDataWorkflowInput",
@@ -30,4 +33,5 @@ __all__ = [
     "TemporalHistoryConfig",
     "SimulationResponse",
     "ExecutionType",
+    "NodePayload",
 ]

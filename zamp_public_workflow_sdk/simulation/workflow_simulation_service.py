@@ -2,18 +2,17 @@
 Workflow Simulation Service for managing simulation state and responses.
 """
 
-from typing import Any
-
 import structlog
-from zamp_public_workflow_sdk.simulation.constants.simulation import PayloadKey
-from zamp_public_workflow_sdk.simulation.models import ExecutionType, SimulationResponse
+from zamp_public_workflow_sdk.simulation.models import (
+    ExecutionType,
+    SimulationResponse,
+    NodePayload,
+    SimulationFetchDataWorkflowInput,
+)
 from zamp_public_workflow_sdk.simulation.models.config import SimulationConfig
 from zamp_public_workflow_sdk.simulation.models.simulation_strategy import (
     NodeStrategy,
     StrategyType,
-)
-from zamp_public_workflow_sdk.simulation.models import (
-    SimulationFetchDataWorkflowInput,
 )
 from zamp_public_workflow_sdk.simulation.strategies.base_strategy import BaseStrategy
 from zamp_public_workflow_sdk.simulation.strategies.custom_output_strategy import (
@@ -43,7 +42,7 @@ class WorkflowSimulationService:
         """
         self.simulation_config = simulation_config
         # this response is raw response to be set using FetchWorkflowHistoryWorkflow
-        self.node_id_to_response_map: dict[str, Any] = {}
+        self.node_id_to_response_map: dict[str, NodePayload] = {}
 
     async def _initialize_simulation_data(self) -> None:
         """
@@ -114,16 +113,16 @@ class WorkflowSimulationService:
             return SimulationResponse(execution_type=ExecutionType.EXECUTE, execution_response=None)
 
         # If node is in the response map, it should be mocked
-        # node_payloads is expected to be a dict with 'input_payload' and 'output_payload' keys
-        node_payloads = self.node_id_to_response_map[node_id]
+        # node_payload is a NodePayload instance with input_payload and output_payload attributes
+        node_payload = self.node_id_to_response_map[node_id]
 
         try:
             decoded_result: MockedResultOutput = await ActionsHub.execute_activity(
                 "return_mocked_result",
                 MockedResultInput(
                     node_id=node_id,
-                    input_payload=node_payloads.get(PayloadKey.INPUT_PAYLOAD),
-                    output_payload=node_payloads.get(PayloadKey.OUTPUT_PAYLOAD),
+                    input_payload=node_payload.input_payload,
+                    output_payload=node_payload.output_payload,
                     action_name=action_name,
                 ),
                 return_type=MockedResultOutput,

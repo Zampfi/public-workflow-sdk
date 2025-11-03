@@ -6,11 +6,11 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
-from zamp_public_workflow_sdk.simulation.constants import PayloadKey
 from zamp_public_workflow_sdk.simulation.models import (
     CustomOutputConfig,
     ExecutionType,
     NodeMockConfig,
+    NodePayload,
     NodeStrategy,
     SimulationConfig,
     SimulationResponse,
@@ -106,9 +106,7 @@ class TestWorkflowSimulationService:
     async def test_get_simulation_response_node_found(self):
         """Test getting simulation response when node is found."""
         service = WorkflowSimulationService(None)
-        service.node_id_to_response_map = {
-            "node1#1": {PayloadKey.INPUT_PAYLOAD: None, PayloadKey.OUTPUT_PAYLOAD: "test_output"}
-        }
+        service.node_id_to_response_map = {"node1#1": NodePayload(input_payload=None, output_payload="test_output")}
 
         with patch(
             "zamp_public_workflow_sdk.actions_hub.action_hub_core.ActionsHub.execute_activity", new_callable=AsyncMock
@@ -138,9 +136,7 @@ class TestWorkflowSimulationService:
         dict_output = {"key": "value", "number": 123, "list": [1, 2, 3]}
 
         service = WorkflowSimulationService(None)
-        service.node_id_to_response_map = {
-            "node1#1": {PayloadKey.INPUT_PAYLOAD: None, PayloadKey.OUTPUT_PAYLOAD: dict_output}
-        }
+        service.node_id_to_response_map = {"node1#1": NodePayload(input_payload=None, output_payload=dict_output)}
 
         with patch(
             "zamp_public_workflow_sdk.actions_hub.action_hub_core.ActionsHub.execute_activity", new_callable=AsyncMock
@@ -158,9 +154,7 @@ class TestWorkflowSimulationService:
         list_output = [1, 2, 3, "test", {"nested": "value"}]
 
         service = WorkflowSimulationService(None)
-        service.node_id_to_response_map = {
-            "node1#1": {PayloadKey.INPUT_PAYLOAD: None, PayloadKey.OUTPUT_PAYLOAD: list_output}
-        }
+        service.node_id_to_response_map = {"node1#1": NodePayload(input_payload=None, output_payload=list_output)}
 
         with patch(
             "zamp_public_workflow_sdk.actions_hub.action_hub_core.ActionsHub.execute_activity", new_callable=AsyncMock
@@ -192,7 +186,7 @@ class TestWorkflowSimulationService:
         # Mock the workflow execution
         mock_workflow_result = Mock()
         mock_workflow_result.node_id_to_response_map = {
-            "node1#1": {PayloadKey.INPUT_PAYLOAD: None, PayloadKey.OUTPUT_PAYLOAD: "test_output"}
+            "node1#1": NodePayload(input_payload=None, output_payload="test_output")
         }
 
         with patch("zamp_public_workflow_sdk.actions_hub.ActionsHub") as mock_actions_hub:
@@ -202,7 +196,7 @@ class TestWorkflowSimulationService:
             await service._initialize_simulation_data()
 
             assert len(service.node_id_to_response_map) == 1
-            assert service.node_id_to_response_map["node1#1"][PayloadKey.OUTPUT_PAYLOAD] == "test_output"
+            assert service.node_id_to_response_map["node1#1"].output_payload == "test_output"
             mock_actions_hub.execute_child_workflow.assert_called_once()
 
     @pytest.mark.asyncio

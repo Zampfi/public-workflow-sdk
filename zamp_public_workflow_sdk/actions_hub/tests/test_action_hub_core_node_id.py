@@ -301,7 +301,6 @@ class TestActionsHubNodeIdIntegration:
         assert len(call_args[1]["args"]) > 0
         node_id_arg = call_args[1]["args"][0]
         assert "__temporal_node_id" in node_id_arg
-        # Correct behavior: When custom_node_id is None, it uses the generated node_id
         assert node_id_arg["__temporal_node_id"].startswith("test_activity#")
 
     @pytest.mark.asyncio

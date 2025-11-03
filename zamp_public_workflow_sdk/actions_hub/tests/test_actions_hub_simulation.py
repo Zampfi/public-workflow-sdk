@@ -8,10 +8,10 @@ import pytest
 from pydantic import BaseModel
 
 from zamp_public_workflow_sdk.actions_hub.action_hub_core import ActionsHub
-from zamp_public_workflow_sdk.simulation.constants import PayloadKey
 from zamp_public_workflow_sdk.simulation.models import (
     ExecutionType,
     NodeMockConfig,
+    NodePayload,
     SimulationConfig,
     SimulationResponse,
 )
@@ -435,9 +435,7 @@ class TestActionsHubSimulation:
         # Create real simulation service with encoded payload
         simulation = WorkflowSimulationService(None)
         encoded_output = {"metadata": {"encoding": "json/plain"}, "data": "encoded_data_here"}
-        simulation.node_id_to_response_map = {
-            "node_1": {PayloadKey.INPUT_PAYLOAD: None, PayloadKey.OUTPUT_PAYLOAD: encoded_output}
-        }
+        simulation.node_id_to_response_map = {"node_1": NodePayload(input_payload=None, output_payload=encoded_output)}
 
         # Register the simulation
         ActionsHub._workflow_id_to_simulation_map["test_wf"] = simulation
@@ -470,9 +468,7 @@ class TestActionsHubSimulation:
         # Create real simulation service with encoded payload
         simulation = WorkflowSimulationService(None)
         encoded_output = {"metadata": {"encoding": "json/plain"}, "data": "encoded_data_here"}
-        simulation.node_id_to_response_map = {
-            "node_1": {PayloadKey.INPUT_PAYLOAD: None, PayloadKey.OUTPUT_PAYLOAD: encoded_output}
-        }
+        simulation.node_id_to_response_map = {"node_1": NodePayload(input_payload=None, output_payload=encoded_output)}
 
         # Register the simulation
         ActionsHub._workflow_id_to_simulation_map["test_wf"] = simulation
@@ -498,9 +494,7 @@ class TestActionsHubSimulation:
         # Create real simulation service with raw payload (no encoding metadata)
         simulation = WorkflowSimulationService(None)
         raw_payload = {"result": "raw_value"}
-        simulation.node_id_to_response_map = {
-            "node_1": {PayloadKey.INPUT_PAYLOAD: None, PayloadKey.OUTPUT_PAYLOAD: raw_payload}
-        }
+        simulation.node_id_to_response_map = {"node_1": NodePayload(input_payload=None, output_payload=raw_payload)}
 
         # Register the simulation
         ActionsHub._workflow_id_to_simulation_map["test_wf"] = simulation

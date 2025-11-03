@@ -525,7 +525,6 @@ class ActionsHub:
             node_id_arg = {TEMPORAL_NODE_ID_KEY: custom_node_id}
         else:
             node_id_arg = {TEMPORAL_NODE_ID_KEY: node_id}
-        # Prepend node_id_arg to args
         args = (node_id_arg,) + args
 
         # Executing in temporal mode
@@ -778,7 +777,6 @@ class ActionsHub:
             )
             return simulation_result.execution_response
 
-        # Temporal execution mode
         node_id_arg = {TEMPORAL_NODE_ID_KEY: node_id}
         args = (node_id_arg,) + args
 
@@ -813,8 +811,17 @@ class ActionsHub:
         workflow_name: str | Callable,
         *args,
         result_type: type | None = None,
+        skip_node_id_gen: bool = False,
         **kwargs,
     ):
+        if skip_node_id_gen:
+            return await workflow.start_child_workflow(
+                workflow_name,
+                result_type=result_type,
+                args=args,
+                **kwargs,
+            )
+
         # Generate node_id for this child workflow execution
         child_workflow_name, workflow_id, node_id = cls._generate_node_id_for_action(workflow_name)
 
