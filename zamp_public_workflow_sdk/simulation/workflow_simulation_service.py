@@ -164,7 +164,9 @@ class WorkflowSimulationService:
                 )
             case StrategyType.CUSTOM_OUTPUT:
                 custom_config = node_strategy.strategy.config
-                return CustomOutputStrategyHandler(output_value=custom_config.output_value)
+                return CustomOutputStrategyHandler(
+                    output_value=custom_config.output_value, input_value=custom_config.input_value
+                )
             case _:
                 logger.error("Unknown strategy type", strategy_type=node_strategy.strategy.type)
                 raise ValueError(f"Unknown strategy type: {node_strategy.strategy.type}")

@@ -122,7 +122,7 @@ class TestSimulationValidatorInput:
                 NodeStrategy(
                     strategy=SimulationStrategyConfig(
                         type=StrategyType.CUSTOM_OUTPUT,
-                        config=CustomOutputConfig(output_value="test"),
+                        config=CustomOutputConfig(output_value="test", input_value="test"),
                     ),
                     nodes=["node1#1"],
                 )
@@ -154,7 +154,7 @@ class TestSimulationValidatorInput:
                 NodeStrategy(
                     strategy=SimulationStrategyConfig(
                         type=StrategyType.CUSTOM_OUTPUT,
-                        config=CustomOutputConfig(output_value="test"),
+                        config=CustomOutputConfig(output_value="test", input_value="test"),
                     ),
                     nodes=["node1#1"],
                 )

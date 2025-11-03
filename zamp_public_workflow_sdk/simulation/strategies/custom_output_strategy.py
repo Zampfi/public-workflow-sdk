@@ -20,7 +20,7 @@ class CustomOutputStrategyHandler(BaseStrategy):
     Strategy that returns predefined custom outputs.
     """
 
-    def __init__(self, output_value: Any):
+    def __init__(self, output_value: Any, input_value: Any):
         """
         Initialize with custom output value.
 
@@ -28,6 +28,7 @@ class CustomOutputStrategyHandler(BaseStrategy):
             output_value: The custom output value to return
         """
         self.output_value = output_value
+        self.input_value = input_value
 
     async def execute(
         self,
@@ -45,7 +46,7 @@ class CustomOutputStrategyHandler(BaseStrategy):
         # Return the same custom output for all nodes
         node_outputs = {
             node_id: {
-                PayloadKey.INPUT_PAYLOAD: None,
+                PayloadKey.INPUT_PAYLOAD: self.input_value,
                 PayloadKey.OUTPUT_PAYLOAD: self.output_value,
             }
             for node_id in node_ids

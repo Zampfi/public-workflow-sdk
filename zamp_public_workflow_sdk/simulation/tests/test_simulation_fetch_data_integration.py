@@ -37,7 +37,7 @@ class TestSimulationFetchDataIntegration:
         node_strategy = NodeStrategy(
             strategy=SimulationStrategyConfig(
                 type=StrategyType.CUSTOM_OUTPUT,
-                config=CustomOutputConfig(output_value="test_output"),
+                config=CustomOutputConfig(output_value="test_output", input_value="test_output"),
             ),
             nodes=["node1#1"],
         )
@@ -71,7 +71,7 @@ class TestSimulationFetchDataIntegration:
         # Create a mock node strategy with unknown type
         mock_node_strategy = Mock()
         mock_node_strategy.strategy.type = "UNKNOWN_TYPE"
-        mock_node_strategy.strategy.config = CustomOutputConfig(output_value="test_output")
+        mock_node_strategy.strategy.config = CustomOutputConfig(output_value="test_output", input_value="test_output")
 
         with pytest.raises(ValueError, match="Unknown strategy type: UNKNOWN_TYPE"):
             WorkflowSimulationService.get_strategy(mock_node_strategy)
@@ -86,14 +86,14 @@ class TestSimulationFetchDataIntegration:
                 NodeStrategy(
                     strategy=SimulationStrategyConfig(
                         type=StrategyType.CUSTOM_OUTPUT,
-                        config=CustomOutputConfig(output_value="output1"),
+                        config=CustomOutputConfig(output_value="output1", input_value="output1"),
                     ),
                     nodes=["node1#1", "node2#1"],
                 ),
                 NodeStrategy(
                     strategy=SimulationStrategyConfig(
                         type=StrategyType.CUSTOM_OUTPUT,
-                        config=CustomOutputConfig(output_value="output2"),
+                        config=CustomOutputConfig(output_value="output2", input_value="output2"),
                     ),
                     nodes=["node3#1"],
                 ),
@@ -166,7 +166,7 @@ class TestSimulationFetchDataIntegration:
                 NodeStrategy(
                     strategy=SimulationStrategyConfig(
                         type=StrategyType.CUSTOM_OUTPUT,
-                        config=CustomOutputConfig(output_value="custom_output"),
+                        config=CustomOutputConfig(output_value="custom_output", input_value="custom_output"),
                     ),
                     nodes=["node1#1"],
                 ),
@@ -213,7 +213,7 @@ class TestSimulationFetchDataIntegration:
                 NodeStrategy(
                     strategy=SimulationStrategyConfig(
                         type=StrategyType.CUSTOM_OUTPUT,
-                        config=CustomOutputConfig(output_value="test_output"),
+                        config=CustomOutputConfig(output_value="test_output", input_value="test_output"),
                     ),
                     nodes=["node1#1"],
                 ),
@@ -246,7 +246,7 @@ class TestSimulationFetchDataIntegration:
                 NodeStrategy(
                     strategy=SimulationStrategyConfig(
                         type=StrategyType.CUSTOM_OUTPUT,
-                        config=CustomOutputConfig(output_value="test_output"),
+                        config=CustomOutputConfig(output_value="test_output", input_value="test_output"),
                     ),
                     nodes=["node1#1"],
                 ),
@@ -279,7 +279,7 @@ class TestSimulationFetchDataIntegration:
                 NodeStrategy(
                     strategy=SimulationStrategyConfig(
                         type=StrategyType.CUSTOM_OUTPUT,
-                        config=CustomOutputConfig(output_value="test_output"),
+                        config=CustomOutputConfig(output_value="test_output", input_value="test_output"),
                     ),
                     nodes=["node1#1"],
                 ),
@@ -318,7 +318,9 @@ class TestSimulationServiceIntegration:
                 NodeStrategy(
                     strategy=SimulationStrategyConfig(
                         type=StrategyType.CUSTOM_OUTPUT,
-                        config=CustomOutputConfig(output_value="integration_test_output"),
+                        config=CustomOutputConfig(
+                            output_value="integration_test_output", input_value="integration_test_output"
+                        ),
                     ),
                     nodes=["integration_node#1"],
                 ),
