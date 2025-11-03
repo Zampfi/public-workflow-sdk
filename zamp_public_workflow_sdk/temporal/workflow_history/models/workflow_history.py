@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field
 
+from zamp_public_workflow_sdk.simulation.models.node_payload import NodePayload
 from zamp_public_workflow_sdk.temporal.workflow_history.helpers import (
     extract_encoded_node_payloads,
     get_encoded_input_from_node_id,
@@ -105,7 +106,7 @@ class WorkflowHistory(BaseModel):
         """
         return get_encoded_output_from_node_id(self.events, node_id)
 
-    def get_nodes_data_encoded(self, target_node_ids: list[str] | None = None) -> dict[str, dict]:
+    def get_nodes_data_encoded(self, target_node_ids: list[str] | None = None) -> dict[str, NodePayload]:
         """
         Get all encoded node data from the workflow events.
 
@@ -113,6 +114,6 @@ class WorkflowHistory(BaseModel):
             target_node_ids: Optional list of node IDs to filter by
 
         Returns:
-            Dictionary mapping node_id to encoded payload data (input/output)
+            Dictionary mapping node_id to NodePayload instances with encoded input/output
         """
         return extract_encoded_node_payloads(self.events, target_node_ids)

@@ -6,11 +6,11 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
-from zamp_public_workflow_sdk.simulation.constants import PayloadKey
 from zamp_public_workflow_sdk.simulation.models import (
     CustomOutputConfig,
     NodeMockConfig,
     NodeStrategy,
+    NodePayload,
     SimulationConfig,
     SimulationStrategyConfig,
     SimulationFetchDataWorkflowInput,
@@ -107,9 +107,9 @@ class TestSimulationFetchDataWorkflowIntegration:
 
         assert isinstance(result, SimulationFetchDataWorkflowOutput)
         assert len(result.node_id_to_response_map) == 3
-        assert result.node_id_to_response_map["node1#1"][PayloadKey.OUTPUT_PAYLOAD] == "output1"
-        assert result.node_id_to_response_map["node2#1"][PayloadKey.OUTPUT_PAYLOAD] == "output1"
-        assert result.node_id_to_response_map["node3#1"][PayloadKey.OUTPUT_PAYLOAD] == "output2"
+        assert result.node_id_to_response_map["node1#1"].output_payload == "output1"
+        assert result.node_id_to_response_map["node2#1"].output_payload == "output1"
+        assert result.node_id_to_response_map["node3#1"].output_payload == "output2"
 
     @pytest.mark.asyncio
     async def test_execute_with_temporal_history_strategies(self):
@@ -200,7 +200,7 @@ class TestSimulationFetchDataWorkflowIntegration:
 
             assert isinstance(result, SimulationFetchDataWorkflowOutput)
             assert len(result.node_id_to_response_map) == 2
-            assert result.node_id_to_response_map["node1#1"][PayloadKey.OUTPUT_PAYLOAD] == "custom_output"
+            assert result.node_id_to_response_map["node1#1"].output_payload == "custom_output"
             assert result.node_id_to_response_map["node2#1"] == "history_output"
 
     @pytest.mark.asyncio
@@ -333,7 +333,7 @@ class TestSimulationServiceIntegration:
         # Mock the workflow execution - note the new data structure with input/output payloads
         mock_workflow_result = Mock()
         mock_workflow_result.node_id_to_response_map = {
-            "integration_node#1": {PayloadKey.INPUT_PAYLOAD: None, PayloadKey.OUTPUT_PAYLOAD: "integration_test_output"}
+            "integration_node#1": NodePayload(input_payload=None, output_payload="integration_test_output")
         }
 
         with patch("zamp_public_workflow_sdk.actions_hub.ActionsHub") as mock_actions_hub:
@@ -350,7 +350,7 @@ class TestSimulationServiceIntegration:
 
             assert len(service.node_id_to_response_map) == 1
             assert (
-                service.node_id_to_response_map["integration_node#1"][PayloadKey.OUTPUT_PAYLOAD]
+                service.node_id_to_response_map["integration_node#1"].output_payload
                 == "integration_test_output"
             )
 

@@ -9,8 +9,8 @@ import structlog
 from zamp_public_workflow_sdk.simulation.models.simulation_response import (
     SimulationStrategyOutput,
 )
+from zamp_public_workflow_sdk.simulation.models.node_payload import NodePayload
 from zamp_public_workflow_sdk.simulation.strategies.base_strategy import BaseStrategy
-from zamp_public_workflow_sdk.simulation.constants import PayloadKey
 
 logger = structlog.get_logger(__name__)
 
@@ -44,10 +44,10 @@ class CustomOutputStrategyHandler(BaseStrategy):
         """
         # Return the same custom output for all nodes
         node_outputs = {
-            node_id: {
-                PayloadKey.INPUT_PAYLOAD: None,
-                PayloadKey.OUTPUT_PAYLOAD: self.output_value,
-            }
+            node_id: NodePayload(
+                input_payload=None,
+                output_payload=self.output_value,
+            )
             for node_id in node_ids
         }
         return SimulationStrategyOutput(node_outputs=node_outputs)

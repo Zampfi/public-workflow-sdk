@@ -6,10 +6,8 @@ import structlog
 
 from zamp_public_workflow_sdk.simulation.constants import (
     PayloadKey,
-    NEEDS_CHILD_TRAVERSAL,
-    CHILD_WORKFLOW_ID,
-    CHILD_RUN_ID,
 )
+from zamp_public_workflow_sdk.simulation.models.node_payload import NodePayload
 from zamp_public_workflow_sdk.temporal.workflow_history.constants import (
     EventField,
     EventType,
@@ -368,9 +366,9 @@ def _mark_child_workflows_needing_traversal(
             workflow_id=workflow_id,
             run_id=run_id,
         )
-        node_payloads[child_node_id][NEEDS_CHILD_TRAVERSAL] = True
-        node_payloads[child_node_id][CHILD_WORKFLOW_ID] = workflow_id
-        node_payloads[child_node_id][CHILD_RUN_ID] = run_id
+        node_payloads[child_node_id].needs_child_traversal = True
+        node_payloads[child_node_id].child_workflow_id = workflow_id
+        node_payloads[child_node_id].child_run_id = run_id
 
 
 def _process_events_for_payloads(
@@ -420,7 +418,7 @@ def _process_events_for_payloads(
             if return_encoded_format:
                 if _should_include_node_id(extracted_node_id, node_ids):
                     if extracted_node_id not in node_payloads:
-                        node_payloads[extracted_node_id] = {}
+                        node_payloads[extracted_node_id] = NodePayload()
                     # Extract and store workflow_id and run_id from this event
                     child_workflow_id, child_run_id = _extract_child_workflow_execution_details(event)
                     if child_workflow_id and child_run_id:
@@ -501,14 +499,14 @@ def _process_events_for_payloads(
         # Store payload based on format
         if return_encoded_format:
             if node_id not in node_payloads:
-                node_payloads[node_id] = {}
+                node_payloads[node_id] = NodePayload()
             payload = _extract_payload_encoded(event, event_type, payload_field)
             if not payload:
                 continue
             if payload_field == PayloadField.INPUT.value:
-                node_payloads[node_id][PayloadKey.INPUT_PAYLOAD] = payload
+                node_payloads[node_id].input_payload = payload
             else:
-                node_payloads[node_id][PayloadKey.OUTPUT_PAYLOAD] = payload
+                node_payloads[node_id].output_payload = payload
         else:
             _add_event_and_payload(node_id, event, payload_field, node_payloads)
 
@@ -559,7 +557,7 @@ def get_encoded_output_from_node_id(events: list[dict], node_id: str) -> dict | 
     return None
 
 
-def extract_encoded_node_payloads(events: list[dict], node_ids: list[str] | None = None) -> dict[str, dict]:
+def extract_encoded_node_payloads(events: list[dict], node_ids: list[str] | None = None) -> dict[str, NodePayload]:
     """Extract all encoded node data from workflow events."""
     logger.info("Extracting encoded node payloads", event_count=len(events), target_node_ids=node_ids)
 

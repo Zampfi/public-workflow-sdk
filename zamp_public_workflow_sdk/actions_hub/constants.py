@@ -57,7 +57,3 @@ SKIP_SIMULATION_WORKFLOWS = [
     "SimulationFetchDataWorkflow",
     "FetchTemporalWorkflowHistoryWorkflow",
 ]
-
-SKIP_NODE_ID_GENERATION = [
-    "SimulationWorkflow",
-]
