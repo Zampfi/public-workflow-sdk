@@ -20,13 +20,12 @@ class CustomOutputStrategyHandler(BaseStrategy):
     Strategy that returns predefined custom outputs.
     """
 
-    def __init__(self, output_value: Any, input_value: Any = None):
+    def __init__(self, output_value: Any):
         """
         Initialize with custom output value.
 
         Args:
             output_value: The custom output value to return
-            input_value: The custom input value (optional, not currently used)
         """
         self.output_value = output_value
 
