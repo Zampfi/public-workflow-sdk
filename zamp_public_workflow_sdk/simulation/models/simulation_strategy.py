@@ -27,7 +27,7 @@ class TemporalHistoryConfig(BaseModel):
 class CustomOutputConfig(BaseModel):
     """Configuration for custom output strategy."""
 
-    output_value: Any = Field(default=None, description="The custom output value to return")
+    output_value: Any = Field(..., description="The custom output value to return")
 
 
 class SimulationStrategyConfig(BaseModel):
