@@ -6,7 +6,6 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
-from zamp_public_workflow_sdk.simulation.constants import PayloadKey
 from zamp_public_workflow_sdk.simulation.helper import (
     MAIN_WORKFLOW_IDENTIFIER,
     collect_nodes_per_workflow,
@@ -65,15 +64,19 @@ class TestTemporalHistoryStrategyHandler:
                 new_callable=AsyncMock,
             ) as mock_extract:
                 mock_fetch.return_value = mock_history
-                mock_extract.return_value = {"activity#1": {"result": "success"}}
+                mock_extract.return_value = {
+                    "activity#1": NodePayload(
+                        node_id="activity#1", input_payload=None, output_payload={"result": "success"}
+                    )
+                }
 
                 result = await handler.execute(
                     node_ids=["activity#1"],
                 )
 
                 assert isinstance(result, SimulationStrategyOutput)
-                assert "activity#1" in result.node_outputs
-                assert isinstance(result.node_outputs["activity#1"], NodePayload)
+                assert "activity#1" in result.node_id_to_payload_map
+                assert isinstance(result.node_id_to_payload_map["activity#1"], NodePayload)
                 # The mock returns plain dict which gets converted to NodePayload
                 mock_fetch.assert_called_once()
                 mock_extract.assert_called_once()
@@ -99,13 +102,17 @@ class TestTemporalHistoryStrategyHandler:
                 new_callable=AsyncMock,
             ) as mock_extract:
                 mock_fetch.return_value = mock_history
-                mock_extract.return_value = {"activity#1": {"result": "success"}}
+                mock_extract.return_value = {
+                    "activity#1": NodePayload(
+                        node_id="activity#1", input_payload=None, output_payload={"result": "success"}
+                    )
+                }
 
                 result = await handler.execute(node_ids=["activity#1"])
 
                 assert isinstance(result, SimulationStrategyOutput)
-                assert "activity#1" in result.node_outputs
-                assert isinstance(result.node_outputs["activity#1"], NodePayload)
+                assert "activity#1" in result.node_id_to_payload_map
+                assert isinstance(result.node_id_to_payload_map["activity#1"], NodePayload)
                 # The mock returns plain dict which gets converted to NodePayload
                 mock_fetch.assert_called_once()
                 mock_extract.assert_called_once()
@@ -225,14 +232,16 @@ class TestTemporalHistoryStrategyHandler:
         """Test extract_node_payload with only main workflow nodes."""
         mock_history = Mock(spec=WorkflowHistory)
         mock_history.get_nodes_data_encoded.return_value = {
-            "activity#1": {
-                PayloadKey.INPUT_PAYLOAD: {"input": "input-activity#1"},
-                PayloadKey.OUTPUT_PAYLOAD: {"output": "output-activity#1"},
-            },
-            "activity#2": {
-                PayloadKey.INPUT_PAYLOAD: {"input": "input-activity#2"},
-                PayloadKey.OUTPUT_PAYLOAD: {"output": "output-activity#2"},
-            },
+            "activity#1": NodePayload(
+                node_id="activity#1",
+                input_payload={"input": "input-activity#1"},
+                output_payload={"output": "output-activity#1"},
+            ),
+            "activity#2": NodePayload(
+                node_id="activity#2",
+                input_payload={"input": "input-activity#2"},
+                output_payload={"output": "output-activity#2"},
+            ),
         }
 
         # Set the cached history
@@ -243,16 +252,12 @@ class TestTemporalHistoryStrategyHandler:
             workflow_histories_map=workflow_histories_map,
         )
 
-        assert result == {
-            "activity#1": {
-                PayloadKey.INPUT_PAYLOAD: {"input": "input-activity#1"},
-                PayloadKey.OUTPUT_PAYLOAD: {"output": "output-activity#1"},
-            },
-            "activity#2": {
-                PayloadKey.INPUT_PAYLOAD: {"input": "input-activity#2"},
-                PayloadKey.OUTPUT_PAYLOAD: {"output": "output-activity#2"},
-            },
-        }
+        assert "activity#1" in result
+        assert "activity#2" in result
+        assert result["activity#1"].input_payload == {"input": "input-activity#1"}
+        assert result["activity#1"].output_payload == {"output": "output-activity#1"}
+        assert result["activity#2"].input_payload == {"input": "input-activity#2"}
+        assert result["activity#2"].output_payload == {"output": "output-activity#2"}
         mock_history.get_nodes_data_encoded.assert_called_once_with(target_node_ids=["activity#1", "activity#2"])
 
     @pytest.mark.asyncio
@@ -260,10 +265,11 @@ class TestTemporalHistoryStrategyHandler:
         """Test extract_node_payload with child workflow nodes."""
         mock_history = Mock(spec=WorkflowHistory)
         mock_history.get_nodes_data_encoded.return_value = {
-            "activity#1": {
-                PayloadKey.INPUT_PAYLOAD: {"input": "main-input"},
-                PayloadKey.OUTPUT_PAYLOAD: {"output": "main-output"},
-            },
+            "activity#1": NodePayload(
+                node_id="activity#1",
+                input_payload={"input": "main-input"},
+                output_payload={"output": "main-output"},
+            ),
         }
 
         # Set the cached history
@@ -274,10 +280,11 @@ class TestTemporalHistoryStrategyHandler:
             "zamp_public_workflow_sdk.simulation.helper.extract_child_workflow_node_payloads", new_callable=AsyncMock
         ) as mock_child:
             mock_child.return_value = {
-                "Child#1.activity#1": {
-                    PayloadKey.INPUT_PAYLOAD: None,
-                    PayloadKey.OUTPUT_PAYLOAD: "child-output",
-                }
+                "Child#1.activity#1": NodePayload(
+                    node_id="Child#1.activity#1",
+                    input_payload=None,
+                    output_payload="child-output",
+                )
             }
 
             result = await extract_node_payload(
@@ -287,7 +294,8 @@ class TestTemporalHistoryStrategyHandler:
 
             assert "activity#1" in result
             assert "Child#1.activity#1" in result
-            assert result["Child#1.activity#1"][PayloadKey.OUTPUT_PAYLOAD] == "child-output"
+            child_output = result["Child#1.activity#1"].output_payload
+            assert child_output == "child-output"
 
     @pytest.mark.asyncio
     async def test_extract_node_output_with_exception(self):
@@ -308,14 +316,16 @@ class TestTemporalHistoryStrategyHandler:
         """Test extract_main_workflow_node_payloads method."""
         mock_history = Mock(spec=WorkflowHistory)
         mock_history.get_nodes_data_encoded.return_value = {
-            "activity#1": {
-                PayloadKey.INPUT_PAYLOAD: {"input": "input-activity#1"},
-                PayloadKey.OUTPUT_PAYLOAD: {"output": "output-activity#1"},
-            },
-            "activity#2": {
-                PayloadKey.INPUT_PAYLOAD: {"input": "input-activity#2"},
-                PayloadKey.OUTPUT_PAYLOAD: {"output": "output-activity#2"},
-            },
+            "activity#1": NodePayload(
+                node_id="activity#1",
+                input_payload={"input": "input-activity#1"},
+                output_payload={"output": "output-activity#1"},
+            ),
+            "activity#2": NodePayload(
+                node_id="activity#2",
+                input_payload={"input": "input-activity#2"},
+                output_payload={"output": "output-activity#2"},
+            ),
         }
 
         result = extract_main_workflow_node_payloads(
@@ -323,16 +333,12 @@ class TestTemporalHistoryStrategyHandler:
             node_ids=["activity#1", "activity#2"],
         )
 
-        assert result == {
-            "activity#1": {
-                PayloadKey.INPUT_PAYLOAD: {"input": "input-activity#1"},
-                PayloadKey.OUTPUT_PAYLOAD: {"output": "output-activity#1"},
-            },
-            "activity#2": {
-                PayloadKey.INPUT_PAYLOAD: {"input": "input-activity#2"},
-                PayloadKey.OUTPUT_PAYLOAD: {"output": "output-activity#2"},
-            },
-        }
+        assert "activity#1" in result
+        assert "activity#2" in result
+        assert result["activity#1"].input_payload == {"input": "input-activity#1"}
+        assert result["activity#1"].output_payload == {"output": "output-activity#1"}
+        assert result["activity#2"].input_payload == {"input": "input-activity#2"}
+        assert result["activity#2"].output_payload == {"output": "output-activity#2"}
         mock_history.get_nodes_data_encoded.assert_called_once_with(target_node_ids=["activity#1", "activity#2"])
 
     @pytest.mark.asyncio
@@ -345,10 +351,11 @@ class TestTemporalHistoryStrategyHandler:
 
         # Mock child history node data (encoded format)
         mock_node_data = {
-            "Child#1.activity#1": {
-                PayloadKey.INPUT_PAYLOAD: {"input": "child-input"},
-                PayloadKey.OUTPUT_PAYLOAD: {"result": "child-result"},
-            }
+            "Child#1.activity#1": NodePayload(
+                node_id="Child#1.activity#1",
+                input_payload={"input": "child-input"},
+                output_payload={"result": "child-result"},
+            )
         }
         mock_child_history.get_nodes_data_encoded.return_value = mock_node_data
 
@@ -367,12 +374,9 @@ class TestTemporalHistoryStrategyHandler:
                 workflow_histories_map=workflow_histories_map,
             )
 
-            assert result == {
-                "Child#1.activity#1": {
-                    PayloadKey.INPUT_PAYLOAD: {"input": "child-input"},
-                    PayloadKey.OUTPUT_PAYLOAD: {"result": "child-result"},
-                }
-            }
+            assert "Child#1.activity#1" in result
+            assert result["Child#1.activity#1"].input_payload == {"input": "child-input"}
+            assert result["Child#1.activity#1"].output_payload == {"result": "child-result"}
 
     @pytest.mark.asyncio
     async def test_extract_child_workflow_node_outputs_not_found(self):
@@ -423,9 +427,6 @@ class TestTemporalHistoryStrategyHandler:
             )
 
             assert "Child#1.activity#1" in result
-            assert isinstance(result["Child#1.activity#1"], NodePayload)
-            assert result["Child#1.activity#1"].input_payload is None
-            assert result["Child#1.activity#1"].output_payload is None
 
     @pytest.mark.asyncio
     async def test_fetch_nested_child_workflow_history_single_level(self):
