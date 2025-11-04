@@ -116,8 +116,8 @@ class TestCustomOutputConfig:
 
     def test_custom_output_config_validation(self):
         """Test that custom output config validates required fields."""
-        config = CustomOutputConfig()
-        assert config.output_value is None
+        with pytest.raises(ValidationError):
+            CustomOutputConfig()  # Missing required output_value
 
 
 class TestSimulationStrategyConfig:
