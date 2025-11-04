@@ -435,7 +435,7 @@ class TestActionsHubSimulation:
         # Create real simulation service with encoded payload
         simulation = WorkflowSimulationService(None)
         encoded_output = {"metadata": {"encoding": "json/plain"}, "data": "encoded_data_here"}
-        simulation.node_id_to_response_map = {
+        simulation.node_id_to_payload_map = {
             "node_1": NodePayload(node_id="node_1", input_payload=None, output_payload=encoded_output)
         }
 
@@ -470,7 +470,7 @@ class TestActionsHubSimulation:
         # Create real simulation service with encoded payload
         simulation = WorkflowSimulationService(None)
         encoded_output = {"metadata": {"encoding": "json/plain"}, "data": "encoded_data_here"}
-        simulation.node_id_to_response_map = {
+        simulation.node_id_to_payload_map = {
             "node_1": NodePayload(node_id="node_1", input_payload=None, output_payload=encoded_output)
         }
 
@@ -498,7 +498,7 @@ class TestActionsHubSimulation:
         # Create real simulation service with raw payload (no encoding metadata)
         simulation = WorkflowSimulationService(None)
         raw_payload = {"result": "raw_value"}
-        simulation.node_id_to_response_map = {
+        simulation.node_id_to_payload_map = {
             "node_1": NodePayload(node_id="node_1", input_payload=None, output_payload=raw_payload)
         }
 

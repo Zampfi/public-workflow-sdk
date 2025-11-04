@@ -9,6 +9,6 @@ class SimulationFetchDataWorkflowInput(BaseModel):
 
 
 class SimulationFetchDataWorkflowOutput(BaseModel):
-    node_id_to_response_map: dict[str, NodePayload] = Field(
+    node_id_to_payload_map: dict[str, NodePayload] = Field(
         ..., description="Map of node IDs to their input and output payloads"
     )

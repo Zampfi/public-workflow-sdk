@@ -60,4 +60,4 @@ class SimulationFetchDataWorkflow:
                     error_type=type(e).__name__,
                 )
 
-        return SimulationFetchDataWorkflowOutput(node_id_to_response_map=node_id_to_payload_map)
+        return SimulationFetchDataWorkflowOutput(node_id_to_payload_map=node_id_to_payload_map)

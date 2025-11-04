@@ -45,14 +45,14 @@ class TestWorkflowSimulationService:
         service = WorkflowSimulationService(sim_config)
 
         assert service.simulation_config == sim_config
-        assert len(service.node_id_to_response_map) == 0  # Empty until initialized
+        assert len(service.node_id_to_payload_map) == 0  # Empty until initialized
 
     def test_init_without_simulation_config(self):
         """Test initializing service without simulation config."""
         service = WorkflowSimulationService(None)
 
         assert service.simulation_config is None
-        assert len(service.node_id_to_response_map) == 0
+        assert len(service.node_id_to_payload_map) == 0
 
     def test_init_with_multiple_strategies(self):
         """Test initializing service with multiple node strategies."""
@@ -89,7 +89,7 @@ class TestWorkflowSimulationService:
         service = WorkflowSimulationService(sim_config)
 
         assert service.simulation_config == sim_config
-        assert len(service.node_id_to_response_map) == 0  # Empty until initialized
+        assert len(service.node_id_to_payload_map) == 0  # Empty until initialized
 
     @pytest.mark.asyncio
     async def test_get_simulation_response_simulation_disabled(self):
@@ -106,7 +106,7 @@ class TestWorkflowSimulationService:
     async def test_get_simulation_response_node_found(self):
         """Test getting simulation response when node is found."""
         service = WorkflowSimulationService(None)
-        service.node_id_to_response_map = {
+        service.node_id_to_payload_map = {
             "node1#1": NodePayload(node_id="node1#1", input_payload=None, output_payload="test_output")
         }
 
@@ -124,7 +124,7 @@ class TestWorkflowSimulationService:
     async def test_get_simulation_response_node_not_found(self):
         """Test getting simulation response when node is not found."""
         service = WorkflowSimulationService(None)
-        service.node_id_to_response_map = {"node1#1": "test_output"}
+        service.node_id_to_payload_map = {"node1#1": "test_output"}
 
         response = await service.get_simulation_response("nonexistent_node")
 
@@ -138,7 +138,7 @@ class TestWorkflowSimulationService:
         dict_output = {"key": "value", "number": 123, "list": [1, 2, 3]}
 
         service = WorkflowSimulationService(None)
-        service.node_id_to_response_map = {
+        service.node_id_to_payload_map = {
             "node1#1": NodePayload(node_id="node1#1", input_payload=None, output_payload=dict_output)
         }
 
@@ -158,7 +158,7 @@ class TestWorkflowSimulationService:
         list_output = [1, 2, 3, "test", {"nested": "value"}]
 
         service = WorkflowSimulationService(None)
-        service.node_id_to_response_map = {
+        service.node_id_to_payload_map = {
             "node1#1": NodePayload(node_id="node1#1", input_payload=None, output_payload=list_output)
         }
 
@@ -191,7 +191,7 @@ class TestWorkflowSimulationService:
 
         # Mock the workflow execution
         mock_workflow_result = Mock()
-        mock_workflow_result.node_id_to_response_map = {
+        mock_workflow_result.node_id_to_payload_map = {
             "node1#1": NodePayload(node_id="node1#1", input_payload=None, output_payload="test_output")
         }
 
@@ -201,8 +201,8 @@ class TestWorkflowSimulationService:
 
             await service._initialize_simulation_data()
 
-            assert len(service.node_id_to_response_map) == 1
-            assert service.node_id_to_response_map["node1#1"].output_payload == "test_output"
+            assert len(service.node_id_to_payload_map) == 1
+            assert service.node_id_to_payload_map["node1#1"].output_payload == "test_output"
             mock_actions_hub.execute_child_workflow.assert_called_once()
 
     @pytest.mark.asyncio

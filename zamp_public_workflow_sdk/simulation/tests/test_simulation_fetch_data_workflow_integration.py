@@ -106,10 +106,10 @@ class TestSimulationFetchDataWorkflowIntegration:
         result = await workflow.execute(input_data)
 
         assert isinstance(result, SimulationFetchDataWorkflowOutput)
-        assert len(result.node_id_to_response_map) == 3
-        assert result.node_id_to_response_map["node1#1"].output_payload == "output1"
-        assert result.node_id_to_response_map["node2#1"].output_payload == "output1"
-        assert result.node_id_to_response_map["node3#1"].output_payload == "output2"
+        assert len(result.node_id_to_payload_map) == 3
+        assert result.node_id_to_payload_map["node1#1"].output_payload == "output1"
+        assert result.node_id_to_payload_map["node2#1"].output_payload == "output1"
+        assert result.node_id_to_payload_map["node3#1"].output_payload == "output2"
 
     @pytest.mark.asyncio
     async def test_execute_with_temporal_history_strategies(self):
@@ -152,11 +152,11 @@ class TestSimulationFetchDataWorkflowIntegration:
             result = await workflow.execute(input_data)
 
             assert isinstance(result, SimulationFetchDataWorkflowOutput)
-            assert len(result.node_id_to_response_map) == 2
-            assert isinstance(result.node_id_to_response_map["node1#1"], NodePayload)
-            assert result.node_id_to_response_map["node1#1"].output_payload == "history_output"
-            assert isinstance(result.node_id_to_response_map["node2#1"], NodePayload)
-            assert result.node_id_to_response_map["node2#1"].output_payload == "history_output"
+            assert len(result.node_id_to_payload_map) == 2
+            assert isinstance(result.node_id_to_payload_map["node1#1"], NodePayload)
+            assert result.node_id_to_payload_map["node1#1"].output_payload == "history_output"
+            assert isinstance(result.node_id_to_payload_map["node2#1"], NodePayload)
+            assert result.node_id_to_payload_map["node2#1"].output_payload == "history_output"
 
     @pytest.mark.asyncio
     async def test_execute_with_mixed_strategies(self):
@@ -205,10 +205,10 @@ class TestSimulationFetchDataWorkflowIntegration:
             result = await workflow.execute(input_data)
 
             assert isinstance(result, SimulationFetchDataWorkflowOutput)
-            assert len(result.node_id_to_response_map) == 2
-            assert result.node_id_to_response_map["node1#1"].output_payload == "custom_output"
-            assert isinstance(result.node_id_to_response_map["node2#1"], NodePayload)
-            assert result.node_id_to_response_map["node2#1"].output_payload == "history_output"
+            assert len(result.node_id_to_payload_map) == 2
+            assert result.node_id_to_payload_map["node1#1"].output_payload == "custom_output"
+            assert isinstance(result.node_id_to_payload_map["node2#1"], NodePayload)
+            assert result.node_id_to_payload_map["node2#1"].output_payload == "history_output"
 
     @pytest.mark.asyncio
     async def test_execute_strategy_execution_failure(self):
@@ -241,7 +241,7 @@ class TestSimulationFetchDataWorkflowIntegration:
             result = await workflow.execute(input_data)
 
             assert isinstance(result, SimulationFetchDataWorkflowOutput)
-            assert len(result.node_id_to_response_map) == 0  # No successful executions
+            assert len(result.node_id_to_payload_map) == 0  # No successful executions
 
     @pytest.mark.asyncio
     async def test_execute_strategy_returns_empty_outputs(self):
@@ -274,7 +274,7 @@ class TestSimulationFetchDataWorkflowIntegration:
             result = await workflow.execute(input_data)
 
             assert isinstance(result, SimulationFetchDataWorkflowOutput)
-            assert len(result.node_id_to_response_map) == 0  # No mock outputs
+            assert len(result.node_id_to_payload_map) == 0  # No mock outputs
 
     @pytest.mark.asyncio
     async def test_execute_strategy_returns_none_output(self):
@@ -307,7 +307,7 @@ class TestSimulationFetchDataWorkflowIntegration:
             result = await workflow.execute(input_data)
 
             assert isinstance(result, SimulationFetchDataWorkflowOutput)
-            assert len(result.node_id_to_response_map) == 0  # No mock outputs
+            assert len(result.node_id_to_payload_map) == 0  # No mock outputs
 
 
 class TestSimulationServiceIntegration:
@@ -339,7 +339,7 @@ class TestSimulationServiceIntegration:
 
         # Mock the workflow execution - note the new data structure with input/output payloads
         mock_workflow_result = Mock()
-        mock_workflow_result.node_id_to_response_map = {
+        mock_workflow_result.node_id_to_payload_map = {
             "integration_node#1": NodePayload(
                 node_id="integration_node#1", input_payload=None, output_payload="integration_test_output"
             )
@@ -357,8 +357,8 @@ class TestSimulationServiceIntegration:
 
             await service._initialize_simulation_data()
 
-            assert len(service.node_id_to_response_map) == 1
-            assert service.node_id_to_response_map["integration_node#1"].output_payload == "integration_test_output"
+            assert len(service.node_id_to_payload_map) == 1
+            assert service.node_id_to_payload_map["integration_node#1"].output_payload == "integration_test_output"
 
             # Test that simulation response works - mock ActionsHub.execute_activity since get_simulation_response now calls return_mocked_result
             response = await service.get_simulation_response("integration_node#1")

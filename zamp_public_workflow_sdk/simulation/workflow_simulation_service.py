@@ -42,13 +42,13 @@ class WorkflowSimulationService:
         """
         self.simulation_config = simulation_config
         # this response is raw response to be set using FetchWorkflowHistoryWorkflow
-        self.node_id_to_response_map: dict[str, NodePayload] = {}
+        self.node_id_to_payload_map: dict[str, NodePayload] = {}
 
     async def _initialize_simulation_data(self) -> None:
         """
         Initialize simulation data by pre-computing all responses.
 
-        This method builds the node_id_to_response_map by processing
+        This method builds the node_id_to_payload_map by processing
         all strategies in the simulation configuration.
         This method should be called from within a workflow context.
         """
@@ -71,15 +71,15 @@ class WorkflowSimulationService:
             logger.info(
                 "SimulationFetchDataWorkflow completed",
                 workflow_result=workflow_result,
-                has_node_id_to_response_map=workflow_result is not None
-                and hasattr(workflow_result, "node_id_to_response_map"),
+                has_node_id_to_payload_map=workflow_result is not None
+                and hasattr(workflow_result, "node_id_to_payload_map"),
             )
 
-            self.node_id_to_response_map = workflow_result.node_id_to_response_map
+            self.node_id_to_payload_map = workflow_result.node_id_to_payload_map
 
             logger.info(
                 "Simulation data initialized successfully",
-                total_nodes=len(self.node_id_to_response_map),
+                total_nodes=len(self.node_id_to_payload_map),
             )
 
         except Exception as e:
@@ -108,13 +108,13 @@ class WorkflowSimulationService:
         from zamp_public_workflow_sdk.actions_hub import ActionsHub
 
         # check if node is in the response map
-        is_response_mocked = node_id in self.node_id_to_response_map
+        is_response_mocked = node_id in self.node_id_to_payload_map
         if not is_response_mocked:
             return SimulationResponse(execution_type=ExecutionType.EXECUTE, execution_response=None)
 
         # If node is in the response map, it should be mocked
         # node_payload is a NodePayload instance with input_payload and output_payload attributes
-        node_payload = self.node_id_to_response_map[node_id]
+        node_payload = self.node_id_to_payload_map[node_id]
 
         try:
             decoded_result: MockedResultOutput = await ActionsHub.execute_activity(
