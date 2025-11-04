@@ -37,7 +37,7 @@ class TestSimulationValidatorWorkflow:
                 NodeStrategy(
                     strategy=SimulationStrategyConfig(
                         type=StrategyType.CUSTOM_OUTPUT,
-                        config=CustomOutputConfig(output_value="test", input_value="test"),
+                        config=CustomOutputConfig(output_value="test"),
                     ),
                     nodes=["activity#1", "Child#1.activity#2"],
                 )

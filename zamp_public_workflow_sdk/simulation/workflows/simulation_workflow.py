@@ -282,13 +282,13 @@ class SimulationWorkflow:
             logger.warning("No encoded payload found for node", node_id=node_id)
             return NodePayloadResult(node_id=node_id, input=None, output=None)
 
-        decoded_output = await self._decode_node_payload(
+        decoded_payload = await self._decode_node_payload(
             node_id=node_id, encoded_payload=encoded_payload, payload_type=payload_type
         )
-        if not decoded_output:
+        if not decoded_payload:
             return NodePayloadResult(node_id=node_id, input=None, output=None)
 
-        return self._build_payload_result(node_id=node_id, payload_type=payload_type, decoded_data=decoded_output)
+        return self._build_payload_result(node_id=node_id, payload_type=payload_type, decoded_data=decoded_payload)
 
     async def _decode_node_payload(
         self, node_id: str, encoded_payload: NodePayload, payload_type: NodePayloadType

@@ -28,7 +28,6 @@ class CustomOutputConfig(BaseModel):
     """Configuration for custom output strategy."""
 
     output_value: Any = Field(default=None, description="The custom output value to return")
-    input_value: Any = Field(default=None, description="The custom input value to return")
 
 
 class SimulationStrategyConfig(BaseModel):

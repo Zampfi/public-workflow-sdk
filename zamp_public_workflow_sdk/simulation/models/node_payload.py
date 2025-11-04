@@ -12,7 +12,7 @@ class NodePayload(BaseModel):
     """
 
     node_id: str = Field(
-        description="The node ID this payload",
+        description="The node ID the payload",
     )
     input_payload: Any | None = Field(
         default=None,

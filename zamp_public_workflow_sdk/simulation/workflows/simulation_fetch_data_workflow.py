@@ -35,7 +35,7 @@ class SimulationFetchDataWorkflow:
             WorkflowSimulationService,
         )
 
-        node_id_to_response_map = {}
+        node_id_to_payload_map = {}
 
         for node_strategy in input.simulation_config.mock_config.node_strategies:
             strategy = WorkflowSimulationService.get_strategy(node_strategy)
@@ -50,7 +50,7 @@ class SimulationFetchDataWorkflow:
                 result = await strategy.execute(
                     node_ids=node_strategy.nodes,
                 )
-                node_id_to_response_map.update(result.node_id_to_payload_map)
+                node_id_to_payload_map.update(result.node_id_to_payload_map)
             except Exception as e:
                 logger.error(
                     "Error processing node with strategy",
@@ -60,4 +60,4 @@ class SimulationFetchDataWorkflow:
                     error_type=type(e).__name__,
                 )
 
-        return SimulationFetchDataWorkflowOutput(node_id_to_response_map=node_id_to_response_map)
+        return SimulationFetchDataWorkflowOutput(node_id_to_response_map=node_id_to_payload_map)

@@ -101,29 +101,23 @@ class TestCustomOutputConfig:
 
     def test_custom_output_config_string(self):
         """Test creating custom output config with string value."""
-        config = CustomOutputConfig(output_value="test_string", input_value="test_input")
+        config = CustomOutputConfig(output_value="test_string")
         assert config.output_value == "test_string"
-        assert config.input_value == "test_input"
 
     def test_custom_output_config_dict(self):
         """Test creating custom output config with dict value."""
-        config = CustomOutputConfig(
-            output_value={"key": "value", "number": 123}, input_value={"input_key": "input_value"}
-        )
+        config = CustomOutputConfig(output_value={"key": "value", "number": 123})
         assert config.output_value == {"key": "value", "number": 123}
-        assert config.input_value == {"input_key": "input_value"}
 
     def test_custom_output_config_list(self):
         """Test creating custom output config with list value."""
-        config = CustomOutputConfig(output_value=[1, 2, 3, "test"], input_value=[4, 5, 6])
+        config = CustomOutputConfig(output_value=[1, 2, 3, "test"])
         assert config.output_value == [1, 2, 3, "test"]
-        assert config.input_value == [4, 5, 6]
 
     def test_custom_output_config_validation(self):
         """Test that custom output config validates required fields."""
         config = CustomOutputConfig()
-        assert config.output_value is None
-        assert config.input_value is None  # Missing required output_value and input_value
+        assert config.output_value is None  # Missing required output_value and input_value
 
 
 class TestSimulationStrategyConfig:
@@ -143,14 +137,13 @@ class TestSimulationStrategyConfig:
 
     def test_custom_output_strategy(self):
         """Test creating custom output strategy config."""
-        custom_config = CustomOutputConfig(output_value="test_output", input_value="test_input")
+        custom_config = CustomOutputConfig(output_value="test_output")
 
         strategy = SimulationStrategyConfig(type=StrategyType.CUSTOM_OUTPUT, config=custom_config)
 
         assert strategy.type == StrategyType.CUSTOM_OUTPUT
         assert isinstance(strategy.config, CustomOutputConfig)
         assert strategy.config.output_value == "test_output"
-        assert strategy.config.input_value == "test_input"
 
     def test_strategy_config_validation(self):
         """Test that strategy config validates required fields."""
@@ -171,7 +164,7 @@ class TestNodeStrategy:
         """Test creating valid node strategy."""
         strategy_config = SimulationStrategyConfig(
             type=StrategyType.CUSTOM_OUTPUT,
-            config=CustomOutputConfig(output_value="test", input_value="test_input"),
+            config=CustomOutputConfig(output_value="test"),
         )
 
         node_strategy = NodeStrategy(
@@ -204,7 +197,7 @@ class TestNodeMockConfig:
             NodeStrategy(
                 strategy=SimulationStrategyConfig(
                     type=StrategyType.CUSTOM_OUTPUT,
-                    config=CustomOutputConfig(output_value="output1", input_value="input1"),
+                    config=CustomOutputConfig(output_value="output1"),
                 ),
                 nodes=["node1#1", "node2#1"],
             ),
@@ -242,7 +235,7 @@ class TestSimulationConfig:
                 NodeStrategy(
                     strategy=SimulationStrategyConfig(
                         type=StrategyType.CUSTOM_OUTPUT,
-                        config=CustomOutputConfig(output_value="test", input_value="test_input"),
+                        config=CustomOutputConfig(output_value="test"),
                     ),
                     nodes=["node1#1"],
                 )
@@ -261,7 +254,7 @@ class TestSimulationConfig:
                 NodeStrategy(
                     strategy=SimulationStrategyConfig(
                         type=StrategyType.CUSTOM_OUTPUT,
-                        config=CustomOutputConfig(output_value="test", input_value="test_input"),
+                        config=CustomOutputConfig(output_value="test"),
                     ),
                     nodes=["dummy#1"],
                 )

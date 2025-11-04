@@ -20,15 +20,15 @@ class CustomOutputStrategyHandler(BaseStrategy):
     Strategy that returns predefined custom outputs.
     """
 
-    def __init__(self, output_value: Any, input_value: Any):
+    def __init__(self, output_value: Any, input_value: Any = None):
         """
         Initialize with custom output value.
 
         Args:
             output_value: The custom output value to return
+            input_value: The custom input value (optional, not currently used)
         """
         self.output_value = output_value
-        self.input_value = input_value
 
     async def execute(
         self,
@@ -47,7 +47,6 @@ class CustomOutputStrategyHandler(BaseStrategy):
         node_id_to_payload_map = {
             node_id: NodePayload(
                 node_id=node_id,
-                input_payload=self.input_value,
                 output_payload=self.output_value,
             )
             for node_id in node_ids

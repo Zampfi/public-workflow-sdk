@@ -34,7 +34,7 @@ class TestWorkflowSimulationService:
                 NodeStrategy(
                     strategy=SimulationStrategyConfig(
                         type=StrategyType.CUSTOM_OUTPUT,
-                        config=CustomOutputConfig(output_value="test_output", input_value="test_output"),
+                        config=CustomOutputConfig(output_value="test_output"),
                     ),
                     nodes=["node1#1", "node2#1"],
                 )
@@ -61,14 +61,14 @@ class TestWorkflowSimulationService:
                 NodeStrategy(
                     strategy=SimulationStrategyConfig(
                         type=StrategyType.CUSTOM_OUTPUT,
-                        config=CustomOutputConfig(output_value="output1", input_value="output1"),
+                        config=CustomOutputConfig(output_value="output1"),
                     ),
                     nodes=["node1#1", "node2#1"],
                 ),
                 NodeStrategy(
                     strategy=SimulationStrategyConfig(
                         type=StrategyType.CUSTOM_OUTPUT,
-                        config=CustomOutputConfig(output_value="output2", input_value="output2"),
+                        config=CustomOutputConfig(output_value="output2"),
                     ),
                     nodes=["node3#1"],
                 ),
@@ -180,7 +180,7 @@ class TestWorkflowSimulationService:
                 NodeStrategy(
                     strategy=SimulationStrategyConfig(
                         type=StrategyType.CUSTOM_OUTPUT,
-                        config=CustomOutputConfig(output_value="test_output", input_value="test_output"),
+                        config=CustomOutputConfig(output_value="test_output"),
                     ),
                     nodes=["node1#1"],
                 )
@@ -213,7 +213,7 @@ class TestWorkflowSimulationService:
                 NodeStrategy(
                     strategy=SimulationStrategyConfig(
                         type=StrategyType.CUSTOM_OUTPUT,
-                        config=CustomOutputConfig(output_value="test_output", input_value="test_output"),
+                        config=CustomOutputConfig(output_value="test_output"),
                     ),
                     nodes=["node1#1"],
                 )
@@ -236,7 +236,7 @@ class TestWorkflowSimulationService:
                 NodeStrategy(
                     strategy=SimulationStrategyConfig(
                         type=StrategyType.CUSTOM_OUTPUT,
-                        config=CustomOutputConfig(output_value="test_output", input_value="test_output"),
+                        config=CustomOutputConfig(output_value="test_output"),
                     ),
                     nodes=["node1#1"],
                 )
