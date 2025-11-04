@@ -208,7 +208,7 @@ class SimulationWorkflow:
                 node_id=node_id, payload_type=payload_type, node_payloads=encoded_node_payloads
             )
             result.append(payload_result)
-            
+
         return result
 
     async def _fetch_node_payloads(self, workflow_id: str, run_id: str, node_ids: list[str]) -> dict[str, NodePayload]:
