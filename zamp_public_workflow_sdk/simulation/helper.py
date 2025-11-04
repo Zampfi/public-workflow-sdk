@@ -383,51 +383,51 @@ async def handle_child_workflow_traversal(
 ) -> dict[str, NodePayload]:
     """
     Handle child workflow traversal for nodes that need it.
-    
+
     This function checks if any nodes need child workflow traversal (when child workflows
     are started but not completed in the parent history) and fetches the actual outputs
     from the child workflow history.
-    
+
     Args:
         node_payloads: Dictionary mapping node IDs to NodePayload instances
         main_workflow_history: The main workflow history to check for child workflow details
-        
+
     Returns:
         Updated dictionary with child workflow outputs where needed
     """
     updated_payloads = {}
-    
+
     for node_id, payload in node_payloads.items():
         if not needs_child_workflow_traversal(payload, main_workflow_history, node_id):
             updated_payloads[node_id] = payload
             continue
-            
+
         try:
             child_workflow_id, child_run_id = main_workflow_history.get_child_workflow_workflow_id_run_id(
                 node_id=node_id
             )
-            
+
             logger.info(
                 "Traversing child workflow",
                 node_id=node_id,
                 child_workflow_id=child_workflow_id,
                 child_run_id=child_run_id,
             )
-            
+
             child_payload = await traverse_child_workflow_for_payload(
                 node_id=node_id,
                 child_workflow_id=child_workflow_id,
                 child_run_id=child_run_id,
             )
-            
+
             if not child_payload:
                 updated_payloads[node_id] = payload
                 logger.warning("No main workflow node found in child history", node_id=node_id)
                 continue
-                
+
             updated_payloads[node_id] = child_payload
             logger.info("Successfully extracted child workflow output", node_id=node_id)
-                
+
         except Exception as e:
             logger.error(
                 "Failed to traverse child workflow",
@@ -435,7 +435,7 @@ async def handle_child_workflow_traversal(
                 error=str(e),
             )
             updated_payloads[node_id] = payload
-            
+
     return updated_payloads
 
 
@@ -446,26 +446,24 @@ def needs_child_workflow_traversal(
 ) -> bool:
     """
     Check if a node payload needs child workflow traversal.
-    
+
     A node needs traversal if:
     1. It has no output payload (indicating child workflow didn't complete in parent)
     2. The main workflow history has child workflow execution details for this node
-    
+
     Args:
         payload: The NodePayload to check
         main_workflow_history: The main workflow history
         node_id: The node ID to check
-        
+
     Returns:
         True if child workflow traversal is needed, False otherwise
     """
     if payload.output_payload is not None:
         return False
-        
+
     try:
-        child_workflow_id, child_run_id = main_workflow_history.get_child_workflow_workflow_id_run_id(
-            node_id=node_id
-        )
+        child_workflow_id, child_run_id = main_workflow_history.get_child_workflow_workflow_id_run_id(node_id=node_id)
         return child_workflow_id is not None and child_run_id is not None
     except (ValueError, Exception):
         return False
@@ -478,12 +476,12 @@ async def traverse_child_workflow_for_payload(
 ) -> NodePayload | None:
     """
     Traverse into child workflow and return the main workflow node payload.
-    
+
     Args:
         node_id: The parent node ID
         child_workflow_id: The child workflow ID
         child_run_id: The child workflow run ID
-        
+
     Returns:
         The child workflow's main node NodePayload if found, otherwise None
     """
@@ -494,10 +492,10 @@ async def traverse_child_workflow_for_payload(
             workflow_id=child_workflow_id,
             run_id=child_run_id,
         )
-        
+
         if not child_history:
             return None
-            
+
         child_payloads = child_history.get_nodes_data_encoded(target_node_ids=None)
         logger.info(
             "Child workflow payloads extracted",
@@ -506,7 +504,7 @@ async def traverse_child_workflow_for_payload(
         )
         child_main_node = find_main_workflow_node(child_payloads=child_payloads, node_id=node_id)
         return child_main_node
-        
+
     except Exception as e:
         logger.error(
             "Failed to fetch child workflow history",

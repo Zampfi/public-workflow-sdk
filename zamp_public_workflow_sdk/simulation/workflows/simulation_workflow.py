@@ -277,22 +277,18 @@ class SimulationWorkflow:
         """
         logger.info("Processing node payload", node_id=node_id, payload_type=payload_type)
 
-        # Get encoded payload (child workflow traversal is already handled in helpers)
         encoded_payload = node_payloads.get(node_id)
         if not encoded_payload:
             logger.warning("No encoded payload found for node", node_id=node_id)
             return NodePayloadResult(node_id=node_id, input=None, output=None)
 
-        # Decode only what's needed based on payload_type
         decoded_output = await self._decode_node_payload(
             node_id=node_id, encoded_payload=encoded_payload, payload_type=payload_type
         )
         if not decoded_output:
             return NodePayloadResult(node_id=node_id, input=None, output=None)
 
-        # Build result based on payload type
         return self._build_payload_result(node_id=node_id, payload_type=payload_type, decoded_data=decoded_output)
-
 
     async def _decode_node_payload(
         self, node_id: str, encoded_payload: NodePayload, payload_type: NodePayloadType
