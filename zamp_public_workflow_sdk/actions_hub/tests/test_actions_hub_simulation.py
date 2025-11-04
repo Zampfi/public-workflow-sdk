@@ -11,9 +11,11 @@ from zamp_public_workflow_sdk.actions_hub.action_hub_core import ActionsHub
 from zamp_public_workflow_sdk.simulation.models import (
     ExecutionType,
     NodeMockConfig,
+    NodePayload,
     SimulationConfig,
     SimulationResponse,
 )
+from zamp_public_workflow_sdk.simulation.models.mocked_result import MockedResultOutput
 from zamp_public_workflow_sdk.simulation.workflow_simulation_service import (
     WorkflowSimulationService,
 )
@@ -39,13 +41,13 @@ class TestActionsHubSimulation:
     async def test_get_simulation_response_action_should_skip(self):
         """Test _get_simulation_response when action should skip simulation."""
 
-        class SimulationWorkflow:
+        class SimulationFetchDataWorkflow:
             pass
 
         result = await ActionsHub._get_simulation_response(
             workflow_id="test_wf",
             node_id="node_1",
-            action=SimulationWorkflow,
+            action=SimulationFetchDataWorkflow,
             return_type=None,
         )
 
@@ -432,17 +434,20 @@ class TestActionsHubSimulation:
 
         # Create real simulation service with encoded payload
         simulation = WorkflowSimulationService(None)
-        encoded_payload = {"metadata": {"encoding": "json/plain"}, "data": "encoded_data_here"}
-        simulation.node_id_to_response_map = {"node_1": encoded_payload}
+        encoded_output = {"metadata": {"encoding": "json/plain"}, "data": "encoded_data_here"}
+        simulation.node_id_to_payload_map = {
+            "node_1": NodePayload(node_id="node_1", input_payload=None, output_payload=encoded_output)
+        }
 
         # Register the simulation
         ActionsHub._workflow_id_to_simulation_map["test_wf"] = simulation
 
-        # Mock workflow.execute_activity for decode_node_payload
-        # Since workflow is imported lazily inside get_simulation_response, patch temporalio.workflow
-        with patch("temporalio.workflow.execute_activity", new_callable=AsyncMock) as mock_execute:
+        # Mock ActionsHub.execute_activity for return_mocked_result
+        with patch(
+            "zamp_public_workflow_sdk.actions_hub.action_hub_core.ActionsHub.execute_activity", new_callable=AsyncMock
+        ) as mock_execute:
             decoded_data = {"result": "decoded_value"}
-            mock_execute.return_value = decoded_data
+            mock_execute.return_value = MockedResultOutput(output=decoded_data)
 
             result = await ActionsHub._get_simulation_response(
                 workflow_id="test_wf",
@@ -453,10 +458,10 @@ class TestActionsHubSimulation:
 
             assert result.execution_type == ExecutionType.MOCK
             assert result.execution_response == decoded_data
-            # Verify decode activity was called
+            # Verify return_mocked_result activity was called
             mock_execute.assert_called_once()
             call_args = mock_execute.call_args
-            assert call_args[0][0] == "decode_node_payload"
+            assert call_args[0][0] == "return_mocked_result"
 
     @pytest.mark.asyncio
     async def test_get_simulation_response_with_encoded_payload_decoding_failure(self):
@@ -464,15 +469,18 @@ class TestActionsHubSimulation:
 
         # Create real simulation service with encoded payload
         simulation = WorkflowSimulationService(None)
-        encoded_payload = {"metadata": {"encoding": "json/plain"}, "data": "encoded_data_here"}
-        simulation.node_id_to_response_map = {"node_1": encoded_payload}
+        encoded_output = {"metadata": {"encoding": "json/plain"}, "data": "encoded_data_here"}
+        simulation.node_id_to_payload_map = {
+            "node_1": NodePayload(node_id="node_1", input_payload=None, output_payload=encoded_output)
+        }
 
         # Register the simulation
         ActionsHub._workflow_id_to_simulation_map["test_wf"] = simulation
 
-        # Mock workflow.execute_activity to raise an exception
-        # Since workflow is imported lazily inside get_simulation_response, patch temporalio.workflow
-        with patch("temporalio.workflow.execute_activity", new_callable=AsyncMock) as mock_execute:
+        # Mock ActionsHub.execute_activity to raise an exception
+        with patch(
+            "zamp_public_workflow_sdk.actions_hub.action_hub_core.ActionsHub.execute_activity", new_callable=AsyncMock
+        ) as mock_execute:
             mock_execute.side_effect = Exception("Decoding failed")
 
             with pytest.raises(Exception, match="Decoding failed"):
@@ -490,14 +498,18 @@ class TestActionsHubSimulation:
         # Create real simulation service with raw payload (no encoding metadata)
         simulation = WorkflowSimulationService(None)
         raw_payload = {"result": "raw_value"}
-        simulation.node_id_to_response_map = {"node_1": raw_payload}
+        simulation.node_id_to_payload_map = {
+            "node_1": NodePayload(node_id="node_1", input_payload=None, output_payload=raw_payload)
+        }
 
         # Register the simulation
         ActionsHub._workflow_id_to_simulation_map["test_wf"] = simulation
 
-        # Mock workflow.execute_activity - it should NOT be called
-        # Since workflow is imported lazily inside get_simulation_response, patch temporalio.workflow
-        with patch("temporalio.workflow.execute_activity", new_callable=AsyncMock) as mock_execute:
+        # Mock ActionsHub.execute_activity - return_mocked_result should be called but no decoding should happen
+        with patch(
+            "zamp_public_workflow_sdk.actions_hub.action_hub_core.ActionsHub.execute_activity", new_callable=AsyncMock
+        ) as mock_execute:
+            mock_execute.return_value = MockedResultOutput(output=raw_payload)
             result = await ActionsHub._get_simulation_response(
                 workflow_id="test_wf",
                 node_id="node_1",
@@ -506,6 +518,6 @@ class TestActionsHubSimulation:
             )
 
             assert result.execution_type == ExecutionType.MOCK
-            assert result.execution_response is None
-            # Verify decode activity was NOT called (no encoding metadata)
-            mock_execute.assert_not_called()
+            assert result.execution_response == raw_payload
+            # Verify return_mocked_result activity was called (it handles both encoded and raw)
+            mock_execute.assert_called_once()

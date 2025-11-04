@@ -2,19 +2,17 @@
 Workflow Simulation Service for managing simulation state and responses.
 """
 
-from datetime import timedelta
-from typing import Any
-
 import structlog
-from temporalio import workflow
-from zamp_public_workflow_sdk.simulation.models import ExecutionType, SimulationResponse
+from zamp_public_workflow_sdk.simulation.models import (
+    ExecutionType,
+    SimulationResponse,
+    NodePayload,
+    SimulationFetchDataWorkflowInput,
+)
 from zamp_public_workflow_sdk.simulation.models.config import SimulationConfig
 from zamp_public_workflow_sdk.simulation.models.simulation_strategy import (
     NodeStrategy,
     StrategyType,
-)
-from zamp_public_workflow_sdk.simulation.models.simulation_workflow import (
-    SimulationWorkflowInput,
 )
 from zamp_public_workflow_sdk.simulation.strategies.base_strategy import BaseStrategy
 from zamp_public_workflow_sdk.simulation.strategies.custom_output_strategy import (
@@ -23,9 +21,7 @@ from zamp_public_workflow_sdk.simulation.strategies.custom_output_strategy impor
 from zamp_public_workflow_sdk.simulation.strategies.temporal_history_strategy import (
     TemporalHistoryStrategyHandler,
 )
-from zamp_public_workflow_sdk.temporal.workflow_history.models.node_payload_data import (
-    DecodeNodePayloadInput,
-)
+from zamp_public_workflow_sdk.simulation.models.mocked_result import MockedResultInput, MockedResultOutput
 
 logger = structlog.get_logger(__name__)
 
@@ -46,13 +42,13 @@ class WorkflowSimulationService:
         """
         self.simulation_config = simulation_config
         # this response is raw response to be set using FetchWorkflowHistoryWorkflow
-        self.node_id_to_response_map: dict[str, Any] = {}
+        self.node_id_to_payload_map: dict[str, NodePayload] = {}
 
     async def _initialize_simulation_data(self) -> None:
         """
         Initialize simulation data by pre-computing all responses.
 
-        This method builds the node_id_to_response_map by processing
+        This method builds the node_id_to_payload_map by processing
         all strategies in the simulation configuration.
         This method should be called from within a workflow context.
         """
@@ -62,33 +58,33 @@ class WorkflowSimulationService:
         )
 
         from zamp_public_workflow_sdk.actions_hub import ActionsHub
-        from zamp_public_workflow_sdk.simulation.workflows.simulation_workflow import (
-            SimulationWorkflow,
+        from zamp_public_workflow_sdk.simulation.workflows.simulation_fetch_data_workflow import (
+            SimulationFetchDataWorkflow,
         )
 
         try:
             workflow_result = await ActionsHub.execute_child_workflow(
-                SimulationWorkflow,
-                SimulationWorkflowInput(simulation_config=self.simulation_config),
+                SimulationFetchDataWorkflow,
+                SimulationFetchDataWorkflowInput(simulation_config=self.simulation_config),
             )
 
             logger.info(
-                "SimulationWorkflow completed",
+                "SimulationFetchDataWorkflow completed",
                 workflow_result=workflow_result,
-                has_node_id_to_response_map=workflow_result is not None
-                and hasattr(workflow_result, "node_id_to_response_map"),
+                has_node_id_to_payload_map=workflow_result is not None
+                and hasattr(workflow_result, "node_id_to_payload_map"),
             )
 
-            self.node_id_to_response_map = workflow_result.node_id_to_response_map
+            self.node_id_to_payload_map = workflow_result.node_id_to_payload_map
 
             logger.info(
                 "Simulation data initialized successfully",
-                total_nodes=len(self.node_id_to_response_map),
+                total_nodes=len(self.node_id_to_payload_map),
             )
 
         except Exception as e:
             logger.error(
-                "Failed to execute SimulationWorkflow",
+                "Failed to execute SimulationFetchDataWorkflow",
                 error=str(e),
                 error_type=type(e).__name__,
             )
@@ -96,52 +92,56 @@ class WorkflowSimulationService:
 
     async def get_simulation_response(self, node_id: str, action_name: str | None = None) -> SimulationResponse:
         """
-        Get simulation response for a specific node and decode if needed.
+        Get simulation response for a specific node by calling return_mocked_result activity.
 
-        This method automatically handles decoding of encoded payloads from TemporalHistoryStrategy.
-        CustomOutputStrategy returns raw values without encoding, so no decoding is needed.
+        This method delegates the decoding of encoded payloads to the return_mocked_result activity,
+        which runs in API mode and handles both TemporalHistoryStrategy (encoded) and
+        CustomOutputStrategy (raw) outputs.
 
         Args:
             node_id: The node execution ID
-            action_name: Optional action name for activity summary during decoding
+            action_name: Optional action name for activity summary
 
         Returns:
             SimulationResponse with MOCK if node should be mocked (decoded if needed), EXECUTE otherwise
         """
+        from zamp_public_workflow_sdk.actions_hub import ActionsHub
 
         # check if node is in the response map
-        is_response_mocked = node_id in self.node_id_to_response_map
+        is_response_mocked = node_id in self.node_id_to_payload_map
         if not is_response_mocked:
             return SimulationResponse(execution_type=ExecutionType.EXECUTE, execution_response=None)
 
         # If node is in the response map, it should be mocked
-        payload = self.node_id_to_response_map[node_id]
-        simulation_response = SimulationResponse(
-            execution_type=ExecutionType.MOCK,
-        )
-        # Only decode if payload has "metadata" with "encoding" (from TemporalHistoryStrategy)
-        # CustomOutputStrategy returns raw values without encoding
-        needs_decoding = (
-            payload and isinstance(payload, dict) and payload.get("metadata", {}).get("encoding") is not None
-        )
-        if needs_decoding:
-            try:
-                decoded_payload = await workflow.execute_activity(
-                    "decode_node_payload",
-                    DecodeNodePayloadInput(node_id=node_id, encoded_payload=payload),
-                    summary=action_name,
-                    start_to_close_timeout=timedelta(seconds=30),
-                )
-                simulation_response.execution_response = decoded_payload
-            except Exception as e:
-                logger.error(
-                    "Failed to decode simulation payload",
+        # node_payload is a NodePayload instance with input_payload and output_payload attributes
+        node_payload = self.node_id_to_payload_map[node_id]
+
+        try:
+            decoded_result: MockedResultOutput = await ActionsHub.execute_activity(
+                "return_mocked_result",
+                MockedResultInput(
                     node_id=node_id,
-                    error=str(e),
-                    error_type=type(e).__name__,
-                )
-                raise e
-        return simulation_response
+                    input_payload=node_payload.input_payload,
+                    output_payload=node_payload.output_payload,
+                    action_name=action_name,
+                ),
+                return_type=MockedResultOutput,
+                custom_node_id=node_id,
+                summary=action_name,
+            )
+
+            return SimulationResponse(
+                execution_type=ExecutionType.MOCK,
+                execution_response=decoded_result.output,
+            )
+        except Exception as e:
+            logger.error(
+                "Failed to get mocked result",
+                node_id=node_id,
+                error=str(e),
+                error_type=type(e).__name__,
+            )
+            raise
 
     @staticmethod
     def get_strategy(node_strategy: NodeStrategy) -> BaseStrategy | None:

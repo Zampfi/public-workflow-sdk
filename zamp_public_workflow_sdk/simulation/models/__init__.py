@@ -13,14 +13,17 @@ from .simulation_strategy import (
     StrategyType,
     TemporalHistoryConfig,
 )
-from .simulation_workflow import (
-    SimulationWorkflowInput,
-    SimulationWorkflowOutput,
+from .simulation_fetch_data_workflow import (
+    SimulationFetchDataWorkflowInput,
+    SimulationFetchDataWorkflowOutput,
+)
+from .node_payload import (
+    NodePayload,
 )
 
 __all__ = [
-    "SimulationWorkflowInput",
-    "SimulationWorkflowOutput",
+    "SimulationFetchDataWorkflowInput",
+    "SimulationFetchDataWorkflowOutput",
     "SimulationConfig",
     "NodeMockConfig",
     "NodeStrategy",
@@ -30,4 +33,5 @@ __all__ = [
     "TemporalHistoryConfig",
     "SimulationResponse",
     "ExecutionType",
+    "NodePayload",
 ]

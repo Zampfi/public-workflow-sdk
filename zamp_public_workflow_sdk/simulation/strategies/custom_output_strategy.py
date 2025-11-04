@@ -9,6 +9,7 @@ import structlog
 from zamp_public_workflow_sdk.simulation.models.simulation_response import (
     SimulationStrategyOutput,
 )
+from zamp_public_workflow_sdk.simulation.models.node_payload import NodePayload
 from zamp_public_workflow_sdk.simulation.strategies.base_strategy import BaseStrategy
 
 logger = structlog.get_logger(__name__)
@@ -39,8 +40,14 @@ class CustomOutputStrategyHandler(BaseStrategy):
             node_ids: List of node execution IDs
 
         Returns:
-            SimulationStrategyOutput with node_outputs for mocking
+            SimulationStrategyOutput with node_id_to_payload_map for mocking
         """
         # Return the same custom output for all nodes
-        node_outputs = {node_id: self.output_value for node_id in node_ids}
-        return SimulationStrategyOutput(node_outputs=node_outputs)
+        node_id_to_payload_map = {
+            node_id: NodePayload(
+                node_id=node_id,
+                output_payload=self.output_value,
+            )
+            for node_id in node_ids
+        }
+        return SimulationStrategyOutput(node_id_to_payload_map=node_id_to_payload_map)

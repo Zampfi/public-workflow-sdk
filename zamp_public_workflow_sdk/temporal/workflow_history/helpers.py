@@ -4,6 +4,10 @@ Helper functions for temporal workflow history operations.
 
 import structlog
 
+from zamp_public_workflow_sdk.simulation.constants import (
+    PayloadKey,
+)
+from zamp_public_workflow_sdk.simulation.models.node_payload import NodePayload
 from zamp_public_workflow_sdk.temporal.workflow_history.constants import (
     EventField,
     EventType,
@@ -299,6 +303,71 @@ def get_node_data_from_node_id(events: list[dict], node_id: str) -> dict[str, No
     return result
 
 
+def _extract_child_workflow_execution_details(event: dict) -> tuple[str | None, str | None]:
+    """
+    Extract workflow_id and run_id from a CHILD_WORKFLOW_EXECUTION_STARTED event.
+
+    Args:
+        event: The workflow event dictionary
+
+    Returns:
+        Tuple of (workflow_id, run_id) or (None, None) if not found
+    """
+    attrs_key = EventTypeToAttributesKey.CHILD_WORKFLOW_EXECUTION_STARTED.value
+    attrs = event.get(attrs_key, {})
+    workflow_execution = attrs.get(WorkflowExecutionField.WORKFLOW_EXECUTION.value, {})
+    child_workflow_id = workflow_execution.get(WorkflowExecutionField.WORKFLOW_ID.value)
+    child_run_id = workflow_execution.get(WorkflowExecutionField.RUN_ID.value)
+    return child_workflow_id, child_run_id
+
+
+def _mark_child_workflows_needing_traversal(
+    child_workflow_initiated_events: dict[int, str],
+    child_workflow_execution_details: dict[str, tuple[str, str]],
+    node_payloads: dict,
+    node_ids: list[str] | None,
+) -> None:
+    """
+    Mark child workflows that were initiated but have no output as needing traversal.
+
+    Args:
+        child_workflow_initiated_events: Map of event IDs to child node IDs for initiated workflows
+        child_workflow_execution_details: Map of node IDs to (workflow_id, run_id) tuples
+        node_payloads: Dictionary of node payloads to update
+        node_ids: Optional list of node IDs to filter by
+    """
+    for event_id, child_node_id in child_workflow_initiated_events.items():
+        # Skip if not in target nodes
+        if not _should_include_node_id(child_node_id, node_ids):
+            continue
+
+        # Skip if node not in payloads
+        if child_node_id not in node_payloads:
+            continue
+
+        # Skip if already has output
+        if PayloadKey.OUTPUT_PAYLOAD in node_payloads[child_node_id]:
+            continue
+
+        # Get child workflow execution details if available
+        if child_node_id not in child_workflow_execution_details:
+            logger.warning(
+                "Child workflow initiated but no execution details found",
+                node_id=child_node_id,
+                event_id=event_id,
+            )
+            continue
+
+        workflow_id, run_id = child_workflow_execution_details[child_node_id]
+        logger.info(
+            "Child workflow initiated but no output found, will be handled by traversal logic",
+            node_id=child_node_id,
+            event_id=event_id,
+            workflow_id=workflow_id,
+            run_id=run_id,
+        )
+
+
 def _process_events_for_payloads(
     events: list[dict],
     node_ids: list[str] | None,
@@ -319,6 +388,7 @@ def _process_events_for_payloads(
     node_payloads: dict = {}
     activity_scheduled_events: dict[int, str] = {}
     child_workflow_initiated_events: dict[int, str] = {}
+    child_workflow_execution_details: dict[str, tuple[str, str]] = {}  # Maps node_id to (workflow_id, run_id)
     workflow_node_id: str | None = None
 
     for event_index, event in enumerate(events):
@@ -345,7 +415,17 @@ def _process_events_for_payloads(
             if return_encoded_format:
                 if _should_include_node_id(extracted_node_id, node_ids):
                     if extracted_node_id not in node_payloads:
-                        node_payloads[extracted_node_id] = {}
+                        node_payloads[extracted_node_id] = NodePayload(node_id=extracted_node_id)
+                    # Extract and store workflow_id and run_id from this event
+                    child_workflow_id, child_run_id = _extract_child_workflow_execution_details(event)
+                    if child_workflow_id and child_run_id:
+                        child_workflow_execution_details[extracted_node_id] = (child_workflow_id, child_run_id)
+                        logger.info(
+                            "Stored child workflow execution details",
+                            node_id=extracted_node_id,
+                            workflow_id=child_workflow_id,
+                            run_id=child_run_id,
+                        )
             else:
                 _add_event_to_node_events(extracted_node_id, event, event_type, node_ids, node_payloads)
             continue
@@ -416,16 +496,25 @@ def _process_events_for_payloads(
         # Store payload based on format
         if return_encoded_format:
             if node_id not in node_payloads:
-                node_payloads[node_id] = {}
+                node_payloads[node_id] = NodePayload(node_id=node_id)
             payload = _extract_payload_encoded(event, event_type, payload_field)
             if not payload:
                 continue
             if payload_field == PayloadField.INPUT.value:
-                node_payloads[node_id]["input_payload"] = payload
+                node_payloads[node_id].input_payload = payload
             else:
-                node_payloads[node_id]["output_payload"] = payload
+                node_payloads[node_id].output_payload = payload
         else:
             _add_event_and_payload(node_id, event, payload_field, node_payloads)
+
+    # Mark child workflows that were initiated but don't have output (need traversal)
+    _mark_child_workflows_needing_traversal(
+        child_workflow_initiated_events,
+        child_workflow_execution_details,
+        node_payloads,
+        node_ids,
+    )
+
     return node_payloads
 
 
@@ -451,21 +540,23 @@ def get_encoded_input_from_node_id(events: list[dict], node_id: str) -> dict | N
     """Get encoded input payload for a specific node ID. Returns the encoded input payload."""
     logger.info("Getting encoded input payload for node", node_id=node_id)
     node_data = extract_encoded_node_payloads(events, [node_id])
-    if node_id in node_data and "input_payload" in node_data[node_id]:
-        return node_data[node_id]["input_payload"]
-    return None
+    if node_id not in node_data:
+        return None
+    node_payload = node_data[node_id]
+    return node_payload.input_payload
 
 
 def get_encoded_output_from_node_id(events: list[dict], node_id: str) -> dict | None:
     """Get encoded output payload for a specific node ID. Returns the encoded output payload."""
     logger.info("Getting encoded output payload for node", node_id=node_id)
     node_data = extract_encoded_node_payloads(events, [node_id])
-    if node_id in node_data and "output_payload" in node_data[node_id]:
-        return node_data[node_id]["output_payload"]
-    return None
+    if node_id not in node_data:
+        return None
+    node_payload = node_data[node_id]
+    return node_payload.output_payload
 
 
-def extract_encoded_node_payloads(events: list[dict], node_ids: list[str] | None = None) -> dict[str, dict]:
+def extract_encoded_node_payloads(events: list[dict], node_ids: list[str] | None = None) -> dict[str, NodePayload]:
     """Extract all encoded node data from workflow events."""
     logger.info("Extracting encoded node payloads", event_count=len(events), target_node_ids=node_ids)
 

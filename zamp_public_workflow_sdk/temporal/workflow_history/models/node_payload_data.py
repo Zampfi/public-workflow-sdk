@@ -20,4 +20,24 @@ class DecodeNodePayloadInput(BaseModel):
     """Input model for decode_node_payload activity."""
 
     node_id: str = Field(..., description="The node ID")
-    encoded_payload: dict[str, Any] = Field(..., description="The encoded payload to decode")
+    input_payload: Any = Field(
+        default=None,
+        description="Input payload data (may be encoded or raw)",
+    )
+    output_payload: Any = Field(
+        default=None,
+        description="Output payload data (may be encoded or raw)",
+    )
+
+
+class DecodeNodePayloadOutput(BaseModel):
+    """Output model for decode_node_payload activity."""
+
+    decoded_input: Any = Field(
+        default=None,
+        description="Decoded input payload data",
+    )
+    decoded_output: Any = Field(
+        default=None,
+        description="Decoded output payload data",
+    )
