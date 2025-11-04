@@ -141,9 +141,9 @@ class TestSimulationFetchDataWorkflowIntegration:
             mock_strategy = Mock()
             mock_strategy.execute = AsyncMock(
                 return_value=SimulationStrategyOutput(
-                    node_outputs={
-                        "node1#1": NodePayload(input_payload=None, output_payload="history_output"),
-                        "node2#1": NodePayload(input_payload=None, output_payload="history_output"),
+                    node_id_to_payload_map={
+                        "node1#1": NodePayload(node_id="node1#1", input_payload=None, output_payload="history_output"),
+                        "node2#1": NodePayload(node_id="node2#1", input_payload=None, output_payload="history_output"),
                     }
                 )
             )
@@ -195,7 +195,9 @@ class TestSimulationFetchDataWorkflowIntegration:
             mock_strategy = Mock()
             mock_strategy.execute = AsyncMock(
                 return_value=SimulationStrategyOutput(
-                    node_outputs={"node2#1": NodePayload(input_payload=None, output_payload="history_output")}
+                    node_id_to_payload_map={
+                        "node2#1": NodePayload(node_id="node2#1", input_payload=None, output_payload="history_output")
+                    }
                 )
             )
             mock_handler_class.return_value = mock_strategy
@@ -266,7 +268,7 @@ class TestSimulationFetchDataWorkflowIntegration:
             "zamp_public_workflow_sdk.simulation.workflow_simulation_service.CustomOutputStrategyHandler"
         ) as mock_handler_class:
             mock_strategy = Mock()
-            mock_strategy.execute = AsyncMock(return_value=SimulationStrategyOutput(node_outputs={}))
+            mock_strategy.execute = AsyncMock(return_value=SimulationStrategyOutput(node_id_to_payload_map={}))
             mock_handler_class.return_value = mock_strategy
 
             result = await workflow.execute(input_data)
@@ -299,7 +301,7 @@ class TestSimulationFetchDataWorkflowIntegration:
             "zamp_public_workflow_sdk.simulation.workflow_simulation_service.CustomOutputStrategyHandler"
         ) as mock_handler_class:
             mock_strategy = Mock()
-            mock_strategy.execute = AsyncMock(return_value=SimulationStrategyOutput(node_outputs={}))
+            mock_strategy.execute = AsyncMock(return_value=SimulationStrategyOutput(node_id_to_payload_map={}))
             mock_handler_class.return_value = mock_strategy
 
             result = await workflow.execute(input_data)
@@ -338,7 +340,9 @@ class TestSimulationServiceIntegration:
         # Mock the workflow execution - note the new data structure with input/output payloads
         mock_workflow_result = Mock()
         mock_workflow_result.node_id_to_response_map = {
-            "integration_node#1": NodePayload(input_payload=None, output_payload="integration_test_output")
+            "integration_node#1": NodePayload(
+                node_id="integration_node#1", input_payload=None, output_payload="integration_test_output"
+            )
         }
 
         with patch("zamp_public_workflow_sdk.actions_hub.ActionsHub") as mock_actions_hub:
