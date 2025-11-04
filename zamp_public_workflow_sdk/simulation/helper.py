@@ -395,11 +395,11 @@ async def handle_child_workflow_traversal(
     Returns:
         Updated dictionary with child workflow outputs where needed
     """
-    updated_payloads = {}
+    payloads = {}
 
     for node_id, payload in node_payloads.items():
         if not needs_child_workflow_traversal(payload, main_workflow_history, node_id):
-            updated_payloads[node_id] = payload
+            payloads[node_id] = payload
             continue
 
         try:
@@ -421,11 +421,11 @@ async def handle_child_workflow_traversal(
             )
 
             if not child_payload:
-                updated_payloads[node_id] = payload
+                payloads[node_id] = payload
                 logger.warning("No main workflow node found in child history", node_id=node_id)
                 continue
 
-            updated_payloads[node_id] = child_payload
+            payloads[node_id] = child_payload
             logger.info("Successfully extracted child workflow output", node_id=node_id)
 
         except Exception as e:
@@ -434,9 +434,9 @@ async def handle_child_workflow_traversal(
                 node_id=node_id,
                 error=str(e),
             )
-            updated_payloads[node_id] = payload
+            payloads[node_id] = payload
 
-    return updated_payloads
+    return payloads
 
 
 def needs_child_workflow_traversal(
@@ -449,7 +449,7 @@ def needs_child_workflow_traversal(
 
     A node needs traversal if:
     1. It has no output payload (indicating child workflow didn't complete in parent)
-    2. The main workflow history has child workflow execution details for this node
+    2. The main workflow history has child workflow workflow_id and run_id for this node
 
     Args:
         payload: The NodePayload to check
