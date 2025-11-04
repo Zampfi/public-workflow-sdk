@@ -360,15 +360,12 @@ def _mark_child_workflows_needing_traversal(
 
         workflow_id, run_id = child_workflow_execution_details[child_node_id]
         logger.info(
-            "Child workflow initiated but no output found - needs traversal",
+            "Child workflow initiated but no output found, will be handled by traversal logic",
             node_id=child_node_id,
             event_id=event_id,
             workflow_id=workflow_id,
             run_id=run_id,
         )
-        node_payloads[child_node_id].needs_child_traversal = True
-        node_payloads[child_node_id].child_workflow_id = workflow_id
-        node_payloads[child_node_id].child_run_id = run_id
 
 
 def _process_events_for_payloads(
@@ -418,7 +415,7 @@ def _process_events_for_payloads(
             if return_encoded_format:
                 if _should_include_node_id(extracted_node_id, node_ids):
                     if extracted_node_id not in node_payloads:
-                        node_payloads[extracted_node_id] = NodePayload()
+                        node_payloads[extracted_node_id] = NodePayload(node_id=extracted_node_id)
                     # Extract and store workflow_id and run_id from this event
                     child_workflow_id, child_run_id = _extract_child_workflow_execution_details(event)
                     if child_workflow_id and child_run_id:
@@ -499,7 +496,7 @@ def _process_events_for_payloads(
         # Store payload based on format
         if return_encoded_format:
             if node_id not in node_payloads:
-                node_payloads[node_id] = NodePayload()
+                node_payloads[node_id] = NodePayload(node_id=node_id)
             payload = _extract_payload_encoded(event, event_type, payload_field)
             if not payload:
                 continue

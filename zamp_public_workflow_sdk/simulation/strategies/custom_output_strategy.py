@@ -41,14 +41,15 @@ class CustomOutputStrategyHandler(BaseStrategy):
             node_ids: List of node execution IDs
 
         Returns:
-            SimulationStrategyOutput with node_outputs for mocking
+            SimulationStrategyOutput with node_id_to_payload_map for mocking
         """
         # Return the same custom output for all nodes
-        node_outputs = {
+        node_id_to_payload_map = {
             node_id: NodePayload(
+                node_id=node_id,
                 input_payload=self.input_value,
                 output_payload=self.output_value,
             )
             for node_id in node_ids
         }
-        return SimulationStrategyOutput(node_outputs=node_outputs)
+        return SimulationStrategyOutput(node_id_to_payload_map=node_id_to_payload_map)

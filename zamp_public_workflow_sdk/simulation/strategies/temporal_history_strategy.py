@@ -81,8 +81,8 @@ class TemporalHistoryStrategyHandler(BaseStrategy):
 
         self.workflow_histories_map[MAIN_WORKFLOW_IDENTIFIER] = temporal_history
 
-        output = await extract_node_payload(
+        node_id_to_payload_map = await extract_node_payload(
             node_ids=node_ids,
             workflow_histories_map=self.workflow_histories_map,
         )
-        return SimulationStrategyOutput(node_outputs=output)
+        return SimulationStrategyOutput(node_id_to_payload_map=node_id_to_payload_map)

@@ -29,7 +29,7 @@ class SimulationResponse(BaseModel):
 class SimulationStrategyOutput(BaseModel):
     """Output from a simulation strategy execution."""
 
-    node_outputs: dict[str, NodePayload] = Field(
+    node_id_to_payload_map: dict[str, NodePayload] = Field(
         default_factory=dict,
         description="Dictionary mapping node IDs to their mocked NodePayload instances, or empty dict if no mocking",
     )

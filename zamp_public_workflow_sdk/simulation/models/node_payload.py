@@ -11,6 +11,9 @@ class NodePayload(BaseModel):
     activity/workflow executions during simulation.
     """
 
+    node_id: str = Field(
+        description="The node ID this payload",
+    )
     input_payload: Any | None = Field(
         default=None,
         description="Input payload data for the node (may be encoded or raw)",
@@ -18,17 +21,4 @@ class NodePayload(BaseModel):
     output_payload: Any | None = Field(
         default=None,
         description="Output payload data for the node (may be encoded or raw)",
-    )
-    # Metadata for child workflow traversal
-    needs_child_traversal: bool = Field(
-        default=False,
-        description="Flag indicating if child workflow needs to be traversed",
-    )
-    child_workflow_id: str | None = Field(
-        default=None,
-        description="Child workflow ID if traversal is needed",
-    )
-    child_run_id: str | None = Field(
-        default=None,
-        description="Child workflow run ID if traversal is needed",
     )

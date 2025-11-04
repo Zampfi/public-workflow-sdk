@@ -815,6 +815,10 @@ class ActionsHub:
         **kwargs,
     ):
         if skip_node_id_gen:
+            logger.info(
+                "Skipping node id generation while starting child workflow",
+                workflow_name=workflow_name,
+            )
             return await workflow.start_child_workflow(
                 workflow_name,
                 result_type=result_type,

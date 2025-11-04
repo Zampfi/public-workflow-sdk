@@ -76,6 +76,8 @@ async def extract_node_payload(
 
     This function handles both main workflow nodes and child workflow nodes.
     For child workflow nodes, it recursively fetches their history and extracts inputs/outputs.
+    It also handles child workflow traversal for nodes that need it (when child workflows
+    are started but not completed in the parent history).
 
     Args:
         node_ids: List of node execution IDs to extract input/output for
@@ -117,6 +119,11 @@ async def extract_node_payload(
             )
             logger.info("child workflow outputs", length_of_outputs=len(child_workflow_outputs))
             all_node_outputs.update(child_workflow_outputs)
+
+    all_node_outputs = await handle_child_workflow_traversal(
+        node_payloads=all_node_outputs,
+        main_workflow_history=temporal_history,
+    )
 
     return all_node_outputs
 
@@ -170,7 +177,7 @@ async def extract_child_workflow_node_payloads(
     # Given a node like "Parent#1.Child#1.activity#1" and child_workflow_id "Child#1",
     # this returns "Parent#1.Child#1" (the path up to and including the child workflow)
     full_child_path = get_workflow_path_from_node(node_id=node_ids[0], child_workflow_id=child_workflow_id)
-    logger.info("full child path", full_child_path=full_child_path)
+    logger.info("Child workflow node_id", full_child_path=full_child_path)
 
     # Fetch child workflow history (traverses nested paths if needed)
     child_history = await fetch_nested_child_workflow_history(
@@ -197,9 +204,12 @@ async def extract_child_workflow_node_payloads(
 
     for full_node_id in node_ids:
         if full_node_id in child_nodes_data:
-            node_outputs[full_node_id] = child_nodes_data[full_node_id]
+            payload = child_nodes_data[full_node_id]
+            payload.node_id = full_node_id
+            node_outputs[full_node_id] = payload
         else:
             node_outputs[full_node_id] = NodePayload(
+                node_id=full_node_id,
                 input_payload=None,
                 output_payload=None,
             )
@@ -365,3 +375,179 @@ def group_nodes_by_parent_workflow(node_ids: list[str]) -> dict[str, list[str]]:
         node_groups[parent].append(node_id)
 
     return node_groups
+
+
+async def handle_child_workflow_traversal(
+    node_payloads: dict[str, NodePayload],
+    main_workflow_history: WorkflowHistory,
+) -> dict[str, NodePayload]:
+    """
+    Handle child workflow traversal for nodes that need it.
+    
+    This function checks if any nodes need child workflow traversal (when child workflows
+    are started but not completed in the parent history) and fetches the actual outputs
+    from the child workflow history.
+    
+    Args:
+        node_payloads: Dictionary mapping node IDs to NodePayload instances
+        main_workflow_history: The main workflow history to check for child workflow details
+        
+    Returns:
+        Updated dictionary with child workflow outputs where needed
+    """
+    updated_payloads = {}
+    
+    for node_id, payload in node_payloads.items():
+        if not needs_child_workflow_traversal(payload, main_workflow_history, node_id):
+            updated_payloads[node_id] = payload
+            continue
+            
+        try:
+            child_workflow_id, child_run_id = main_workflow_history.get_child_workflow_workflow_id_run_id(
+                node_id=node_id
+            )
+            
+            logger.info(
+                "Traversing child workflow",
+                node_id=node_id,
+                child_workflow_id=child_workflow_id,
+                child_run_id=child_run_id,
+            )
+            
+            child_payload = await traverse_child_workflow_for_payload(
+                node_id=node_id,
+                child_workflow_id=child_workflow_id,
+                child_run_id=child_run_id,
+            )
+            
+            if not child_payload:
+                updated_payloads[node_id] = payload
+                logger.warning("No main workflow node found in child history", node_id=node_id)
+                continue
+                
+            updated_payloads[node_id] = child_payload
+            logger.info("Successfully extracted child workflow output", node_id=node_id)
+                
+        except Exception as e:
+            logger.error(
+                "Failed to traverse child workflow",
+                node_id=node_id,
+                error=str(e),
+            )
+            updated_payloads[node_id] = payload
+            
+    return updated_payloads
+
+
+def needs_child_workflow_traversal(
+    payload: NodePayload,
+    main_workflow_history: WorkflowHistory,
+    node_id: str,
+) -> bool:
+    """
+    Check if a node payload needs child workflow traversal.
+    
+    A node needs traversal if:
+    1. It has no output payload (indicating child workflow didn't complete in parent)
+    2. The main workflow history has child workflow execution details for this node
+    
+    Args:
+        payload: The NodePayload to check
+        main_workflow_history: The main workflow history
+        node_id: The node ID to check
+        
+    Returns:
+        True if child workflow traversal is needed, False otherwise
+    """
+    if payload.output_payload is not None:
+        return False
+        
+    try:
+        child_workflow_id, child_run_id = main_workflow_history.get_child_workflow_workflow_id_run_id(
+            node_id=node_id
+        )
+        return child_workflow_id is not None and child_run_id is not None
+    except (ValueError, Exception):
+        return False
+
+
+async def traverse_child_workflow_for_payload(
+    node_id: str,
+    child_workflow_id: str,
+    child_run_id: str,
+) -> NodePayload | None:
+    """
+    Traverse into child workflow and return the main workflow node payload.
+    
+    Args:
+        node_id: The parent node ID
+        child_workflow_id: The child workflow ID
+        child_run_id: The child workflow run ID
+        
+    Returns:
+        The child workflow's main node NodePayload if found, otherwise None
+    """
+    try:
+        # Fetch child workflow history
+        child_history = await fetch_temporal_history(
+            node_ids=[node_id],
+            workflow_id=child_workflow_id,
+            run_id=child_run_id,
+        )
+        
+        if not child_history:
+            return None
+            
+        child_payloads = child_history.get_nodes_data_encoded(target_node_ids=None)
+        logger.info(
+            "Child workflow payloads extracted",
+            node_id=node_id,
+            child_payloads_count=len(child_payloads),
+        )
+        child_main_node = find_main_workflow_node(child_payloads=child_payloads, node_id=node_id)
+        return child_main_node
+        
+    except Exception as e:
+        logger.error(
+            "Failed to fetch child workflow history",
+            node_id=node_id,
+            child_workflow_id=child_workflow_id,
+            child_run_id=child_run_id,
+            error=str(e),
+        )
+        return None
+
+
+def find_main_workflow_node(child_payloads: dict[str, NodePayload], node_id: str) -> NodePayload | None:
+    """
+    Find the main workflow node in child payloads.
+
+    The main workflow node is the full workflow path that contains the activity.
+    This is everything before the last segment (the activity name).
+
+    Examples:
+        - node_id="EnhancedStripeInvoiceProcessingWorkflow#1.query_data#1"
+          -> extracts "EnhancedStripeInvoiceProcessingWorkflow#1" and searches for it in child_payloads
+        - node_id="EnhancedStripeInvoiceProcessingWorkflow#1.POBackedInvoiceProcessingWorkflow#1.emit_custom_log#1"
+          -> extracts "EnhancedStripeInvoiceProcessingWorkflow#1.POBackedInvoiceProcessingWorkflow#1" and searches for it in child_payloads
+        - node_id="Parent#1.Child#1.GrandChild#1.activity#1"
+          -> extracts "Parent#1.Child#1.GrandChild#1" and searches for it in child_payloads
+
+    Args:
+        child_payloads: Dictionary mapping node IDs to NodePayload instances
+        node_id: Node ID (full path including activity)
+
+    Returns:
+        The main workflow NodePayload or None if not found
+    """
+    parts = node_id.split(".")
+    target_workflow_path = ".".join(parts[:-1]) if len(parts) > 1 else parts[0]
+
+    if target_workflow_path in child_payloads:
+        return child_payloads[target_workflow_path]
+
+    for child_node_id, child_payload in child_payloads.items():
+        if child_node_id.startswith(target_workflow_path + "."):
+            return child_payload
+
+    return None

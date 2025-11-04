@@ -265,7 +265,7 @@ class SimulationWorkflow:
         payload_type: NodePayloadType,
         node_payloads: dict[str, NodePayload],
     ) -> NodePayloadResult:
-        """Process a single node payload: traverse child if needed, decode, and build result.
+        """Process a single node payload: decode and build result.
 
         Args:
             node_id: The node ID to process
@@ -277,16 +277,11 @@ class SimulationWorkflow:
         """
         logger.info("Processing node payload", node_id=node_id, payload_type=payload_type)
 
-        # Get encoded payload
+        # Get encoded payload (child workflow traversal is already handled in helpers)
         encoded_payload = node_payloads.get(node_id)
         if not encoded_payload:
             logger.warning("No encoded payload found for node", node_id=node_id)
             return NodePayloadResult(node_id=node_id, input=None, output=None)
-
-        # Traverse child workflow if needed
-        encoded_payload = await self._traverse_child_workflow_if_needed(
-            node_id=node_id, encoded_payload=encoded_payload
-        )
 
         # Decode only what's needed based on payload_type
         decoded_output = await self._decode_node_payload(
@@ -298,96 +293,6 @@ class SimulationWorkflow:
         # Build result based on payload type
         return self._build_payload_result(node_id=node_id, payload_type=payload_type, decoded_data=decoded_output)
 
-    async def _traverse_child_workflow_if_needed(self, node_id: str, encoded_payload: NodePayload) -> NodePayload:
-        """Traverse into child workflow if the node needs it and return child's main node payload.
-
-        Args:
-            node_id: The parent node ID
-            encoded_payload: The NodePayload instance which may contain traversal metadata
-
-        Returns:
-            The child workflow's main node NodePayload if traversal needed, otherwise original payload
-        """
-        # Check if traversal is needed
-        if not encoded_payload.needs_child_traversal:
-            return encoded_payload
-
-        child_workflow_id = encoded_payload.child_workflow_id
-        child_run_id = encoded_payload.child_run_id
-
-        if not child_workflow_id or not child_run_id:
-            return encoded_payload
-
-        logger.info(
-            "Traversing child workflow",
-            node_id=node_id,
-            child_workflow_id=child_workflow_id,
-        )
-
-        try:
-            # Fetch child workflow history and extract main node payload
-            child_history = await fetch_temporal_history(
-                node_ids=[node_id],
-                workflow_id=child_workflow_id,
-                run_id=child_run_id,
-            )
-
-            child_payloads = child_history.get_nodes_data_encoded(target_node_ids=None)
-            logger.info(
-                "Child workflow payloads extracted",
-                node_id=node_id,
-                child_payloads_count=len(child_payloads),
-            )
-
-            child_main_node = self._find_main_workflow_node(child_payloads=child_payloads, node_id=node_id)
-
-            if child_main_node:
-                logger.info("Successfully extracted child workflow output", node_id=node_id)
-                return child_main_node
-
-            logger.warning("No main workflow node found in child history", node_id=node_id)
-
-        except Exception as e:
-            logger.error(
-                "Failed to fetch child workflow history",
-                node_id=node_id,
-                error=str(e),
-            )
-
-        return encoded_payload
-
-    def _find_main_workflow_node(self, child_payloads: dict[str, NodePayload], node_id: str) -> NodePayload | None:
-        """Find the main workflow node in child payloads.
-
-        The main workflow node is the full workflow path that contains the activity.
-        This is everything before the last segment (the activity name).
-
-        Examples:
-            - node_id="EnhancedStripeInvoiceProcessingWorkflow#1.query_data#1"
-              -> extracts "EnhancedStripeInvoiceProcessingWorkflow#1" and searches for it in child_payloads
-            - node_id="EnhancedStripeInvoiceProcessingWorkflow#1.POBackedInvoiceProcessingWorkflow#1.emit_custom_log#1"
-              -> extracts "EnhancedStripeInvoiceProcessingWorkflow#1.POBackedInvoiceProcessingWorkflow#1" and searches for it in child_payloads
-            - node_id="Parent#1.Child#1.GrandChild#1.activity#1"
-              -> extracts "Parent#1.Child#1.GrandChild#1" and searches for it in child_payloads
-
-        Args:
-            child_payloads: Dictionary mapping node IDs to NodePayload instances
-            node_id: Node ID (full path including activity)
-
-        Returns:
-            The main workflow NodePayload or None if not found
-        """
-        parts = node_id.split(".")
-        target_workflow_path = ".".join(parts[:-1]) if len(parts) > 1 else parts[0]
-
-        if target_workflow_path in child_payloads:
-            return child_payloads[target_workflow_path]
-
-        for child_node_id, child_payload in child_payloads.items():
-            if child_node_id.startswith(target_workflow_path + "."):
-                return child_payload
-
-        return None
 
     async def _decode_node_payload(
         self, node_id: str, encoded_payload: NodePayload, payload_type: NodePayloadType

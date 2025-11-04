@@ -50,7 +50,7 @@ class SimulationFetchDataWorkflow:
                 result = await strategy.execute(
                     node_ids=node_strategy.nodes,
                 )
-                node_id_to_response_map.update(result.node_outputs)
+                node_id_to_response_map.update(result.node_id_to_payload_map)
             except Exception as e:
                 logger.error(
                     "Error processing node with strategy",

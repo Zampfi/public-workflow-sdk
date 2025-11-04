@@ -32,6 +32,6 @@ class BaseStrategy(ABC):
 
         Returns:
             SimulationStrategyOutput containing:
-            - node_outputs: Dictionary mapping node IDs to their mocked outputs, or empty dict if no mocking
+            - node_id_to_payload_map: Dictionary mapping node IDs to their mocked outputs, or empty dict if no mocking
         """
         pass
