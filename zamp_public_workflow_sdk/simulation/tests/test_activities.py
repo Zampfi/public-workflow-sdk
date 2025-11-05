@@ -28,7 +28,7 @@ class TestReturnMockedResult:
         result = await return_mocked_result(input_params)
 
         assert isinstance(result, MockedResultOutput)
-        assert result.output == {"result": "raw_value"}
+        assert result.root == {"result": "raw_value"}
 
     @pytest.mark.asyncio
     async def test_return_mocked_result_no_decoding_needed_no_encoding_metadata(self):
@@ -43,7 +43,7 @@ class TestReturnMockedResult:
         result = await return_mocked_result(input_params)
 
         assert isinstance(result, MockedResultOutput)
-        assert result.output == {"output": "value"}
+        assert result.root == {"output": "value"}
 
     @pytest.mark.asyncio
     async def test_return_mocked_result_no_decoding_needed_none_payloads(self):
@@ -58,7 +58,7 @@ class TestReturnMockedResult:
         result = await return_mocked_result(input_params)
 
         assert isinstance(result, MockedResultOutput)
-        assert result.output is None
+        assert result.root is None
 
     @pytest.mark.asyncio
     async def test_return_mocked_result_no_decoding_needed_non_dict_payload(self):
@@ -73,7 +73,7 @@ class TestReturnMockedResult:
         result = await return_mocked_result(input_params)
 
         assert isinstance(result, MockedResultOutput)
-        assert result.output == [1, 2, 3]
+        assert result.root == [1, 2, 3]
 
     @pytest.mark.asyncio
     async def test_return_mocked_result_output_needs_decoding(self):
@@ -104,7 +104,7 @@ class TestReturnMockedResult:
             result = await return_mocked_result(input_params)
 
             assert isinstance(result, MockedResultOutput)
-            assert result.output == decoded_result
+            assert result.root == decoded_result
             mock_execute.assert_called_once()
             call_args = mock_execute.call_args
             assert call_args[0][0] == "decode_node_payload"
@@ -144,7 +144,7 @@ class TestReturnMockedResult:
             result = await return_mocked_result(input_params)
 
             assert isinstance(result, MockedResultOutput)
-            assert result.output == decoded_result
+            assert result.root == decoded_result
             mock_execute.assert_called_once()
             assert mock_execute.call_args[1]["execution_mode"] == ExecutionMode.API
 
@@ -181,7 +181,7 @@ class TestReturnMockedResult:
             result = await return_mocked_result(input_params)
 
             assert isinstance(result, MockedResultOutput)
-            assert result.output == decoded_result
+            assert result.root == decoded_result
             mock_execute.assert_called_once()
             assert mock_execute.call_args[1]["execution_mode"] == ExecutionMode.API
 
@@ -230,7 +230,7 @@ class TestReturnMockedResult:
 
         # Should return raw output since encoding is None
         assert isinstance(result, MockedResultOutput)
-        assert result.output == payload_with_metadata_no_encoding
+        assert result.root == payload_with_metadata_no_encoding
 
     @pytest.mark.asyncio
     async def test_return_mocked_result_encoding_metadata_none(self):
@@ -251,7 +251,7 @@ class TestReturnMockedResult:
 
         # Should return raw output since encoding is None
         assert isinstance(result, MockedResultOutput)
-        assert result.output == payload_with_none_encoding
+        assert result.root == payload_with_none_encoding
 
     @pytest.mark.asyncio
     async def test_return_mocked_result_empty_metadata_dict(self):
@@ -272,7 +272,7 @@ class TestReturnMockedResult:
 
         # Should return raw output since encoding is None
         assert isinstance(result, MockedResultOutput)
-        assert result.output == payload_with_empty_metadata
+        assert result.root == payload_with_empty_metadata
 
     @pytest.mark.asyncio
     async def test_return_mocked_result_no_metadata_key(self):
@@ -292,7 +292,7 @@ class TestReturnMockedResult:
 
         # Should return raw output since no metadata
         assert isinstance(result, MockedResultOutput)
-        assert result.output == payload_no_metadata
+        assert result.root == payload_no_metadata
 
     @pytest.mark.asyncio
     async def test_return_mocked_result_with_action_name(self):
@@ -307,7 +307,7 @@ class TestReturnMockedResult:
         result = await return_mocked_result(input_params)
 
         assert isinstance(result, MockedResultOutput)
-        assert result.output == {"result": "value"}
+        assert result.root == {"result": "value"}
 
     @pytest.mark.asyncio
     async def test_return_mocked_result_without_action_name(self):
@@ -321,4 +321,4 @@ class TestReturnMockedResult:
         result = await return_mocked_result(input_params)
 
         assert isinstance(result, MockedResultOutput)
-        assert result.output == {"result": "value"}
+        assert result.root == {"result": "value"}
