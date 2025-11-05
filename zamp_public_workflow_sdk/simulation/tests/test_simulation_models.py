@@ -269,3 +269,214 @@ class TestSimulationConfig:
         """Test that simulation config validates required fields."""
         with pytest.raises(ValidationError):
             SimulationConfig()  # Missing required mock_config
+
+    def test_simulation_config_no_overlap_valid(self):
+        """Test that simulation config accepts non-overlapping nodes."""
+        mock_config = NodeMockConfig(
+            node_strategies=[
+                NodeStrategy(
+                    strategy=SimulationStrategyConfig(
+                        type=StrategyType.CUSTOM_OUTPUT,
+                        config=CustomOutputConfig(output_value="output1"),
+                    ),
+                    nodes=["node1#1", "node2#1"],
+                ),
+                NodeStrategy(
+                    strategy=SimulationStrategyConfig(
+                        type=StrategyType.TEMPORAL_HISTORY,
+                        config=TemporalHistoryConfig(
+                            reference_workflow_id="workflow-123",
+                            reference_workflow_run_id="run-456",
+                        ),
+                    ),
+                    nodes=["node3#1", "node4#1"],
+                ),
+            ]
+        )
+
+        sim_config = SimulationConfig(mock_config=mock_config)
+        assert sim_config.mock_config == mock_config
+
+    def test_simulation_config_exact_duplicate_nodes(self):
+        """Test that simulation config rejects exact duplicate nodes across strategies."""
+        mock_config = NodeMockConfig(
+            node_strategies=[
+                NodeStrategy(
+                    strategy=SimulationStrategyConfig(
+                        type=StrategyType.CUSTOM_OUTPUT,
+                        config=CustomOutputConfig(output_value="output1"),
+                    ),
+                    nodes=["node1#1"],
+                ),
+                NodeStrategy(
+                    strategy=SimulationStrategyConfig(
+                        type=StrategyType.TEMPORAL_HISTORY,
+                        config=TemporalHistoryConfig(
+                            reference_workflow_id="workflow-123",
+                            reference_workflow_run_id="run-456",
+                        ),
+                    ),
+                    nodes=["node1#1"],
+                ),
+            ]
+        )
+
+        with pytest.raises(ValueError, match="Node 'node1#1' appears in multiple strategies"):
+            SimulationConfig(mock_config=mock_config)
+
+    def test_simulation_config_hierarchical_overlap_parent_in_custom(self):
+        """Test that simulation config rejects hierarchical overlap when parent is in CUSTOM_OUTPUT."""
+        mock_config = NodeMockConfig(
+            node_strategies=[
+                NodeStrategy(
+                    strategy=SimulationStrategyConfig(
+                        type=StrategyType.CUSTOM_OUTPUT,
+                        config=CustomOutputConfig(output_value="output1"),
+                    ),
+                    nodes=["Workflow#1.ChildWorkflow#1"],
+                ),
+                NodeStrategy(
+                    strategy=SimulationStrategyConfig(
+                        type=StrategyType.TEMPORAL_HISTORY,
+                        config=TemporalHistoryConfig(
+                            reference_workflow_id="workflow-123",
+                            reference_workflow_run_id="run-456",
+                        ),
+                    ),
+                    nodes=["Workflow#1.ChildWorkflow#1.Activity#1"],
+                ),
+            ]
+        )
+
+        with pytest.raises(ValueError, match="Hierarchical overlap detected"):
+            SimulationConfig(mock_config=mock_config)
+
+    def test_simulation_config_hierarchical_overlap_parent_in_temporal(self):
+        """Test that simulation config rejects hierarchical overlap when parent is in TEMPORAL_HISTORY."""
+        mock_config = NodeMockConfig(
+            node_strategies=[
+                NodeStrategy(
+                    strategy=SimulationStrategyConfig(
+                        type=StrategyType.TEMPORAL_HISTORY,
+                        config=TemporalHistoryConfig(
+                            reference_workflow_id="workflow-123",
+                            reference_workflow_run_id="run-456",
+                        ),
+                    ),
+                    nodes=["Workflow#1.ChildWorkflow#1"],
+                ),
+                NodeStrategy(
+                    strategy=SimulationStrategyConfig(
+                        type=StrategyType.CUSTOM_OUTPUT,
+                        config=CustomOutputConfig(output_value="output1"),
+                    ),
+                    nodes=["Workflow#1.ChildWorkflow#1.Activity#1"],
+                ),
+            ]
+        )
+
+        with pytest.raises(ValueError, match="Hierarchical overlap detected"):
+            SimulationConfig(mock_config=mock_config)
+
+    def test_simulation_config_hierarchical_overlap_nested_workflows(self):
+        """Test that simulation config rejects hierarchical overlap with deeply nested workflows."""
+        mock_config = NodeMockConfig(
+            node_strategies=[
+                NodeStrategy(
+                    strategy=SimulationStrategyConfig(
+                        type=StrategyType.CUSTOM_OUTPUT,
+                        config=CustomOutputConfig(output_value="output1"),
+                    ),
+                    nodes=[
+                        "EnhancedStripeInvoiceProcessingWorkflow#1.POBackedInvoiceProcessingWorkflow#1.ContractExtractionWorkflow#1"
+                    ],
+                ),
+                NodeStrategy(
+                    strategy=SimulationStrategyConfig(
+                        type=StrategyType.TEMPORAL_HISTORY,
+                        config=TemporalHistoryConfig(
+                            reference_workflow_id="workflow-123",
+                            reference_workflow_run_id="run-456",
+                        ),
+                    ),
+                    nodes=[
+                        "EnhancedStripeInvoiceProcessingWorkflow#1.POBackedInvoiceProcessingWorkflow#1.ContractExtractionWorkflow#1.query_internal_blob_storage#1"
+                    ],
+                ),
+            ]
+        )
+
+        with pytest.raises(ValueError, match="Hierarchical overlap detected"):
+            SimulationConfig(mock_config=mock_config)
+
+    def test_simulation_config_allows_same_node_in_same_strategy(self):
+        """Test that simulation config allows the same node ID to appear multiple times in the same strategy."""
+        mock_config = NodeMockConfig(
+            node_strategies=[
+                NodeStrategy(
+                    strategy=SimulationStrategyConfig(
+                        type=StrategyType.CUSTOM_OUTPUT,
+                        config=CustomOutputConfig(output_value="output1"),
+                    ),
+                    nodes=["node1#1", "node1#1"],  # Same node twice
+                ),
+            ]
+        )
+
+        # Should not raise an error - same strategy is allowed
+        sim_config = SimulationConfig(mock_config=mock_config)
+        assert sim_config.mock_config == mock_config
+
+    def test_simulation_config_allows_parallel_nodes(self):
+        """Test that simulation config allows parallel nodes that don't overlap."""
+        mock_config = NodeMockConfig(
+            node_strategies=[
+                NodeStrategy(
+                    strategy=SimulationStrategyConfig(
+                        type=StrategyType.CUSTOM_OUTPUT,
+                        config=CustomOutputConfig(output_value="output1"),
+                    ),
+                    nodes=["Workflow#1.Activity#1"],
+                ),
+                NodeStrategy(
+                    strategy=SimulationStrategyConfig(
+                        type=StrategyType.TEMPORAL_HISTORY,
+                        config=TemporalHistoryConfig(
+                            reference_workflow_id="workflow-123",
+                            reference_workflow_run_id="run-456",
+                        ),
+                    ),
+                    nodes=["Workflow#1.Activity#2"],  # Different activity, no overlap
+                ),
+            ]
+        )
+
+        sim_config = SimulationConfig(mock_config=mock_config)
+        assert sim_config.mock_config == mock_config
+
+    def test_simulation_config_multiple_overlaps(self):
+        """Test that simulation config detects the first overlap when multiple exist."""
+        mock_config = NodeMockConfig(
+            node_strategies=[
+                NodeStrategy(
+                    strategy=SimulationStrategyConfig(
+                        type=StrategyType.CUSTOM_OUTPUT,
+                        config=CustomOutputConfig(output_value="output1"),
+                    ),
+                    nodes=["Workflow#1", "Workflow#2"],
+                ),
+                NodeStrategy(
+                    strategy=SimulationStrategyConfig(
+                        type=StrategyType.TEMPORAL_HISTORY,
+                        config=TemporalHistoryConfig(
+                            reference_workflow_id="workflow-123",
+                            reference_workflow_run_id="run-456",
+                        ),
+                    ),
+                    nodes=["Workflow#1.Activity#1", "Workflow#2.Activity#1"],
+                ),
+            ]
+        )
+
+        with pytest.raises(ValueError, match="Hierarchical overlap detected"):
+            SimulationConfig(mock_config=mock_config)
