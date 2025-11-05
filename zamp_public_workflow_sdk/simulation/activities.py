@@ -36,7 +36,6 @@ async def return_mocked_result(input_params: MockedResultInput) -> MockedResultO
 
     output_payload = input_params.output_payload
 
-
     output_needs_decoding = False
     if output_payload:
         if isinstance(output_payload, list):
