@@ -111,7 +111,6 @@ def _extract_payload_data(event: dict, event_type: str, payload_field: str) -> l
     if payload_data_list:
         logger.info("Successfully extracted payload data", payload_count=len(payload_data_list))
         return payload_data_list
-
     return None
 
 
