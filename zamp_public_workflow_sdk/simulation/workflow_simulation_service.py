@@ -21,7 +21,7 @@ from zamp_public_workflow_sdk.simulation.strategies.custom_output_strategy impor
 from zamp_public_workflow_sdk.simulation.strategies.temporal_history_strategy import (
     TemporalHistoryStrategyHandler,
 )
-from zamp_public_workflow_sdk.simulation.models.mocked_result import MockedResultInput, MockedResultOutput
+from zamp_public_workflow_sdk.simulation.models.mocked_result import MockedResultInput
 
 logger = structlog.get_logger(__name__)
 
@@ -117,7 +117,7 @@ class WorkflowSimulationService:
         node_payload = self.node_id_to_payload_map[node_id]
 
         try:
-            decoded_result: MockedResultOutput = await ActionsHub.execute_activity(
+            decoded_result = await ActionsHub.execute_activity(
                 "return_mocked_result",
                 MockedResultInput(
                     node_id=node_id,
@@ -125,14 +125,13 @@ class WorkflowSimulationService:
                     output_payload=node_payload.output_payload,
                     action_name=action_name,
                 ),
-                return_type=MockedResultOutput,
                 custom_node_id=node_id,
                 summary=action_name,
             )
 
             return SimulationResponse(
                 execution_type=ExecutionType.MOCK,
-                execution_response=decoded_result.output,
+                execution_response=decoded_result,
             )
         except Exception as e:
             logger.error(
