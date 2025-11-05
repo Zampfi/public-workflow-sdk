@@ -34,14 +34,11 @@ async def return_mocked_result(input_params: MockedResultInput) -> MockedResultO
     logger.info("Processing mocked result", node_id=input_params.node_id)
 
     output_payload = input_params.output_payload
-    
+
     def payload_needs_decoding(payload_item):
         """Check if a payload dict needs decoding."""
-        return (
-            isinstance(payload_item, dict)
-            and payload_item.get("metadata", {}).get("encoding") is not None
-        )
-    
+        return isinstance(payload_item, dict) and payload_item.get("metadata", {}).get("encoding") is not None
+
     output_needs_decoding = False
     if output_payload:
         if isinstance(output_payload, list):

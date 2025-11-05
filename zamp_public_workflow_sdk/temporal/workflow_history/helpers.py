@@ -101,17 +101,17 @@ def _extract_payload_data(event: dict, event_type: str, payload_field: str) -> l
     if not payloads:
         logger.info("No payload data found in event")
         return None
-    
+
     # Extract data field from each payload
     payload_data_list = []
     for payload in payloads:
         if PayloadField.DATA.value in payload:
             payload_data_list.append(payload[PayloadField.DATA.value])
-    
+
     if payload_data_list:
         logger.info("Successfully extracted payload data", payload_count=len(payload_data_list))
         return payload_data_list
-    
+
     return None
 
 
@@ -133,7 +133,7 @@ def _extract_payload_encoded(event: dict, event_type: str, payload_field: str) -
     if not payloads:
         logger.info("No encoded payload found in event")
         return None
-    
+
     logger.info("Successfully extracted encoded payloads", payload_count=len(payloads))
     return payloads
 
