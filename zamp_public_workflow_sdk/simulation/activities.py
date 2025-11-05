@@ -6,6 +6,7 @@ from zamp_public_workflow_sdk.temporal.workflow_history.models.node_payload_data
     DecodeNodePayloadInput,
     DecodeNodePayloadOutput,
 )
+from zamp_public_workflow_sdk.simulation.helper import payload_needs_decoding
 
 logger = structlog.get_logger(__name__)
 
@@ -35,9 +36,6 @@ async def return_mocked_result(input_params: MockedResultInput) -> MockedResultO
 
     output_payload = input_params.output_payload
 
-    def payload_needs_decoding(payload_item):
-        """Check if a payload dict needs decoding."""
-        return isinstance(payload_item, dict) and payload_item.get("metadata", {}).get("encoding") is not None
 
     output_needs_decoding = False
     if output_payload:
