@@ -1,5 +1,5 @@
 from typing import Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_serializer
 
 
 class MockedResultInput(BaseModel):
@@ -27,3 +27,8 @@ class MockedResultOutput(BaseModel):
     """
 
     output: Any = Field(..., description="The decoded output payload value, or raw output if no decoding was needed")
+
+    @model_serializer
+    def serialize_model(self):
+        """Automatically unwrap when serializing."""
+        return self.output

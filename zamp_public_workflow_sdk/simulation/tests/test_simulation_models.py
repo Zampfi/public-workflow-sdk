@@ -321,7 +321,7 @@ class TestSimulationConfig:
             ]
         )
 
-        with pytest.raises(ValueError, match="Node 'node1#1' appears in multiple strategies"):
+        with pytest.raises(ValueError, match="Duplicate node 'node1#1' found in configuration"):
             SimulationConfig(mock_config=mock_config)
 
     def test_simulation_config_hierarchical_overlap_parent_in_custom(self):
@@ -409,8 +409,8 @@ class TestSimulationConfig:
         with pytest.raises(ValueError, match="Hierarchical overlap detected"):
             SimulationConfig(mock_config=mock_config)
 
-    def test_simulation_config_allows_same_node_in_same_strategy(self):
-        """Test that simulation config allows the same node ID to appear multiple times in the same strategy."""
+    def test_simulation_config_rejects_same_node_in_same_strategy(self):
+        """Test that simulation config rejects duplicate nodes even within the same strategy."""
         mock_config = NodeMockConfig(
             node_strategies=[
                 NodeStrategy(
@@ -423,9 +423,9 @@ class TestSimulationConfig:
             ]
         )
 
-        # Should not raise an error - same strategy is allowed
-        sim_config = SimulationConfig(mock_config=mock_config)
-        assert sim_config.mock_config == mock_config
+        # Should raise an error - duplicates are not allowed even in same strategy
+        with pytest.raises(ValueError, match="Duplicate node 'node1#1' found in configuration"):
+            SimulationConfig(mock_config=mock_config)
 
     def test_simulation_config_allows_parallel_nodes(self):
         """Test that simulation config allows parallel nodes that don't overlap."""

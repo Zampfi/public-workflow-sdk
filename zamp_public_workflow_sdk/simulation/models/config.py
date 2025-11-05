@@ -24,34 +24,21 @@ class SimulationConfig(BaseModel):
 
     @model_validator(mode="after")
     def validate_no_overlapping_nodes(self):
-        """Validate that no node appears in multiple strategies or overlaps hierarchically."""
-        nodes_with_strategy = []
+        """Validate that no node appears multiple times or overlaps hierarchically."""
+        node_set = set()
 
-        for strategy_index, strategy in enumerate(self.mock_config.node_strategies):
-            for node_id in strategy.nodes:
-                nodes_with_strategy.append((strategy_index, node_id))
+        for node_id in (node for strategy in self.mock_config.node_strategies for node in strategy.nodes):
+            # Check for duplicate nodes
+            if node_id in node_set:
+                raise ValueError(f"Duplicate node '{node_id}' found in configuration")
 
-        for current_position, (current_strategy_index, current_node_id) in enumerate(nodes_with_strategy):
-            for next_strategy_index, next_node_id in nodes_with_strategy[current_position + 1 :]:
-                if current_strategy_index == next_strategy_index:
-                    continue
-                # Check if the nodes are the same
-                if current_node_id == next_node_id:
+            # Check for hierarchical overlaps
+            for existing_node_id in node_set:
+                if node_id.startswith(existing_node_id + ".") or existing_node_id.startswith(node_id + "."):
                     raise ValueError(
-                        f"Node '{current_node_id}' appears in multiple strategies: "
-                        f"strategy[{current_strategy_index}] and strategy[{next_strategy_index}]"
+                        f"Hierarchical overlap detected: node '{node_id}' overlaps with node '{existing_node_id}'"
                     )
-
-                # Check if the nodes are hierarchical
-                if not (
-                    current_node_id.startswith(next_node_id + ".") or next_node_id.startswith(current_node_id + ".")
-                ):
-                    continue
-
-                raise ValueError(
-                    f"Hierarchical overlap detected: node '{current_node_id}' in strategy[{current_strategy_index}] "
-                    f"overlaps with node '{next_node_id}' in strategy[{next_strategy_index}]"
-                )
+            node_set.add(node_id)
 
         return self
 

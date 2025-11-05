@@ -74,6 +74,7 @@ class SimulationWorkflow:
         Raises:
             NonRetryableError: If workflow resolution fails
         """
+
         workflow_params = self._prepare_workflow_params(input_params)
 
         workflow_result, workflow_id, run_id = await self._execute_child_workflow(
@@ -89,12 +90,10 @@ class SimulationWorkflow:
             has_result=workflow_result is not None,
         )
 
-        custom_output_nodes = self._get_custom_output_nodes(input_params.simulation_config)
         node_payloads = await self._fetch_and_parse_node_payloads(
             workflow_id=workflow_id,
             run_id=run_id,
             node_payloads=input_params.output_schema.node_payloads,
-            custom_output_nodes=custom_output_nodes,
         )
 
         result = SimulationWorkflowOutput(node_payloads=node_payloads)
@@ -107,15 +106,6 @@ class SimulationWorkflow:
         )
 
         return result
-
-    def _get_custom_output_nodes(self, simulation_config) -> set[str]:
-        """Extract node IDs that use CUSTOM_OUTPUT strategy."""
-        custom_nodes = set()
-        if hasattr(simulation_config, "mock_config") and simulation_config.mock_config:
-            for node_strategy in simulation_config.mock_config.node_strategies:
-                if node_strategy.strategy.type == "CUSTOM_OUTPUT":
-                    custom_nodes.update(node_strategy.nodes)
-        return custom_nodes
 
     def _prepare_workflow_params(self, input_params: SimulationWorkflowInput) -> dict[str, Any]:
         """Prepare workflow parameters with simulation_config.
@@ -188,7 +178,6 @@ class SimulationWorkflow:
         workflow_id: str,
         run_id: str,
         node_payloads: dict[str, NodePayloadType],
-        custom_output_nodes: set[str],
     ) -> list[NodePayloadResult]:
         """Fetch workflow history and parse node payloads based on output schema.
 
@@ -216,10 +205,7 @@ class SimulationWorkflow:
         result: list[NodePayloadResult] = []
         for node_id, payload_type in node_payloads.items():
             payload_result = await self._process_node_payload(
-                node_id=node_id,
-                payload_type=payload_type,
-                node_payloads=encoded_node_payloads,
-                custom_output_nodes=custom_output_nodes,
+                node_id=node_id, payload_type=payload_type, node_payloads=encoded_node_payloads
             )
             result.append(payload_result)
 
@@ -278,7 +264,6 @@ class SimulationWorkflow:
         node_id: str,
         payload_type: NodePayloadType,
         node_payloads: dict[str, NodePayload],
-        custom_output_nodes: set[str],
     ) -> NodePayloadResult:
         """Process a single node payload: decode and build result.
 
@@ -303,12 +288,7 @@ class SimulationWorkflow:
         if not decoded_payload:
             return NodePayloadResult(node_id=node_id, input=None, output=None)
 
-        return self._build_payload_result(
-            node_id=node_id,
-            payload_type=payload_type,
-            decoded_data=decoded_payload,
-            custom_output_nodes=custom_output_nodes,
-        )
+        return self._build_payload_result(node_id=node_id, payload_type=payload_type, decoded_data=decoded_payload)
 
     async def _decode_node_payload(
         self, node_id: str, encoded_payload: NodePayload, payload_type: NodePayloadType
@@ -359,11 +339,7 @@ class SimulationWorkflow:
             return None
 
     def _build_payload_result(
-        self,
-        node_id: str,
-        payload_type: NodePayloadType,
-        decoded_data: DecodeNodePayloadOutput,
-        custom_output_nodes: set[str],
+        self, node_id: str, payload_type: NodePayloadType, decoded_data: DecodeNodePayloadOutput
     ) -> NodePayloadResult:
         """Build NodePayloadResult based on payload type.
 
@@ -383,13 +359,6 @@ class SimulationWorkflow:
 
         if payload_type in [NodePayloadType.OUTPUT, NodePayloadType.INPUT_OUTPUT]:
             decoded_output = decoded_data.decoded_output
-            if (
-                node_id in custom_output_nodes
-                and isinstance(decoded_output, dict)
-                and len(decoded_output) == 1
-                and "output" in decoded_output
-            ):
-                decoded_output = decoded_output["output"]
 
         return NodePayloadResult(
             node_id=node_id,
