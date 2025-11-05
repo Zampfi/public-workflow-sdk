@@ -42,7 +42,7 @@ async def return_mocked_result(input_params: MockedResultInput) -> MockedResultO
 
     if not output_needs_decoding:
         logger.info("No output decoding needed, returning raw output", node_id=input_params.node_id)
-        return MockedResultOutput(output=output_payload)
+        return MockedResultOutput(root=output_payload)
 
     try:
         decoded_payload: DecodeNodePayloadOutput = await ActionsHub.execute_activity(
@@ -57,7 +57,7 @@ async def return_mocked_result(input_params: MockedResultInput) -> MockedResultO
         )
 
         logger.info("Successfully decoded mocked result output", node_id=input_params.node_id)
-        return MockedResultOutput(output=decoded_payload.decoded_output)
+        return MockedResultOutput(root=decoded_payload.decoded_output)
 
     except Exception as e:
         logger.error(
