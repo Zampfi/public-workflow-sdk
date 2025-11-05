@@ -2,6 +2,7 @@ from unittest.mock import patch
 
 from zamp_public_workflow_sdk.temporal.workflow_history.helpers import (
     _extract_payload_data,
+    _extract_payload_encoded,
     _get_node_id_from_header,
     extract_node_id_from_event,
     extract_node_payloads,
@@ -147,6 +148,93 @@ class TestHelpers:
         result = _extract_payload_data(event, "EVENT_TYPE_WORKFLOW_EXECUTION_STARTED", "input")
 
         assert result is None
+
+    def test_extract_payload_encoded_with_valid_payloads(self):
+        """Test extracting encoded payload with valid payloads."""
+        event = {
+            "eventType": "EVENT_TYPE_WORKFLOW_EXECUTION_STARTED",
+            "workflowExecutionStartedEventAttributes": {
+                "input": {"payloads": [{"metadata": {"encoding": "json/plain"}, "data": "eyJ0ZXN0IjogImlucHV0In0="}]}
+            },
+        }
+
+        result = _extract_payload_encoded(event, "EVENT_TYPE_WORKFLOW_EXECUTION_STARTED", "input")
+
+        assert result == [{"metadata": {"encoding": "json/plain"}, "data": "eyJ0ZXN0IjogImlucHV0In0="}]
+
+    def test_extract_payload_encoded_with_multiple_payloads(self):
+        """Test extracting encoded payload with multiple payloads."""
+        event = {
+            "eventType": "EVENT_TYPE_ACTIVITY_TASK_COMPLETED",
+            "activityTaskCompletedEventAttributes": {
+                "result": {
+                    "payloads": [
+                        {"metadata": {"encoding": "json/plain"}, "data": "result1"},
+                        {"metadata": {"encoding": "json/plain"}, "data": "result2"},
+                    ]
+                }
+            },
+        }
+
+        result = _extract_payload_encoded(event, "EVENT_TYPE_ACTIVITY_TASK_COMPLETED", "result")
+
+        assert len(result) == 2
+        assert result[0] == {"metadata": {"encoding": "json/plain"}, "data": "result1"}
+        assert result[1] == {"metadata": {"encoding": "json/plain"}, "data": "result2"}
+
+    def test_extract_payload_encoded_without_attrs_key(self):
+        """Test extracting encoded payload without attributes key."""
+        event = {"eventType": "EVENT_TYPE_UNKNOWN"}
+
+        result = _extract_payload_encoded(event, "EVENT_TYPE_UNKNOWN", "input")
+
+        assert result is None
+
+    def test_extract_payload_encoded_without_payloads(self):
+        """Test extracting encoded payload without payloads."""
+        event = {
+            "eventType": "EVENT_TYPE_WORKFLOW_EXECUTION_STARTED",
+            "workflowExecutionStartedEventAttributes": {"input": {}},
+        }
+
+        result = _extract_payload_encoded(event, "EVENT_TYPE_WORKFLOW_EXECUTION_STARTED", "input")
+
+        assert result is None
+
+    def test_extract_payload_encoded_with_empty_payloads(self):
+        """Test extracting encoded payload with empty payloads list."""
+        event = {
+            "eventType": "EVENT_TYPE_WORKFLOW_EXECUTION_STARTED",
+            "workflowExecutionStartedEventAttributes": {"input": {"payloads": []}},
+        }
+
+        result = _extract_payload_encoded(event, "EVENT_TYPE_WORKFLOW_EXECUTION_STARTED", "input")
+
+        assert result is None
+
+    def test_extract_payload_encoded_with_metadata_only(self):
+        """Test extracting encoded payload with metadata but no data field."""
+        event = {
+            "eventType": "EVENT_TYPE_WORKFLOW_EXECUTION_STARTED",
+            "workflowExecutionStartedEventAttributes": {
+                "input": {"payloads": [{"metadata": {"encoding": "json/plain"}}]}
+            },
+        }
+
+        result = _extract_payload_encoded(event, "EVENT_TYPE_WORKFLOW_EXECUTION_STARTED", "input")
+
+        assert result == [{"metadata": {"encoding": "json/plain"}}]
+
+    def test_extract_payload_encoded_with_data_only(self):
+        """Test extracting encoded payload with data but no metadata field."""
+        event = {
+            "eventType": "EVENT_TYPE_ACTIVITY_TASK_COMPLETED",
+            "activityTaskCompletedEventAttributes": {"result": {"payloads": [{"data": "test_result"}]}},
+        }
+
+        result = _extract_payload_encoded(event, "EVENT_TYPE_ACTIVITY_TASK_COMPLETED", "result")
+
+        assert result == [{"data": "test_result"}]
 
     def test_extract_node_payloads_activity_scheduled(self):
         """Test extracting node payloads for activity scheduled event."""
