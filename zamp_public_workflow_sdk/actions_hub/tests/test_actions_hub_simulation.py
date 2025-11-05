@@ -458,7 +458,7 @@ class TestActionsHubSimulation:
             )
 
             assert result.execution_type == ExecutionType.MOCK
-            assert result.execution_response == mock_result
+            assert result.execution_response == decoded_data
             # Verify return_mocked_result activity was called
             mock_execute.assert_called_once()
             call_args = mock_execute.call_args
@@ -520,6 +520,6 @@ class TestActionsHubSimulation:
             )
 
             assert result.execution_type == ExecutionType.MOCK
-            assert result.execution_response == mock_result
+            assert result.execution_response == raw_payload
             # Verify return_mocked_result activity was called (it handles both encoded and raw)
             mock_execute.assert_called_once()

@@ -58,7 +58,7 @@ class TestReturnMockedResult:
         result = await return_mocked_result(input_params)
 
         assert isinstance(result, MockedResultOutput)
-        assert result.output is None
+        assert result.root is None
 
     @pytest.mark.asyncio
     async def test_return_mocked_result_no_decoding_needed_non_dict_payload(self):

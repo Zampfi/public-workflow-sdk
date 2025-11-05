@@ -119,7 +119,7 @@ class TestWorkflowSimulationService:
 
             assert isinstance(response, SimulationResponse)
             assert response.execution_type == ExecutionType.MOCK
-            assert response.execution_response == mock_result
+            assert response.execution_response == "test_output"
 
     @pytest.mark.asyncio
     async def test_get_simulation_response_node_not_found(self):
@@ -152,7 +152,7 @@ class TestWorkflowSimulationService:
 
             assert isinstance(response, SimulationResponse)
             assert response.execution_type == ExecutionType.MOCK
-            assert response.execution_response == mock_result
+            assert response.execution_response == dict_output
 
     @pytest.mark.asyncio
     async def test_get_simulation_response_with_list_output(self):
@@ -173,7 +173,7 @@ class TestWorkflowSimulationService:
 
             assert isinstance(response, SimulationResponse)
             assert response.execution_type == ExecutionType.MOCK
-            assert response.execution_response == mock_result
+            assert response.execution_response == list_output
 
     @pytest.mark.asyncio
     async def test_initialize_simulation_data_success(self):
