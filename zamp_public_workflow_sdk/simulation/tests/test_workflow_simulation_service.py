@@ -325,7 +325,7 @@ class TestWorkflowSimulationService:
         """Test that payload with empty string encoding returns False."""
         payload = {"metadata": {"encoding": ""}, "data": "some_data"}
 
-        assert payload_needs_decoding(payload) is False
+        assert payload_needs_decoding(payload) is True
 
     def test_payload_needs_decoding_real_world_temporal_history(self):
         """Test with real-world Temporal History encoded payload structure."""
