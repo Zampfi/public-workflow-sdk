@@ -50,7 +50,6 @@ async def fetch_temporal_history(
         WorkflowHistory object if successful, None if fetch fails
     """
     from zamp_public_workflow_sdk.actions_hub import ActionsHub
-    
     try:
         workflow_history = await ActionsHub.execute_child_workflow(
             "FetchTemporalWorkflowHistoryWorkflow",

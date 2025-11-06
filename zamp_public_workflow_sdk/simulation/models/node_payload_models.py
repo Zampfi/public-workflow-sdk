@@ -1,9 +1,3 @@
-"""
-Node payload models for simulation workflows.
-
-These models are independent of actions_hub to avoid circular imports.
-"""
-
 from enum import Enum
 from typing import Any
 
