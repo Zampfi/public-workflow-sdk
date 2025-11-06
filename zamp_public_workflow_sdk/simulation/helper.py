@@ -549,8 +549,3 @@ def find_main_workflow_node(child_payloads: dict[str, NodePayload], node_id: str
             return child_payload
 
     return None
-
-
-def payload_needs_decoding(payload_item):
-    """Check if a payload dict needs decoding."""
-    return isinstance(payload_item, dict) and payload_item.get("metadata", {}).get("encoding") is not None
