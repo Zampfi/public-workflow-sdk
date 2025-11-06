@@ -1,5 +1,5 @@
 from typing import Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, RootModel
 
 
 class MockedResultInput(BaseModel):
@@ -20,10 +20,10 @@ class MockedResultInput(BaseModel):
     action_name: str | None = Field(default=None, description="Optional action name for activity summary")
 
 
-class MockedResultOutput(BaseModel):
+class MockedResultOutput(RootModel[Any]):
     """Output model for return_mocked_result activity.
 
     Contains the decoded output payload value, which can be any JSON-serializable type.
     """
 
-    output: Any = Field(..., description="The decoded output payload value, or raw output if no decoding was needed")
+    root: Any

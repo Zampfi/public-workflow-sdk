@@ -113,7 +113,8 @@ class TestWorkflowSimulationService:
         with patch(
             "zamp_public_workflow_sdk.actions_hub.action_hub_core.ActionsHub.execute_activity", new_callable=AsyncMock
         ) as mock_execute:
-            mock_execute.return_value = MockedResultOutput(output="test_output")
+            mock_result = MockedResultOutput(root="test_output")
+            mock_execute.return_value = mock_result
             response = await service.get_simulation_response("node1#1")
 
             assert isinstance(response, SimulationResponse)
@@ -145,7 +146,8 @@ class TestWorkflowSimulationService:
         with patch(
             "zamp_public_workflow_sdk.actions_hub.action_hub_core.ActionsHub.execute_activity", new_callable=AsyncMock
         ) as mock_execute:
-            mock_execute.return_value = MockedResultOutput(output=dict_output)
+            mock_result = MockedResultOutput(root=dict_output)
+            mock_execute.return_value = mock_result
             response = await service.get_simulation_response("node1#1")
 
             assert isinstance(response, SimulationResponse)
@@ -165,7 +167,8 @@ class TestWorkflowSimulationService:
         with patch(
             "zamp_public_workflow_sdk.actions_hub.action_hub_core.ActionsHub.execute_activity", new_callable=AsyncMock
         ) as mock_execute:
-            mock_execute.return_value = MockedResultOutput(output=list_output)
+            mock_result = MockedResultOutput(root=list_output)
+            mock_execute.return_value = mock_result
             response = await service.get_simulation_response("node1#1")
 
             assert isinstance(response, SimulationResponse)

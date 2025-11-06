@@ -132,7 +132,7 @@ class WorkflowSimulationService:
 
             return SimulationResponse(
                 execution_type=ExecutionType.MOCK,
-                execution_response=decoded_result.output,
+                execution_response=decoded_result.root,
             )
         except Exception as e:
             logger.error(

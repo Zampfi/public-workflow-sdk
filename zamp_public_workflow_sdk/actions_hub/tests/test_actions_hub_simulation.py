@@ -447,7 +447,8 @@ class TestActionsHubSimulation:
             "zamp_public_workflow_sdk.actions_hub.action_hub_core.ActionsHub.execute_activity", new_callable=AsyncMock
         ) as mock_execute:
             decoded_data = {"result": "decoded_value"}
-            mock_execute.return_value = MockedResultOutput(output=decoded_data)
+            mock_result = MockedResultOutput(root=decoded_data)
+            mock_execute.return_value = mock_result
 
             result = await ActionsHub._get_simulation_response(
                 workflow_id="test_wf",
@@ -509,7 +510,8 @@ class TestActionsHubSimulation:
         with patch(
             "zamp_public_workflow_sdk.actions_hub.action_hub_core.ActionsHub.execute_activity", new_callable=AsyncMock
         ) as mock_execute:
-            mock_execute.return_value = MockedResultOutput(output=raw_payload)
+            mock_result = MockedResultOutput(root=raw_payload)
+            mock_execute.return_value = mock_result
             result = await ActionsHub._get_simulation_response(
                 workflow_id="test_wf",
                 node_id="node_1",

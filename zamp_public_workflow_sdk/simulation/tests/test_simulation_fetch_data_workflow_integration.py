@@ -351,9 +351,8 @@ class TestSimulationServiceIntegration:
             # Also patch execute_activity for the get_simulation_response call
             from zamp_public_workflow_sdk.simulation.models.mocked_result import MockedResultOutput
 
-            mock_actions_hub.execute_activity = AsyncMock(
-                return_value=MockedResultOutput(output="integration_test_output")
-            )
+            mock_result = MockedResultOutput(root="integration_test_output")
+            mock_actions_hub.execute_activity = AsyncMock(return_value=mock_result)
 
             await service._initialize_simulation_data()
 
