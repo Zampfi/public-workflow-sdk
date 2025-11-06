@@ -10,16 +10,7 @@ with workflow.unsafe.imports_passed_through():
         SimulationWorkflowInput,
         NodePayloadType,
     )
-    from zamp_public_workflow_sdk.simulation.helper import (
-        MAIN_WORKFLOW_IDENTIFIER,
-        extract_node_payload,
-        fetch_temporal_history,
-    )
-    from zamp_public_workflow_sdk.temporal.workflow_history.models.node_payload_data import (
-        DecodeNodePayloadInput,
-        DecodeNodePayloadOutput,
-    )
-    from zamp_public_workflow_sdk.simulation.models.node_payload import NodePayload
+    from zamp_public_workflow_sdk.simulation.helper import build_node_payload_results
 
 
 logger = structlog.get_logger(__name__)
@@ -90,10 +81,10 @@ class SimulationWorkflow:
             has_result=workflow_result is not None,
         )
 
-        node_payloads = await self._fetch_and_parse_node_payloads(
+        node_payloads = await build_node_payload_results(
             workflow_id=workflow_id,
             run_id=run_id,
-            node_payloads=input_params.output_schema.node_payloads,
+            output_config=input_params.output_schema.node_payloads,
         )
 
         result = SimulationWorkflowOutput(node_payloads=node_payloads)
@@ -172,196 +163,3 @@ class SimulationWorkflow:
             has_result=workflow_result is not None,
         )
         return workflow_result, workflow_id, run_id
-
-    async def _fetch_and_parse_node_payloads(
-        self,
-        workflow_id: str,
-        run_id: str,
-        node_payloads: dict[str, NodePayloadType],
-    ) -> list[NodePayloadResult]:
-        """Fetch workflow history and parse node payloads based on output schema.
-
-        Args:
-            workflow_id: The workflow ID to fetch history for
-            run_id: The run ID to fetch history for
-            node_payloads: Dictionary mapping node IDs to payload types
-
-        Returns:
-            List of NodePayloadResult objects
-        """
-        logger.info(
-            "Fetching and parsing node payloads",
-            workflow_id=workflow_id,
-            run_id=run_id,
-            node_count=len(node_payloads),
-        )
-
-        # Fetch and extract node payloads from workflow history
-        encoded_node_payloads = await self._fetch_node_payloads(
-            workflow_id=workflow_id, run_id=run_id, node_ids=list(node_payloads.keys())
-        )
-
-        # Process each node payload
-        result: list[NodePayloadResult] = []
-        for node_id, payload_type in node_payloads.items():
-            payload_result = await self._process_node_payload(
-                node_id=node_id, payload_type=payload_type, node_payloads=encoded_node_payloads
-            )
-            result.append(payload_result)
-
-        return result
-
-    async def _fetch_node_payloads(self, workflow_id: str, run_id: str, node_ids: list[str]) -> dict[str, NodePayload]:
-        """Fetch temporal history and extract node payloads.
-
-        Args:
-            workflow_id: The workflow ID
-            run_id: The run ID
-            node_ids: List of node IDs to extract
-
-        Returns:
-            Dictionary mapping node IDs to NodePayload instances with encoded data
-
-        Raises:
-            Exception: If fetch or extraction fails
-        """
-        try:
-            temporal_history = await fetch_temporal_history(
-                node_ids=node_ids,
-                workflow_id=workflow_id,
-                run_id=run_id,
-            )
-            if temporal_history is None:
-                raise Exception(
-                    f"Failed to fetch temporal history for workflow_id={workflow_id}, run_id={run_id}: returned None"
-                )
-        except Exception as e:
-            logger.error(
-                "Failed to fetch temporal history",
-                workflow_id=workflow_id,
-                run_id=run_id,
-                error=str(e),
-            )
-            raise Exception(f"Failed to fetch temporal history for workflow_id={workflow_id}, run_id={run_id}") from e
-
-        try:
-            node_payloads = await extract_node_payload(
-                node_ids=node_ids,
-                workflow_histories_map={MAIN_WORKFLOW_IDENTIFIER: temporal_history},
-            )
-            logger.info("Extracted node payloads", node_count=len(node_payloads))
-            return node_payloads
-        except Exception as e:
-            logger.error(
-                "Failed to extract node payloads",
-                workflow_id=workflow_id,
-                error=str(e),
-            )
-            raise Exception(f"Failed to extract node payloads for workflow_id={workflow_id}, run_id={run_id}") from e
-
-    async def _process_node_payload(
-        self,
-        node_id: str,
-        payload_type: NodePayloadType,
-        node_payloads: dict[str, NodePayload],
-    ) -> NodePayloadResult:
-        """Process a single node payload: decode and build result.
-
-        Args:
-            node_id: The node ID to process
-            payload_type: The payload type (INPUT, OUTPUT, or INPUT_OUTPUT)
-            node_payloads: Dictionary mapping node IDs to NodePayload instances
-
-        Returns:
-            NodePayloadResult with decoded input/output based on payload type
-        """
-        logger.info("Processing node payload", node_id=node_id, payload_type=payload_type)
-
-        encoded_payload = node_payloads.get(node_id)
-        if not encoded_payload:
-            logger.warning("No encoded payload found for node", node_id=node_id)
-            return NodePayloadResult(node_id=node_id, input=None, output=None)
-
-        decoded_payload = await self._decode_node_payload(
-            node_id=node_id, encoded_payload=encoded_payload, payload_type=payload_type
-        )
-        if not decoded_payload:
-            return NodePayloadResult(node_id=node_id, input=None, output=None)
-
-        return self._build_payload_result(node_id=node_id, payload_type=payload_type, decoded_data=decoded_payload)
-
-    async def _decode_node_payload(
-        self, node_id: str, encoded_payload: NodePayload, payload_type: NodePayloadType
-    ) -> DecodeNodePayloadOutput | None:
-        """Decode node payload using decode_node_payload activity.
-
-        Only decodes the payloads needed based on payload_type to optimize performance.
-
-        Args:
-            node_id: The node ID
-            encoded_payload: NodePayload instance containing input_payload and output_payload
-            payload_type: The payload type (INPUT, OUTPUT, or INPUT_OUTPUT)
-
-        Returns:
-            Decoded payload result or None if decoding fails
-        """
-        try:
-            # Determine what to decode based on payload_type
-            input_to_decode = None
-            output_to_decode = None
-
-            if payload_type in [NodePayloadType.INPUT, NodePayloadType.INPUT_OUTPUT]:
-                input_to_decode = encoded_payload.input_payload
-
-            if payload_type in [NodePayloadType.OUTPUT, NodePayloadType.INPUT_OUTPUT]:
-                output_to_decode = encoded_payload.output_payload
-
-            decoded_data = await ActionsHub.execute_activity(
-                "decode_node_payload",
-                DecodeNodePayloadInput(
-                    node_id=node_id,
-                    input_payload=input_to_decode,
-                    output_payload=output_to_decode,
-                ),
-                summary=f"{node_id}",
-                return_type=DecodeNodePayloadOutput,
-            )
-            logger.info(
-                "Successfully decoded node payload",
-                node_id=node_id,
-                payload_type=payload_type.value,
-                has_input=decoded_data.decoded_input is not None,
-                has_output=decoded_data.decoded_output is not None,
-            )
-            return decoded_data
-        except Exception as e:
-            logger.error("Failed to decode node payload", node_id=node_id, error=str(e))
-            return None
-
-    def _build_payload_result(
-        self, node_id: str, payload_type: NodePayloadType, decoded_data: DecodeNodePayloadOutput
-    ) -> NodePayloadResult:
-        """Build NodePayloadResult based on payload type.
-
-        Args:
-            node_id: The node ID
-            payload_type: The payload type (INPUT, OUTPUT, or INPUT_OUTPUT)
-            decoded_data: The decoded payload data output
-
-        Returns:
-            NodePayloadResult with appropriate input/output based on payload type
-        """
-        decoded_input = None
-        decoded_output = None
-
-        if payload_type in [NodePayloadType.INPUT, NodePayloadType.INPUT_OUTPUT]:
-            decoded_input = decoded_data.decoded_input
-
-        if payload_type in [NodePayloadType.OUTPUT, NodePayloadType.INPUT_OUTPUT]:
-            decoded_output = decoded_data.decoded_output
-
-        return NodePayloadResult(
-            node_id=node_id,
-            input=decoded_input,
-            output=decoded_output,
-        )
