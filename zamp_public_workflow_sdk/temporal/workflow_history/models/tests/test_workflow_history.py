@@ -78,7 +78,8 @@ class TestWorkflowHistory:
         result = sample_workflow_history.get_node_input("node-1")
 
         # The actual implementation extracts the payload from the workflow execution started event
-        assert result == "test input data"
+        # Returns a list of payloads
+        assert result == ["test input data"]
 
     def test_get_input_from_node_id_not_found(self, sample_workflow_history):
         """Test getting input from node ID when node doesn't exist"""
@@ -108,7 +109,7 @@ class TestWorkflowHistory:
         # The actual implementation returns the real node data
         assert "node-1" in result
         assert result["node-1"].node_id == "node-1"
-        assert result["node-1"].input_payload == "test input data"
+        assert result["node-1"].input_payload == ["test input data"]
         assert result["node-1"].output_payload is None
         assert len(result["node-1"].node_events) == 1
 
@@ -126,7 +127,7 @@ class TestWorkflowHistory:
         # The actual implementation returns the real node data
         assert "node-1" in result
         assert result["node-1"].node_id == "node-1"
-        assert result["node-1"].input_payload == "test input data"
+        assert result["node-1"].input_payload == ["test input data"]
         assert result["node-1"].output_payload is None
         assert len(result["node-1"].node_events) == 1
 
@@ -137,7 +138,7 @@ class TestWorkflowHistory:
         # The actual implementation returns the real node data
         assert "node-1" in result
         assert result["node-1"].node_id == "node-1"
-        assert result["node-1"].input_payload == "test input data"
+        assert result["node-1"].input_payload == ["test input data"]
         assert result["node-1"].output_payload is None
         assert len(result["node-1"].node_events) == 1
 
@@ -147,7 +148,7 @@ class TestWorkflowHistory:
 
         assert "node-1" in result
         assert result["node-1"].node_id == "node-1"
-        assert result["node-1"].input_payload == "test input data"
+        assert result["node-1"].input_payload == ["test input data"]
         assert result["node-1"].output_payload is None
         assert len(result["node-1"].node_events) == 1
 
@@ -155,13 +156,14 @@ class TestWorkflowHistory:
         """Test getting encoded input from node ID when node exists"""
         result = sample_workflow_history.get_node_input_encoded("activity-node-1")
 
-        # Should return the encoded input payload with metadata and data
+        # Should return the encoded input payload as a list of payloads
         assert result is not None
-        assert isinstance(result, dict)
-        assert "data" in result
-        assert result["data"] == "test activity input"
-        assert "metadata" in result
-        assert result["metadata"]["encoding"] == "json/plain"
+        assert isinstance(result, list)
+        assert len(result) == 1
+        assert "data" in result[0]
+        assert result[0]["data"] == "test activity input"
+        assert "metadata" in result[0]
+        assert result[0]["metadata"]["encoding"] == "json/plain"
 
     def test_get_node_input_encoded_not_found(self, sample_workflow_history):
         """Test getting encoded input from node ID when node doesn't exist"""
@@ -174,13 +176,14 @@ class TestWorkflowHistory:
         """Test getting encoded output from node ID when node exists"""
         result = sample_workflow_history.get_node_output_encoded("activity-node-1")
 
-        # Should return the encoded output payload
+        # Should return the encoded output payload as a list of payloads
         assert result is not None
-        assert isinstance(result, dict)
-        assert "data" in result
-        assert result["data"] == "test output data"
-        assert "metadata" in result
-        assert result["metadata"]["encoding"] == "json/plain"
+        assert isinstance(result, list)
+        assert len(result) == 1
+        assert "data" in result[0]
+        assert result[0]["data"] == "test output data"
+        assert "metadata" in result[0]
+        assert result[0]["metadata"]["encoding"] == "json/plain"
 
     def test_get_node_output_encoded_not_found(self, sample_workflow_history):
         """Test getting encoded output from node ID when node doesn't exist"""
@@ -219,8 +222,10 @@ class TestWorkflowHistory:
 
         assert "activity#1" in result
         assert isinstance(result["activity#1"], NodePayload)
-        assert result["activity#1"].input_payload["data"] == "test input"
-        assert result["activity#1"].output_payload["data"] == "test output"
+        assert isinstance(result["activity#1"].input_payload, list)
+        assert result["activity#1"].input_payload[0]["data"] == "test input"
+        assert isinstance(result["activity#1"].output_payload, list)
+        assert result["activity#1"].output_payload[0]["data"] == "test output"
 
     def test_get_nodes_data_encoded_without_target_node_ids(self):
         """Test getting all encoded node data without target node IDs"""
@@ -244,4 +249,5 @@ class TestWorkflowHistory:
 
         assert "activity#1" in result
         assert isinstance(result["activity#1"], NodePayload)
-        assert result["activity#1"].input_payload["data"] == "test input"
+        assert isinstance(result["activity#1"].input_payload, list)
+        assert result["activity#1"].input_payload[0]["data"] == "test input"

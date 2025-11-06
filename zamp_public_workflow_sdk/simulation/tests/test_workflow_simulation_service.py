@@ -22,6 +22,7 @@ from zamp_public_workflow_sdk.simulation.models.mocked_result import MockedResul
 from zamp_public_workflow_sdk.simulation.workflow_simulation_service import (
     WorkflowSimulationService,
 )
+from zamp_public_workflow_sdk.simulation.helper import payload_needs_decoding
 
 
 class TestWorkflowSimulationService:
@@ -253,3 +254,90 @@ class TestWorkflowSimulationService:
 
             with pytest.raises(AttributeError):
                 await service._initialize_simulation_data()
+
+    def test_payload_needs_decoding_with_encoding_metadata(self):
+        """Test that payload with encoding metadata returns True."""
+        payload = {"metadata": {"encoding": "json/plain"}, "data": "some_encoded_data"}
+
+        assert payload_needs_decoding(payload) is True
+
+    def test_payload_needs_decoding_with_different_encoding(self):
+        """Test that payload with different encoding type returns True."""
+        payload = {"metadata": {"encoding": "base64"}, "data": "encoded_content"}
+
+        assert payload_needs_decoding(payload) is True
+
+    def test_payload_needs_decoding_without_encoding_metadata(self):
+        """Test that payload without encoding metadata returns False."""
+        payload = {"metadata": {"other_field": "value"}, "data": "some_data"}
+
+        assert payload_needs_decoding(payload) is False
+
+    def test_payload_needs_decoding_with_none_encoding(self):
+        """Test that payload with None encoding returns False."""
+        payload = {"metadata": {"encoding": None}, "data": "some_data"}
+
+        assert payload_needs_decoding(payload) is False
+
+    def test_payload_needs_decoding_without_metadata(self):
+        """Test that payload without metadata returns False."""
+        payload = {"data": "some_data", "other_field": "value"}
+
+        assert payload_needs_decoding(payload) is False
+
+    def test_payload_needs_decoding_with_empty_metadata(self):
+        """Test that payload with empty metadata returns False."""
+        payload = {"metadata": {}, "data": "some_data"}
+
+        assert payload_needs_decoding(payload) is False
+
+    def test_payload_needs_decoding_non_dict_payload_string(self):
+        """Test that non-dict payload (string) returns False."""
+        payload = "plain_string_payload"
+
+        assert payload_needs_decoding(payload) is False
+
+    def test_payload_needs_decoding_non_dict_payload_list(self):
+        """Test that non-dict payload (list) returns False."""
+        payload = ["item1", "item2"]
+
+        assert payload_needs_decoding(payload) is False
+
+    def test_payload_needs_decoding_non_dict_payload_none(self):
+        """Test that None payload returns False."""
+        payload = None
+
+        assert payload_needs_decoding(payload) is False
+
+    def test_payload_needs_decoding_non_dict_payload_number(self):
+        """Test that numeric payload returns False."""
+        payload = 12345
+
+        assert payload_needs_decoding(payload) is False
+
+    def test_payload_needs_decoding_with_nested_metadata(self):
+        """Test that payload with nested metadata structure works correctly."""
+        payload = {"metadata": {"encoding": "json/plain", "nested": {"field": "value"}}, "data": "encoded_data"}
+
+        assert payload_needs_decoding(payload) is True
+
+    def test_payload_needs_decoding_with_empty_string_encoding(self):
+        """Test that payload with empty string encoding returns False."""
+        payload = {"metadata": {"encoding": ""}, "data": "some_data"}
+
+        assert payload_needs_decoding(payload) is True
+
+    def test_payload_needs_decoding_real_world_temporal_history(self):
+        """Test with real-world Temporal History encoded payload structure."""
+        payload = {
+            "metadata": {"encoding": "json/plain", "messageType": "ActivityResult"},
+            "data": "eyJyZXN1bHQiOiAidGVzdF9kYXRhIn0=",
+        }
+
+        assert payload_needs_decoding(payload) is True
+
+    def test_payload_needs_decoding_real_world_custom_output(self):
+        """Test with real-world Custom Output raw payload structure."""
+        payload = {"key": "value", "number": 123, "list": [1, 2, 3]}
+
+        assert payload_needs_decoding(payload) is False

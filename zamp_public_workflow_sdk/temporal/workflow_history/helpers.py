@@ -88,8 +88,8 @@ def extract_node_id_from_event(event: dict) -> str | None:
     return None
 
 
-def _extract_payload_data(event: dict, event_type: str, payload_field: str) -> dict | None:
-    """Extract payload data from event attributes."""
+def _extract_payload_data(event: dict, event_type: str, payload_field: str) -> list | None:
+    """Extract payload data from event attributes. Returns list of all payloads."""
     logger.info("Extracting payload data", event_type=event_type, payload_field=payload_field)
     attrs_key = _get_attributes_key_for_event_type(event_type)
 
@@ -98,20 +98,27 @@ def _extract_payload_data(event: dict, event_type: str, payload_field: str) -> d
         return None
 
     payloads = event[attrs_key].get(payload_field, {}).get(PayloadField.PAYLOADS.value, [])
-    if payloads and PayloadField.DATA.value in payloads[0]:
-        result = payloads[0][PayloadField.DATA.value]
-        logger.info("Successfully extracted payload data", payload_size=len(str(result)))
-        return result
-    else:
+    if not payloads:
         logger.info("No payload data found in event")
         return None
 
+    # Extract data field from each payload
+    payload_data_list = []
+    for payload in payloads:
+        if PayloadField.DATA.value in payload:
+            payload_data_list.append(payload[PayloadField.DATA.value])
 
-def _extract_payload_encoded(event: dict, event_type: str, payload_field: str) -> dict | None:
+    if payload_data_list:
+        logger.info("Successfully extracted payload data", payload_count=len(payload_data_list))
+        return payload_data_list
+    return None
+
+
+def _extract_payload_encoded(event: dict, event_type: str, payload_field: str) -> list | None:
     """
-    Extract full encoded payload (with metadata and data) from event attributes.
+    Extract full encoded payloads (with metadata and data) from event attributes.
 
-    Returns the  payload object.
+    Returns list of all payload objects.
     Returns None if no payloads found.
     """
     logger.info("Extracting encoded payload", event_type=event_type)
@@ -125,7 +132,9 @@ def _extract_payload_encoded(event: dict, event_type: str, payload_field: str) -
     if not payloads:
         logger.info("No encoded payload found in event")
         return None
-    return payloads[0]
+
+    logger.info("Successfully extracted encoded payloads", payload_count=len(payloads))
+    return payloads
 
 
 def _should_include_node_id(node_id: str, target_node_ids: list[str] | None) -> bool:
