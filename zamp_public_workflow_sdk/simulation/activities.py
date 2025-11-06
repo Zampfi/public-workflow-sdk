@@ -6,6 +6,7 @@ from zamp_public_workflow_sdk.temporal.workflow_history.models.node_payload_data
     DecodeNodePayloadInput,
     DecodeNodePayloadOutput,
 )
+from zamp_public_workflow_sdk.simulation.helper import payload_needs_decoding
 
 logger = structlog.get_logger(__name__)
 
@@ -34,11 +35,13 @@ async def return_mocked_result(input_params: MockedResultInput) -> MockedResultO
     logger.info("Processing mocked result", node_id=input_params.node_id)
 
     output_payload = input_params.output_payload
-    output_needs_decoding = (
-        output_payload
-        and isinstance(output_payload, dict)
-        and output_payload.get("metadata", {}).get("encoding") is not None
-    )
+
+    output_needs_decoding = False
+    if output_payload:
+        if isinstance(output_payload, list):
+            output_needs_decoding = any(payload_needs_decoding(item) for item in output_payload)
+        else:
+            output_needs_decoding = payload_needs_decoding(output_payload)
 
     if not output_needs_decoding:
         logger.info("No output decoding needed, returning raw output", node_id=input_params.node_id)
