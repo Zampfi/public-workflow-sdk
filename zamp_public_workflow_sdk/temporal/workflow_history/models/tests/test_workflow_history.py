@@ -78,7 +78,6 @@ class TestWorkflowHistory:
         result = sample_workflow_history.get_node_input("node-1")
 
         # The actual implementation extracts the payload from the workflow execution started event
-        # Returns a list of payloads
         assert result == ["test input data"]
 
     def test_get_input_from_node_id_not_found(self, sample_workflow_history):

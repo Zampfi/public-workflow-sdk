@@ -103,8 +103,6 @@ class TestHelpers:
         }
 
         result = _extract_payload_data(event, "EVENT_TYPE_WORKFLOW_EXECUTION_STARTED", "input")
-
-        # Returns a list of payload data
         assert result == ["eyJ0ZXN0IjogImlucHV0In0="]
 
     def test_extract_payload_data_without_attrs_key(self):
@@ -258,7 +256,6 @@ class TestHelpers:
             result = extract_node_payloads(events)
 
             assert "activity-node-1" in result
-            # Returns a list of payload data
             assert result["activity-node-1"].input_payload == ["eyJhY3Rpdml0eSI6ICJ0ZXN0In0="]
 
     def test_extract_node_payloads_activity_completed(self):
@@ -288,7 +285,6 @@ class TestHelpers:
             result = extract_node_payloads(events)
 
             assert "activity-node-1" in result
-            # Returns a list of payload data
             assert result["activity-node-1"].output_payload == ["eyJyZXN1bHQiOiAic3VjY2VzcyJ9"]
 
     def test_extract_node_payloads_workflow_completed(self):
