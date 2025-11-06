@@ -31,15 +31,15 @@ def mock_decoded_output():
     return output
 
 
-class TestBuildNodePayloadResults:
-    """Tests for build_node_payload_results function."""
+class TestBuildNodePayload:
+    """Tests for build_node_payload function."""
 
     @pytest.mark.asyncio
-    async def test_build_node_payload_results_success(
+    async def test_build_node_payload_success(
         self, mock_workflow_history, mock_encoded_payload, mock_decoded_output
     ):
         """Test successful building of node payload results."""
-        from zamp_public_workflow_sdk.simulation.helper import build_node_payload_results
+        from zamp_public_workflow_sdk.simulation.helper import build_node_payload
         from zamp_public_workflow_sdk.simulation.models.simulation_workflow import NodePayloadType
         
         output_config = {
@@ -62,7 +62,7 @@ class TestBuildNodePayloadResults:
                     "zamp_public_workflow_sdk.simulation.helper._decode_node_payload",
                     return_value=mock_decoded_output,
                 ) as mock_decode:
-                    result = await build_node_payload_results(
+                    result = await build_node_payload(
                         workflow_id="wf-123",
                         run_id="run-456",
                         output_config=output_config,
@@ -83,9 +83,9 @@ class TestBuildNodePayloadResults:
                     assert result[1].node_id == "node2#1"
 
     @pytest.mark.asyncio
-    async def test_build_node_payload_results_no_history(self):
+    async def test_build_node_payload_no_history(self):
         """Test when temporal history fetch fails."""
-        from zamp_public_workflow_sdk.simulation.helper import build_node_payload_results
+        from zamp_public_workflow_sdk.simulation.helper import build_node_payload
         from zamp_public_workflow_sdk.simulation.models.simulation_workflow import NodePayloadType
         
         output_config = {"node1#1": NodePayloadType.INPUT}
@@ -95,18 +95,18 @@ class TestBuildNodePayloadResults:
             return_value=None,
         ):
             with pytest.raises(Exception, match="Failed to fetch temporal history"):
-                await build_node_payload_results(
+                await build_node_payload(
                     workflow_id="wf-123",
                     run_id="run-456",
                     output_config=output_config,
                 )
 
     @pytest.mark.asyncio
-    async def test_build_node_payload_results_empty_config(
+    async def test_build_node_payload_empty_config(
         self, mock_workflow_history
     ):
         """Test with empty output config."""
-        from zamp_public_workflow_sdk.simulation.helper import build_node_payload_results
+        from zamp_public_workflow_sdk.simulation.helper import build_node_payload
         
         output_config = {}
 
@@ -118,7 +118,7 @@ class TestBuildNodePayloadResults:
                 "zamp_public_workflow_sdk.simulation.helper.extract_node_payload",
                 return_value={},
             ):
-                result = await build_node_payload_results(
+                result = await build_node_payload(
                     workflow_id="wf-123",
                     run_id="run-456",
                     output_config=output_config,
@@ -127,11 +127,11 @@ class TestBuildNodePayloadResults:
                 assert result == []
 
     @pytest.mark.asyncio
-    async def test_build_node_payload_results_partial_failures(
+    async def test_build_node_payload_partial_failures(
         self, mock_workflow_history, mock_encoded_payload, mock_decoded_output
     ):
         """Test when some nodes fail to decode."""
-        from zamp_public_workflow_sdk.simulation.helper import build_node_payload_results
+        from zamp_public_workflow_sdk.simulation.helper import build_node_payload
         from zamp_public_workflow_sdk.simulation.models.simulation_workflow import NodePayloadType
         
         output_config = {
@@ -156,7 +156,7 @@ class TestBuildNodePayloadResults:
                     "zamp_public_workflow_sdk.simulation.helper._decode_node_payload",
                     side_effect=[mock_decoded_output, None],  # Second decode fails
                 ):
-                    result = await build_node_payload_results(
+                    result = await build_node_payload(
                         workflow_id="wf-123",
                         run_id="run-456",
                         output_config=output_config,

@@ -10,7 +10,7 @@ with workflow.unsafe.imports_passed_through():
         SimulationWorkflowInput,
         NodePayloadType,
     )
-    from zamp_public_workflow_sdk.simulation.helper import build_node_payload_results
+    from zamp_public_workflow_sdk.simulation.helper import build_node_payload
 
 
 logger = structlog.get_logger(__name__)
@@ -81,7 +81,7 @@ class SimulationWorkflow:
             has_result=workflow_result is not None,
         )
 
-        node_payloads = await build_node_payload_results(
+        node_payloads = await build_node_payload(
             workflow_id=workflow_id,
             run_id=run_id,
             output_config=input_params.output_schema.node_payloads,

@@ -563,7 +563,7 @@ def payload_needs_decoding(payload_item):
     return isinstance(payload_item, dict) and payload_item.get("metadata", {}).get("encoding") is not None
 
 
-async def build_node_payload_results(
+async def build_node_payload(
     workflow_id: str,
     run_id: str,
     output_config: dict[str, NodePayloadType],
@@ -593,7 +593,7 @@ async def build_node_payload_results(
             "gmail_search_messages#1": NodePayloadType.INPUT_OUTPUT,
             "parse_email#3": NodePayloadType.OUTPUT
         }
-        results = await build_node_payload_results(
+        results = await build_node_payload(
             workflow_id="wf-123",
             run_id="run-456", 
             output_config=output_config
