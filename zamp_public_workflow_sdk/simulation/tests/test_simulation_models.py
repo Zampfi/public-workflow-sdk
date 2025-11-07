@@ -351,26 +351,16 @@ class TestSimulationConfig:
         with pytest.raises(ValueError, match="Hierarchical overlap detected"):
             SimulationConfig(mock_config=mock_config)
 
-    def test_simulation_config_hierarchical_overlap_parent_in_temporal(self):
-        """Test that simulation config rejects hierarchical overlap when parent is in TEMPORAL_HISTORY."""
+    def test_simulation_config_hierarchical_overlap_within_same_strategy(self):
+        """Test that simulation config rejects hierarchical overlap within the same strategy."""
         mock_config = NodeMockConfig(
             node_strategies=[
-                NodeStrategy(
-                    strategy=SimulationStrategyConfig(
-                        type=StrategyType.TEMPORAL_HISTORY,
-                        config=TemporalHistoryConfig(
-                            reference_workflow_id="workflow-123",
-                            reference_workflow_run_id="run-456",
-                        ),
-                    ),
-                    nodes=["Workflow#1.ChildWorkflow#1"],
-                ),
                 NodeStrategy(
                     strategy=SimulationStrategyConfig(
                         type=StrategyType.CUSTOM_OUTPUT,
                         config=CustomOutputConfig(output_value="output1"),
                     ),
-                    nodes=["Workflow#1.ChildWorkflow#1.Activity#1"],
+                    nodes=["Workflow#1", "Workflow#1.ChildWorkflow#1"],  # Parent and child in same strategy
                 ),
             ]
         )
