@@ -151,7 +151,7 @@ class TestSimulationConfigBuilderWorkflow:
 
                 # Should return parent node_id since all activities would be mocked (none skipped)
                 assert result == ["parent_node"]
-                assert mock_should_include.call_count == 2
+                assert mock_should_include.call_count == 3
 
     @pytest.mark.asyncio
     async def test_process_child_workflow_node_some_activities_skipped(self, workflow):
