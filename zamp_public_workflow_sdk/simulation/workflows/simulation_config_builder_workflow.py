@@ -63,6 +63,7 @@ class SimulationConfigBuilderWorkflow:
             "generate_with_template",
             "extract_ocr_data",
             "fetch_from_responses_api",
+            "ChainOfThoughtWorkflow",
         ]
 
     @ActionsHub.register_workflow_run
@@ -215,13 +216,15 @@ class SimulationConfigBuilderWorkflow:
             # Only return child workflow node_id if:
             # 1. All activities are mockable
             # 2. There are NO nested child workflows
+            # 3. The child workflow node_id itself is not in the skip list
             if all_activities_mockable and not has_nested_child_workflows and len(nodes_data) > 0:
-                logger.info(
-                    "All activities in child workflow would be mocked - mocking entire child workflow",
-                    child_node_id=node_id,
-                    total_nodes=len(nodes_data),
-                )
-                return [node_id]  # Return the child workflow node_id itself
+                if self._should_include_node(node_id=node_id):
+                    logger.info(
+                        "All activities in child workflow would be mocked - mocking entire child workflow",
+                        child_node_id=node_id,
+                        total_nodes=len(nodes_data),
+                    )
+                    return [node_id]  # Return the child workflow node_id itself
 
             # Either has nested child workflows or some activities not mockable - recursively extract
             logger.info(
