@@ -70,7 +70,6 @@ class WorkflowSimulationService:
 
             logger.info(
                 "SimulationFetchDataWorkflow completed",
-                workflow_result=workflow_result,
                 has_node_id_to_payload_map=workflow_result is not None
                 and hasattr(workflow_result, "node_id_to_payload_map"),
             )
