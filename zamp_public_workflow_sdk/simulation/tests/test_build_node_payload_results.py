@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 
 @pytest.fixture
@@ -35,13 +35,11 @@ class TestBuildNodePayload:
     """Tests for build_node_payload function."""
 
     @pytest.mark.asyncio
-    async def test_build_node_payload_success(
-        self, mock_workflow_history, mock_encoded_payload, mock_decoded_output
-    ):
+    async def test_build_node_payload_success(self, mock_workflow_history, mock_encoded_payload, mock_decoded_output):
         """Test successful building of node payload results."""
         from zamp_public_workflow_sdk.simulation.helper import build_node_payload
         from zamp_public_workflow_sdk.simulation.models.simulation_workflow import NodePayloadType
-        
+
         output_config = {
             "node1#1": NodePayloadType.INPUT_OUTPUT,
             "node2#1": NodePayloadType.OUTPUT,
@@ -87,7 +85,7 @@ class TestBuildNodePayload:
         """Test when temporal history fetch fails."""
         from zamp_public_workflow_sdk.simulation.helper import build_node_payload
         from zamp_public_workflow_sdk.simulation.models.simulation_workflow import NodePayloadType
-        
+
         output_config = {"node1#1": NodePayloadType.INPUT}
 
         with patch(
@@ -102,12 +100,10 @@ class TestBuildNodePayload:
                 )
 
     @pytest.mark.asyncio
-    async def test_build_node_payload_empty_config(
-        self, mock_workflow_history
-    ):
+    async def test_build_node_payload_empty_config(self, mock_workflow_history):
         """Test with empty output config."""
         from zamp_public_workflow_sdk.simulation.helper import build_node_payload
-        
+
         output_config = {}
 
         with patch(
@@ -133,7 +129,7 @@ class TestBuildNodePayload:
         """Test when some nodes fail to decode."""
         from zamp_public_workflow_sdk.simulation.helper import build_node_payload
         from zamp_public_workflow_sdk.simulation.models.simulation_workflow import NodePayloadType
-        
+
         output_config = {
             "node1#1": NodePayloadType.INPUT,
             "node2#1": NodePayloadType.OUTPUT,
@@ -171,13 +167,11 @@ class TestDecodeAndBuildResults:
     """Tests for _decode_and_build_results function."""
 
     @pytest.mark.asyncio
-    async def test_decode_and_build_results_success(
-        self, mock_encoded_payload, mock_decoded_output
-    ):
+    async def test_decode_and_build_results_success(self, mock_encoded_payload, mock_decoded_output):
         """Test successful decoding and building of results."""
         from zamp_public_workflow_sdk.simulation.helper import _decode_and_build_results
         from zamp_public_workflow_sdk.simulation.models.simulation_workflow import NodePayloadType, NodePayloadResult
-        
+
         encoded_payloads = {
             "node1#1": mock_encoded_payload,
             "node2#1": mock_encoded_payload,
@@ -202,13 +196,11 @@ class TestDecodeAndBuildResults:
             assert all(isinstance(r, NodePayloadResult) for r in result)
 
     @pytest.mark.asyncio
-    async def test_decode_and_build_results_input_only(
-        self, mock_encoded_payload
-    ):
+    async def test_decode_and_build_results_input_only(self, mock_encoded_payload):
         """Test building results with INPUT payload type only."""
         from zamp_public_workflow_sdk.simulation.helper import _decode_and_build_results
         from zamp_public_workflow_sdk.simulation.models.simulation_workflow import NodePayloadType
-        
+
         mock_decoded = MagicMock()
         mock_decoded.decoded_input = {"test": "input"}
         mock_decoded.decoded_output = None
@@ -232,13 +224,11 @@ class TestDecodeAndBuildResults:
             assert result[0].output is None
 
     @pytest.mark.asyncio
-    async def test_decode_and_build_results_output_only(
-        self, mock_encoded_payload
-    ):
+    async def test_decode_and_build_results_output_only(self, mock_encoded_payload):
         """Test building results with OUTPUT payload type only."""
         from zamp_public_workflow_sdk.simulation.helper import _decode_and_build_results
         from zamp_public_workflow_sdk.simulation.models.simulation_workflow import NodePayloadType
-        
+
         mock_decoded = MagicMock()
         mock_decoded.decoded_input = None
         mock_decoded.decoded_output = {"test": "output"}
@@ -262,13 +252,11 @@ class TestDecodeAndBuildResults:
             assert result[0].output == {"test": "output"}
 
     @pytest.mark.asyncio
-    async def test_decode_and_build_results_input_output(
-        self, mock_encoded_payload, mock_decoded_output
-    ):
+    async def test_decode_and_build_results_input_output(self, mock_encoded_payload, mock_decoded_output):
         """Test building results with INPUT_OUTPUT payload type."""
         from zamp_public_workflow_sdk.simulation.helper import _decode_and_build_results
         from zamp_public_workflow_sdk.simulation.models.simulation_workflow import NodePayloadType
-        
+
         encoded_payloads = {"node1#1": mock_encoded_payload}
         output_config = {"node1#1": NodePayloadType.INPUT_OUTPUT}
 
@@ -294,7 +282,7 @@ class TestDecodeAndBuildResults:
         """Test when encoded payload is missing for a node."""
         from zamp_public_workflow_sdk.simulation.helper import _decode_and_build_results
         from zamp_public_workflow_sdk.simulation.models.simulation_workflow import NodePayloadType
-        
+
         encoded_payloads = {}  # Empty - node1#1 is missing
         output_config = {"node1#1": NodePayloadType.INPUT}
 
@@ -308,13 +296,11 @@ class TestDecodeAndBuildResults:
         assert len(result) == 0
 
     @pytest.mark.asyncio
-    async def test_decode_and_build_results_decode_failure(
-        self, mock_encoded_payload
-    ):
+    async def test_decode_and_build_results_decode_failure(self, mock_encoded_payload):
         """Test when decoding fails for a node."""
         from zamp_public_workflow_sdk.simulation.helper import _decode_and_build_results
         from zamp_public_workflow_sdk.simulation.models.simulation_workflow import NodePayloadType
-        
+
         encoded_payloads = {"node1#1": mock_encoded_payload}
         output_config = {"node1#1": NodePayloadType.INPUT}
 
@@ -341,7 +327,7 @@ class TestDecodeNodePayload:
         from zamp_public_workflow_sdk.simulation.helper import _decode_node_payload
         from zamp_public_workflow_sdk.simulation.models.simulation_workflow import NodePayloadType
         from zamp_public_workflow_sdk.temporal.workflow_history.models.node_payload_data import DecodeNodePayloadInput
-        
+
         mock_output = MagicMock()
         mock_output.decoded_input = {"test": "input"}
         mock_output.decoded_output = None
@@ -371,7 +357,7 @@ class TestDecodeNodePayload:
         """Test decoding OUTPUT payload."""
         from zamp_public_workflow_sdk.simulation.helper import _decode_node_payload
         from zamp_public_workflow_sdk.simulation.models.simulation_workflow import NodePayloadType
-        
+
         mock_output = MagicMock()
         mock_output.decoded_input = None
         mock_output.decoded_output = {"test": "output"}
@@ -398,7 +384,7 @@ class TestDecodeNodePayload:
         """Test decoding INPUT_OUTPUT payload."""
         from zamp_public_workflow_sdk.simulation.helper import _decode_node_payload
         from zamp_public_workflow_sdk.simulation.models.simulation_workflow import NodePayloadType
-        
+
         mock_output = MagicMock()
         mock_output.decoded_input = {"test": "input"}
         mock_output.decoded_output = {"test": "output"}
@@ -425,7 +411,7 @@ class TestDecodeNodePayload:
         """Test decoding failure."""
         from zamp_public_workflow_sdk.simulation.helper import _decode_node_payload
         from zamp_public_workflow_sdk.simulation.models.simulation_workflow import NodePayloadType
-        
+
         with patch(
             "zamp_public_workflow_sdk.actions_hub.ActionsHub.execute_activity",
             side_effect=Exception("Decode failed"),
@@ -444,8 +430,8 @@ class TestDecodeNodePayload:
         """Test that decode_node_payload activity is called correctly."""
         from zamp_public_workflow_sdk.simulation.helper import _decode_node_payload
         from zamp_public_workflow_sdk.simulation.models.simulation_workflow import NodePayloadType
-        from zamp_public_workflow_sdk.temporal.workflow_history.models.node_payload_data import DecodeNodePayloadInput, DecodeNodePayloadOutput
-        
+        from zamp_public_workflow_sdk.temporal.workflow_history.models.node_payload_data import DecodeNodePayloadOutput
+
         mock_output = MagicMock()
         mock_output.decoded_input = {"test": "data"}
         mock_output.decoded_output = None
@@ -467,7 +453,4 @@ class TestDecodeNodePayload:
             assert "test_node#1" in str(mock_execute.call_args[1].get("summary", ""))
 
             # Verify return type
-            assert (
-                mock_execute.call_args[1]["return_type"] == DecodeNodePayloadOutput
-            )
-
+            assert mock_execute.call_args[1]["return_type"] == DecodeNodePayloadOutput

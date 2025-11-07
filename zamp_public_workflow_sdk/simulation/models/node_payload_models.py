@@ -38,4 +38,3 @@ class NodePayloadResult(BaseModel):
         if self.output is not None:
             payload["output"] = self.output
         return {self.node_id: payload}
-

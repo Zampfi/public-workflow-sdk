@@ -5,10 +5,8 @@ with workflow.unsafe.imports_passed_through():
     from typing import Any
     from zamp_public_workflow_sdk.actions_hub import ActionsHub
     from zamp_public_workflow_sdk.simulation.models.simulation_workflow import (
-        NodePayloadResult,
         SimulationWorkflowOutput,
         SimulationWorkflowInput,
-        NodePayloadType,
     )
     from zamp_public_workflow_sdk.simulation.helper import build_node_payload
 
