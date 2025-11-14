@@ -522,3 +522,49 @@ class TestSimulationConfigBuilderWorkflow:
 
             # Should only return non-workflow-execution nodes
             assert result == ["node1", "node2"]
+
+    @pytest.mark.asyncio
+    async def test_execute_with_action_tools(self, workflow):
+        """Test execute workflow with action_tools parameter."""
+        input_with_action_tools = SimulationConfigBuilderInput(
+            workflow_id="test-workflow-id",
+            run_id="test-run-id",
+            action_tools=["tool1", "tool2"],
+        )
+
+        mock_history = MagicMock()
+        mock_history.get_nodes_data.return_value = {
+            "node1": MagicMock(node_events=[]),
+            "node2": MagicMock(node_events=[]),
+        }
+
+        with patch.object(workflow, "_fetch_workflow_history", return_value=mock_history):
+            with patch.object(workflow, "_extract_all_node_ids_recursively", return_value=["node1", "node2"]):
+                result = await workflow.execute(input_with_action_tools)
+
+                # Verify that action_tools were set
+                assert workflow.action_tools_to_mock == ["tool1", "tool2"]
+                assert isinstance(result, SimulationConfigBuilderOutput)
+
+    def test_should_include_node_with_action_tools_match(self, workflow):
+        """Test _should_include_node includes nodes matching action_tools_to_mock."""
+        # Set action_tools_to_mock
+        workflow.action_tools_to_mock = ["tool1", "custom_tool"]
+
+        # Test node that matches action_tool
+        result = workflow._should_include_node("some_tool1_activity")
+        assert result == "some_tool1_activity"
+
+        # Test node that matches another action_tool
+        result = workflow._should_include_node("custom_tool_node")
+        assert result == "custom_tool_node"
+
+    def test_should_include_node_action_tools_priority_over_skip(self, workflow):
+        """Test _should_include_node prioritizes action_tools over skip list."""
+        # Set both action_tools_to_mock and nodes_to_skip
+        workflow.action_tools_to_mock = ["generate_llm_model_response"]
+        # generate_llm_model_response is also in nodes_to_skip by default
+
+        # Should include because it matches action_tools_to_mock (higher priority)
+        result = workflow._should_include_node("generate_llm_model_response")
+        assert result == "generate_llm_model_response"
