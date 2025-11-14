@@ -267,7 +267,7 @@ class SimulationConfigBuilderWorkflow:
         # Check if this node is in the action_tools_to_mock list
         if any(action_tool in node_id for action_tool in self.action_tools_to_mock):
             logger.info(
-                "Force including node (in action_tools list)",
+                "including node (in action_tools list)",
                 node_id=node_id,
             )
             return node_id
