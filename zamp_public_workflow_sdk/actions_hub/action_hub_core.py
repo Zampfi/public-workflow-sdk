@@ -329,6 +329,49 @@ class ActionsHub:
             kwargs['memo'][SIMULATION_S3_KEY_MEMO] = f"simulation-data/{workflow_id}.json"
 
     @classmethod
+    async def _load_simulation_from_s3_memo(cls, workflow_id: str, simulation_s3_key: str) -> WorkflowSimulationService | None:
+        """
+        Load simulation service from S3 using the memo key.
+
+        Args:
+            workflow_id: The workflow ID to associate with the simulation
+            simulation_s3_key: The S3 key where simulation data is stored
+
+        Returns:
+            WorkflowSimulationService if successfully loaded, None otherwise
+        """
+        try:
+            download_result = await cls.execute_activity(
+                "download_from_s3",
+                DownloadFromS3Input(
+                    bucket_name="zamp-dev-us-temporal-history-export",
+                    file_name=simulation_s3_key
+                ),
+                start_to_close_timeout=timedelta(seconds=10),
+                skip_simulation=True
+            )
+            
+            content_base64 = (
+                download_result.get('content_base64') 
+                if isinstance(download_result, dict) 
+                else download_result.content_base64
+            )
+            simulation_data = json.loads(base64.b64decode(content_base64).decode())
+            
+            simulation_service = WorkflowSimulationService(
+                SimulationConfig.model_validate(simulation_data["config"])
+            )
+            simulation_service.node_id_to_payload_map = {
+                node_id: NodePayload.model_validate(payload) if isinstance(payload, dict) else payload 
+                for node_id, payload in simulation_data["node_id_to_payload_map"].items()
+            }
+            
+            cls._workflow_id_to_simulation_map[workflow_id] = simulation_service
+            return simulation_service
+        except Exception:
+            return None
+
+    @classmethod
     async def get_simulation_from_workflow_id(cls, workflow_id: str) -> WorkflowSimulationService | None:
         """
         Get simulation service for a workflow_id with hierarchical lookup.
@@ -347,32 +390,12 @@ class ActionsHub:
             return simulation
 
         try:
-            # Try S3 for cross-worker scenarios
             memo = workflow.memo()
             if memo and SIMULATION_S3_KEY_MEMO in memo:
-                try:
-                    s3_key = workflow.memo_value(SIMULATION_S3_KEY_MEMO, type_hint=str)
-                    result = await cls.execute_activity(
-                        "download_from_s3",
-                        DownloadFromS3Input(
-                            bucket_name="zamp-dev-us-temporal-history-export",
-                            file_name=s3_key
-                        ),
-                        start_to_close_timeout=timedelta(seconds=10),
-                        skip_simulation=True
-                    )
-                    content = result.get('content_base64') if isinstance(result, dict) else result.content_base64
-                    data = json.loads(base64.b64decode(content).decode())
-                    
-                    sim_svc = WorkflowSimulationService(SimulationConfig.model_validate(data["config"]))
-                    sim_svc.node_id_to_payload_map = {
-                        k: NodePayload.model_validate(v) if isinstance(v, dict) else v 
-                        for k, v in data["node_id_to_payload_map"].items()
-                    }
-                    cls._workflow_id_to_simulation_map[workflow_id] = sim_svc
-                    return sim_svc
-                except Exception:
-                    pass
+                simulation_s3_key = workflow.memo_value(SIMULATION_S3_KEY_MEMO, type_hint=str)
+                simulation_service = await cls._load_simulation_from_s3_memo(workflow_id, simulation_s3_key)
+                if simulation_service:
+                    return simulation_service
             
             info = workflow.info()
             # Check if the workflow is a child workflow and if so, use the parent's simulation
