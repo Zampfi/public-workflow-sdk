@@ -41,10 +41,7 @@ with workflow.unsafe.imports_passed_through():
         WorkflowSimulationService,
     )
     from zamp_public_workflow_sdk.simulation.models.node_payload import NodePayload
-    from zamp_public_workflow_sdk.simulation.models.simulation_s3 import (
-        DownloadFromS3Input,
-        UploadToS3Input,
-    )
+    from zamp_public_workflow_sdk.simulation.models.simulation_s3 import DownloadFromS3Input
     from zamp_public_workflow_sdk.temporal.data_converters.type_utils import get_fqn
     from zamp_public_workflow_sdk.temporal.interceptors.node_id_interceptor import (
         TEMPORAL_NODE_ID_KEY,
@@ -276,32 +273,8 @@ class ActionsHub:
         """
         simulation_service = WorkflowSimulationService(simulation_config)
         cls._workflow_id_to_simulation_map[workflow_id] = simulation_service
-        await simulation_service._initialize_simulation_data()
+        await simulation_service._initialize_simulation_data(workflow_id)
         logger.info("Simulation initialized for workflow", workflow_id=workflow_id)
-
-        try:
-            s3_key = get_simulation_s3_key(workflow_id)
-            simulation_data = {
-                "config": simulation_service.simulation_config.model_dump(),
-                "node_id_to_payload_map": {
-                    node_id: payload.model_dump() if hasattr(payload, "model_dump") else payload
-                    for node_id, payload in simulation_service.node_id_to_payload_map.items()
-                },
-            }
-            blob_base64 = base64.b64encode(json.dumps(simulation_data).encode()).decode()
-
-            await cls.execute_activity(
-                "upload_to_s3",
-                UploadToS3Input(
-                    bucket_name=SIMULATION_S3_BUCKET,
-                    file_name=s3_key,
-                    blob_base64=blob_base64,
-                    content_type="application/json",
-                ),
-                skip_simulation=True,
-            )
-        except Exception:
-            pass
 
     @classmethod
     def _add_simulation_memo_to_child(cls, workflow_id: str, kwargs: dict) -> None:
@@ -312,7 +285,8 @@ class ActionsHub:
             workflow_id: Current workflow ID
             kwargs: Keyword arguments dict to modify (memo key will be added/updated)
         """
-        if not cls._workflow_id_to_simulation_map.get(workflow_id):
+        simulation_service = cls._workflow_id_to_simulation_map.get(workflow_id)
+        if not simulation_service:
             return
 
         if "memo" not in kwargs:

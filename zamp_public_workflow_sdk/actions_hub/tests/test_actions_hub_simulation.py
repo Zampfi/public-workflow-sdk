@@ -520,6 +520,7 @@ class TestActionsHubSimulation:
 
         # Add a simulation to the map
         mock_simulation = Mock(spec=WorkflowSimulationService)
+        mock_simulation.s3_key = None  # Simulation without S3 upload
         ActionsHub._workflow_id_to_simulation_map["parent_wf"] = mock_simulation
 
         # Create kwargs dict
@@ -566,6 +567,7 @@ class TestActionsHubSimulation:
 
         # Add a simulation to the map
         mock_simulation = Mock(spec=WorkflowSimulationService)
+        mock_simulation.s3_key = None  # Simulation without S3 upload
         ActionsHub._workflow_id_to_simulation_map["parent_wf"] = mock_simulation
 
         # Create kwargs dict with existing memo
@@ -601,6 +603,7 @@ class TestActionsHubSimulation:
 
         # Add a simulation to the map
         mock_simulation = Mock(spec=WorkflowSimulationService)
+        mock_simulation.s3_key = None  # Simulation without S3 upload
         ActionsHub._workflow_id_to_simulation_map["parent_wf"] = mock_simulation
 
         kwargs = {}

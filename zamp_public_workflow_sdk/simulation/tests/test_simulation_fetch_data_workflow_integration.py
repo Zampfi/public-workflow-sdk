@@ -101,7 +101,7 @@ class TestSimulationFetchDataWorkflowIntegration:
         )
 
         sim_config = SimulationConfig(mock_config=mock_config)
-        input_data = SimulationFetchDataWorkflowInput(simulation_config=sim_config)
+        input_data = SimulationFetchDataWorkflowInput(simulation_config=sim_config, workflow_id="test_workflow_123")
 
         result = await workflow.execute(input_data)
 
@@ -132,7 +132,7 @@ class TestSimulationFetchDataWorkflowIntegration:
         )
 
         sim_config = SimulationConfig(mock_config=mock_config)
-        input_data = SimulationFetchDataWorkflowInput(simulation_config=sim_config)
+        input_data = SimulationFetchDataWorkflowInput(simulation_config=sim_config, workflow_id="test_workflow_id")
 
         # Mock the temporal history strategy at the point where it's created
         with patch(
@@ -186,7 +186,7 @@ class TestSimulationFetchDataWorkflowIntegration:
         )
 
         sim_config = SimulationConfig(mock_config=mock_config)
-        input_data = SimulationFetchDataWorkflowInput(simulation_config=sim_config)
+        input_data = SimulationFetchDataWorkflowInput(simulation_config=sim_config, workflow_id="test_workflow_id")
 
         # Mock the temporal history strategy at the point where it's created
         with patch(
@@ -228,7 +228,7 @@ class TestSimulationFetchDataWorkflowIntegration:
         )
 
         sim_config = SimulationConfig(mock_config=mock_config)
-        input_data = SimulationFetchDataWorkflowInput(simulation_config=sim_config)
+        input_data = SimulationFetchDataWorkflowInput(simulation_config=sim_config, workflow_id="test_workflow_id")
 
         # Mock strategy to raise exception at the point where it's created
         with patch(
@@ -261,7 +261,7 @@ class TestSimulationFetchDataWorkflowIntegration:
         )
 
         sim_config = SimulationConfig(mock_config=mock_config)
-        input_data = SimulationFetchDataWorkflowInput(simulation_config=sim_config)
+        input_data = SimulationFetchDataWorkflowInput(simulation_config=sim_config, workflow_id="test_workflow_id")
 
         # Mock strategy to return empty node_outputs at the point where it's created
         with patch(
@@ -294,7 +294,7 @@ class TestSimulationFetchDataWorkflowIntegration:
         )
 
         sim_config = SimulationConfig(mock_config=mock_config)
-        input_data = SimulationFetchDataWorkflowInput(simulation_config=sim_config)
+        input_data = SimulationFetchDataWorkflowInput(simulation_config=sim_config, workflow_id="test_workflow_id")
 
         # Mock strategy to return None output at the point where it's created
         with patch(
@@ -354,7 +354,7 @@ class TestSimulationServiceIntegration:
             mock_result = MockedResultOutput(root="integration_test_output")
             mock_actions_hub.execute_activity = AsyncMock(return_value=mock_result)
 
-            await service._initialize_simulation_data()
+            await service._initialize_simulation_data(workflow_id="integration_test_wf")
 
             assert len(service.node_id_to_payload_map) == 1
             assert service.node_id_to_payload_map["integration_node#1"].output_payload == "integration_test_output"
