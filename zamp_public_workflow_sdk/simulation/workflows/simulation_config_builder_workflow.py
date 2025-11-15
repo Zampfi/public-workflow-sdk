@@ -66,6 +66,8 @@ class SimulationConfigBuilderWorkflow:
             "ChainOfThoughtWorkflow",
             "get_customer_code_from_s3",
         ]
+        # List of action tools to mock
+        self.action_tools_to_mock: list[str] = []
 
     @ActionsHub.register_workflow_run
     async def execute(self, input: SimulationConfigBuilderInput) -> SimulationConfigBuilderOutput:
@@ -85,6 +87,8 @@ class SimulationConfigBuilderWorkflow:
         """
         if input.execute_actions:
             self.nodes_to_skip.extend(input.execute_actions)
+        if input.action_tools:
+            self.action_tools_to_mock = input.action_tools
         logger.info(
             "Starting GenerateSimulationConfigWorkflow",
             workflow_id=input.workflow_id,
@@ -248,7 +252,12 @@ class SimulationConfigBuilderWorkflow:
         """Determine if a node should be included in the simulation configuration.
 
         Applies filtering logic to determine whether a node should be included
-        in the final simulation configuration based on skip patterns.
+        in the final simulation configuration based on skip patterns and force-mock patterns.
+
+        Priority:
+        1. If node matches action_tools_to_mock pattern -> INCLUDE (mock)
+        2. If node matches nodes_to_skip pattern -> SKIP (execute, don't mock)
+        3. Otherwise -> INCLUDE (mock)
 
         Args:
             node_id: The node ID to evaluate for inclusion
@@ -256,6 +265,14 @@ class SimulationConfigBuilderWorkflow:
         Returns:
             The node ID if it should be included, None if it should be skipped
         """
+        # Check if this node is in the action_tools_to_mock list
+        if any(action_tool in node_id for action_tool in self.action_tools_to_mock):
+            logger.info(
+                "including node (in action_tools list)",
+                node_id=node_id,
+            )
+            return node_id
+
         # Check if this node should be skipped based on the skip list
         if any(skip_pattern in node_id for skip_pattern in self.nodes_to_skip):
             logger.info(
