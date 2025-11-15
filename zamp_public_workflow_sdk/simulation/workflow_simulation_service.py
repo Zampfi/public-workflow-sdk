@@ -5,6 +5,7 @@ Workflow Simulation Service for managing simulation state and responses.
 import structlog
 from zamp_public_workflow_sdk.simulation.models import (
     ExecutionType,
+    SimulationFetchDataWorkflowOutput,
     SimulationResponse,
     NodePayload,
     SimulationFetchDataWorkflowInput,
@@ -69,7 +70,7 @@ class WorkflowSimulationService:
         )
 
         try:
-            workflow_result = await ActionsHub.execute_child_workflow(
+            workflow_result: SimulationFetchDataWorkflowOutput = await ActionsHub.execute_child_workflow(
                 SimulationFetchDataWorkflow,
                 SimulationFetchDataWorkflowInput(simulation_config=self.simulation_config, workflow_id=workflow_id),
             )

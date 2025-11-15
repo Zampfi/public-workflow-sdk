@@ -294,13 +294,14 @@ class ActionsHub:
 
         try:
             memo = workflow.memo()
-            kwargs["memo"][SIMULATION_S3_KEY_MEMO] = (
-                workflow.memo_value(SIMULATION_S3_KEY_MEMO, type_hint=str)
-                if memo and SIMULATION_S3_KEY_MEMO in memo
-                else get_simulation_s3_key(workflow_id)
-            )
+            if memo and SIMULATION_S3_KEY_MEMO in memo:
+                kwargs["memo"][SIMULATION_S3_KEY_MEMO] = workflow.memo_value(SIMULATION_S3_KEY_MEMO, type_hint=str)
+            elif simulation_service.s3_key:
+                kwargs["memo"][SIMULATION_S3_KEY_MEMO] = simulation_service.s3_key
+            else:
+                kwargs["memo"][SIMULATION_S3_KEY_MEMO] = get_simulation_s3_key(workflow_id)
         except Exception:
-            kwargs["memo"][SIMULATION_S3_KEY_MEMO] = get_simulation_s3_key(workflow_id)
+            kwargs["memo"][SIMULATION_S3_KEY_MEMO] = simulation_service.s3_key or get_simulation_s3_key(workflow_id)
 
     @classmethod
     async def _load_simulation_from_s3_memo(
