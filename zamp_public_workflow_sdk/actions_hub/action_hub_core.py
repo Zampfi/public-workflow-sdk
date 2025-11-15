@@ -15,7 +15,7 @@ from zamp_public_workflow_sdk.temporal.interceptors.node_id_interceptor import (
     NODE_ID_HEADER_KEY,
 )
 
-from .constants import DEFAULT_MODE, SKIP_SIMULATION_WORKFLOWS, LogMode
+from .constants import DEFAULT_MODE, SKIP_SIMULATION_WORKFLOWS, LogMode, get_simulation_s3_key
 from .models.mcp_models import MCPConfig
 
 with workflow.unsafe.imports_passed_through():
@@ -279,14 +279,13 @@ class ActionsHub:
         await simulation_service._initialize_simulation_data()
         logger.info("Simulation initialized for workflow", workflow_id=workflow_id)
 
-        # Upload to S3 for cross-worker access
         try:
-            s3_key = f"simulation-data/{workflow_id}.json"
+            s3_key = get_simulation_s3_key(workflow_id)
             simulation_data = {
                 "config": simulation_service.simulation_config.model_dump(),
                 "node_id_to_payload_map": {
-                    k: v.model_dump() if hasattr(v, "model_dump") else v
-                    for k, v in simulation_service.node_id_to_payload_map.items()
+                    node_id: payload.model_dump() if hasattr(payload, "model_dump") else payload
+                    for node_id, payload in simulation_service.node_id_to_payload_map.items()
                 },
             }
             blob_base64 = base64.b64encode(json.dumps(simulation_data).encode()).decode()
@@ -324,10 +323,10 @@ class ActionsHub:
             kwargs["memo"][SIMULATION_S3_KEY_MEMO] = (
                 workflow.memo_value(SIMULATION_S3_KEY_MEMO, type_hint=str)
                 if memo and SIMULATION_S3_KEY_MEMO in memo
-                else f"simulation-data/{workflow_id}.json"
+                else get_simulation_s3_key(workflow_id)
             )
         except Exception:
-            kwargs["memo"][SIMULATION_S3_KEY_MEMO] = f"simulation-data/{workflow_id}.json"
+            kwargs["memo"][SIMULATION_S3_KEY_MEMO] = get_simulation_s3_key(workflow_id)
 
     @classmethod
     async def _load_simulation_from_s3_memo(
