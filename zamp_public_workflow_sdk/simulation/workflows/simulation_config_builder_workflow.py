@@ -64,7 +64,7 @@ class SimulationConfigBuilderWorkflow:
             "extract_ocr_data",
             "fetch_from_responses_api",
             "ChainOfThoughtWorkflow",
-            "get_customer_code_from_s3"
+            "get_customer_code_from_s3",
         ]
 
     @ActionsHub.register_workflow_run
