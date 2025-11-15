@@ -2,12 +2,18 @@
 Tests for ActionsHub simulation methods.
 """
 
+import base64
+import json
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 from pydantic import BaseModel
 
 from zamp_public_workflow_sdk.actions_hub.action_hub_core import ActionsHub
+from zamp_public_workflow_sdk.simulation.constants.simulation import (
+    SIMULATION_S3_BUCKET,
+    SIMULATION_S3_KEY_MEMO,
+)
 from zamp_public_workflow_sdk.simulation.models import (
     ExecutionType,
     NodeMockConfig,
@@ -16,6 +22,7 @@ from zamp_public_workflow_sdk.simulation.models import (
     SimulationResponse,
 )
 from zamp_public_workflow_sdk.simulation.models.mocked_result import MockedResultOutput
+from zamp_public_workflow_sdk.simulation.models.simulation_s3 import DownloadFromS3Output
 from zamp_public_workflow_sdk.simulation.workflow_simulation_service import (
     WorkflowSimulationService,
 )
@@ -366,9 +373,6 @@ class TestActionsHubSimulation:
     @pytest.mark.asyncio
     async def test_load_simulation_from_s3_memo_success(self):
         """Test successful loading of simulation data from S3."""
-        import base64
-        import json
-
         # Create mock simulation data
         mock_config = {"mock_config": {"node_strategies": []}}
         mock_node_payload = {"node_id": "test#1", "input_payload": "test_input", "output_payload": "test_output"}
@@ -377,8 +381,7 @@ class TestActionsHubSimulation:
         # Encode the data as it would be stored in S3
         content_base64 = base64.b64encode(json.dumps(simulation_data).encode()).decode()
 
-        mock_download_result = Mock()
-        mock_download_result.content_base64 = content_base64
+        mock_download_result = DownloadFromS3Output(content_base64=content_base64)
 
         with patch.object(ActionsHub, "execute_activity", new_callable=AsyncMock) as mock_execute:
             mock_execute.return_value = mock_download_result
@@ -402,10 +405,7 @@ class TestActionsHubSimulation:
 
     @pytest.mark.asyncio
     async def test_load_simulation_from_s3_memo_with_dict_result(self):
-        """Test loading simulation data when download returns a dict instead of object."""
-        import base64
-        import json
-
+        """Test loading simulation data when download returns a proper DownloadFromS3Output object."""
         # Create mock simulation data
         mock_config = {"mock_config": {"node_strategies": []}}
         simulation_data = {"config": mock_config, "node_id_to_payload_map": {}}
@@ -413,8 +413,8 @@ class TestActionsHubSimulation:
         # Encode the data as it would be stored in S3
         content_base64 = base64.b64encode(json.dumps(simulation_data).encode()).decode()
 
-        # Return a dict instead of an object
-        mock_download_result = {"content_base64": content_base64}
+        # Return a proper DownloadFromS3Output object
+        mock_download_result = DownloadFromS3Output(content_base64=content_base64)
 
         with patch.object(ActionsHub, "execute_activity", new_callable=AsyncMock) as mock_execute:
             mock_execute.return_value = mock_download_result
@@ -446,13 +446,10 @@ class TestActionsHubSimulation:
     @pytest.mark.asyncio
     async def test_load_simulation_from_s3_memo_invalid_json(self):
         """Test handling of invalid JSON data from S3."""
-        import base64
-
         # Create invalid JSON (not base64 decodable properly)
         content_base64 = base64.b64encode(b"invalid json {]").decode()
 
-        mock_download_result = Mock()
-        mock_download_result.content_base64 = content_base64
+        mock_download_result = DownloadFromS3Output(content_base64=content_base64)
 
         with patch.object(ActionsHub, "execute_activity", new_callable=AsyncMock) as mock_execute:
             mock_execute.return_value = mock_download_result
@@ -467,16 +464,12 @@ class TestActionsHubSimulation:
     @pytest.mark.asyncio
     async def test_load_simulation_from_s3_memo_invalid_config(self):
         """Test handling of invalid simulation config data."""
-        import base64
-        import json
-
         # Create data with invalid config structure
         simulation_data = {"config": "invalid_config_should_be_dict", "node_id_to_payload_map": {}}
 
         content_base64 = base64.b64encode(json.dumps(simulation_data).encode()).decode()
 
-        mock_download_result = Mock()
-        mock_download_result.content_base64 = content_base64
+        mock_download_result = DownloadFromS3Output(content_base64=content_base64)
 
         with patch.object(ActionsHub, "execute_activity", new_callable=AsyncMock) as mock_execute:
             mock_execute.return_value = mock_download_result
@@ -491,15 +484,11 @@ class TestActionsHubSimulation:
     @pytest.mark.asyncio
     async def test_load_simulation_from_s3_memo_uses_correct_bucket(self):
         """Test that the correct S3 bucket constant is used."""
-        import base64
-        import json
-        from zamp_public_workflow_sdk.simulation.constants.simulation import SIMULATION_S3_BUCKET
-
         mock_config = {"mock_config": {"node_strategies": []}}
         simulation_data = {"config": mock_config, "node_id_to_payload_map": {}}
 
         content_base64 = base64.b64encode(json.dumps(simulation_data).encode()).decode()
-        mock_download_result = {"content_base64": content_base64}
+        mock_download_result = DownloadFromS3Output(content_base64=content_base64)
 
         with patch.object(ActionsHub, "execute_activity", new_callable=AsyncMock) as mock_execute:
             mock_execute.return_value = mock_download_result
@@ -516,8 +505,6 @@ class TestActionsHubSimulation:
 
     def test_add_simulation_memo_to_child_with_active_simulation(self):
         """Test adding simulation memo to child workflow kwargs when simulation is active."""
-        from zamp_public_workflow_sdk.simulation.constants.simulation import SIMULATION_S3_KEY_MEMO
-
         # Add a simulation to the map
         mock_simulation = Mock(spec=WorkflowSimulationService)
         mock_simulation.s3_key = None  # Simulation without S3 upload
@@ -538,8 +525,6 @@ class TestActionsHubSimulation:
 
     def test_add_simulation_memo_to_child_with_existing_memo_in_workflow(self):
         """Test adding simulation memo when workflow already has memo with S3 key."""
-        from zamp_public_workflow_sdk.simulation.constants.simulation import SIMULATION_S3_KEY_MEMO
-
         # Add a simulation to the map
         mock_simulation = Mock(spec=WorkflowSimulationService)
         ActionsHub._workflow_id_to_simulation_map["parent_wf"] = mock_simulation
@@ -563,8 +548,6 @@ class TestActionsHubSimulation:
 
     def test_add_simulation_memo_to_child_with_existing_kwargs_memo(self):
         """Test adding simulation memo when kwargs already has a memo dict."""
-        from zamp_public_workflow_sdk.simulation.constants.simulation import SIMULATION_S3_KEY_MEMO
-
         # Add a simulation to the map
         mock_simulation = Mock(spec=WorkflowSimulationService)
         mock_simulation.s3_key = None  # Simulation without S3 upload
@@ -599,8 +582,6 @@ class TestActionsHubSimulation:
 
     def test_add_simulation_memo_to_child_memo_access_error(self):
         """Test handling of error when accessing workflow memo."""
-        from zamp_public_workflow_sdk.simulation.constants.simulation import SIMULATION_S3_KEY_MEMO
-
         # Add a simulation to the map
         mock_simulation = Mock(spec=WorkflowSimulationService)
         mock_simulation.s3_key = None  # Simulation without S3 upload
