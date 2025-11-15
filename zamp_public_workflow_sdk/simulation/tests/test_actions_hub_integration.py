@@ -333,11 +333,10 @@ class TestActionsHubSimulationIntegration:
         expected_workflows = [
             "SimulationFetchDataWorkflow",
             "FetchTemporalWorkflowHistoryWorkflow",
-            "get_customer_code_from_s3",
         ]
 
         assert SKIP_SIMULATION_WORKFLOWS == expected_workflows
-        assert len(SKIP_SIMULATION_WORKFLOWS) == 3
+        assert len(SKIP_SIMULATION_WORKFLOWS) == 2
 
     def test_simulation_map_management(self):
         """Test simulation map management."""
