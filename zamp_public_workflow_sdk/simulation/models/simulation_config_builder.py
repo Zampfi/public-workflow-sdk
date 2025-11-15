@@ -11,7 +11,7 @@ class SimulationConfigBuilderInput(BaseModel):
     execute_actions: list[str] | None = Field(
         default=None, description="List of node IDs to execute (not mock). These will be added to the skip list."
     )
-    action_tools: list[str] | None = Field(default=None, description="List of action_tools to mock inside COT")
+    action_tools: list[str] | None = Field(default=None, description="List of action_tools to mock")
 
 
 class SimulationConfigBuilderOutput(BaseModel):
