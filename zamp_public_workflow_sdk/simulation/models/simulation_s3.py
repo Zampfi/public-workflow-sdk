@@ -14,3 +14,10 @@ class UploadToS3Input(BaseModel):
 
     class Config:
         arbitrary_types_allowed = True
+
+
+class DownloadFromS3Output(BaseModel):
+    content_base64: str = Field(..., description="File content as base64 encoded string")
+
+    class Config:
+        arbitrary_types_allowed = True

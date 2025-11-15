@@ -41,7 +41,7 @@ with workflow.unsafe.imports_passed_through():
         WorkflowSimulationService,
     )
     from zamp_public_workflow_sdk.simulation.models.node_payload import NodePayload
-    from zamp_public_workflow_sdk.simulation.models.simulation_s3 import DownloadFromS3Input
+    from zamp_public_workflow_sdk.simulation.models.simulation_s3 import DownloadFromS3Input, DownloadFromS3Output
     from zamp_public_workflow_sdk.temporal.data_converters.type_utils import get_fqn
     from zamp_public_workflow_sdk.temporal.interceptors.node_id_interceptor import (
         TEMPORAL_NODE_ID_KEY,
@@ -317,18 +317,14 @@ class ActionsHub:
             WorkflowSimulationService if successfully loaded, None otherwise
         """
         try:
-            download_result = await cls.execute_activity(
+            download_result: DownloadFromS3Output = await cls.execute_activity(
                 "download_from_s3",
                 DownloadFromS3Input(bucket_name=SIMULATION_S3_BUCKET, file_name=simulation_s3_key),
                 start_to_close_timeout=timedelta(seconds=10),
                 skip_simulation=True,
             )
 
-            content_base64 = (
-                download_result.get("content_base64")
-                if isinstance(download_result, dict)
-                else download_result.content_base64
-            )
+            content_base64 = download_result.content_base64
             simulation_data = json.loads(base64.b64decode(content_base64).decode())
 
             simulation_service = WorkflowSimulationService(SimulationConfig.model_validate(simulation_data["config"]))

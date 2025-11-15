@@ -4,7 +4,6 @@ with workflow.unsafe.imports_passed_through():
     import base64
     import json
     import structlog
-    from datetime import timedelta
 
     from zamp_public_workflow_sdk.actions_hub import ActionsHub
     from zamp_public_workflow_sdk.actions_hub.constants import get_simulation_s3_key
@@ -66,7 +65,6 @@ class SimulationFetchDataWorkflow:
                     error_type=type(e).__name__,
                 )
 
-        # Upload simulation data to S3
         s3_key = None
         try:
             s3_key = get_simulation_s3_key(input.workflow_id)
@@ -87,7 +85,6 @@ class SimulationFetchDataWorkflow:
                     blob_base64=blob_base64,
                     content_type="application/json",
                 ),
-                start_to_close_timeout=timedelta(seconds=30),
                 skip_simulation=True,
             )
             logger.info("Simulation data uploaded to S3", s3_key=s3_key)
@@ -97,6 +94,5 @@ class SimulationFetchDataWorkflow:
                 error=str(e),
                 error_type=type(e).__name__,
             )
-            # Continue without S3 upload - s3_key will be None
 
         return SimulationFetchDataWorkflowOutput(node_id_to_payload_map=node_id_to_payload_map, s3_key=s3_key)
