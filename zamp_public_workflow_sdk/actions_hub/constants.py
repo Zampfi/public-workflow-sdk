@@ -56,4 +56,5 @@ class LogMode(str, Enum):
 SKIP_SIMULATION_WORKFLOWS = [
     "SimulationFetchDataWorkflow",
     "FetchTemporalWorkflowHistoryWorkflow",
+    "get_customer_code_from_s3"
 ]
