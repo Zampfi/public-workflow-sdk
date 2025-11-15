@@ -16,3 +16,6 @@ DECODED_OUTPUT = "decoded_output"
 
 # Memo key for storing S3 location of simulation data
 SIMULATION_S3_KEY_MEMO = "__simulation_s3_key"
+
+# S3 bucket for storing simulation history data
+SIMULATION_S3_BUCKET = "zamp-dev-us-temporal-history-export"

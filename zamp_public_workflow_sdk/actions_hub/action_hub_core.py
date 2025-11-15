@@ -34,6 +34,7 @@ with workflow.unsafe.imports_passed_through():
         SimulationResponse,
     )
     from zamp_public_workflow_sdk.simulation.constants.simulation import (
+        SIMULATION_S3_BUCKET,
         SIMULATION_S3_KEY_MEMO,
     )
     from zamp_public_workflow_sdk.simulation.workflow_simulation_service import (
@@ -203,7 +204,7 @@ class ActionsHub:
         action_name = cls._get_action_name(action)
         if skip_simulation or (action_name and action_name in SKIP_SIMULATION_WORKFLOWS):
             return SimulationResponse(execution_type=ExecutionType.EXECUTE, execution_response=None)
-        
+
         simulation = await cls.get_simulation_from_workflow_id(workflow_id)
         if not simulation:
             return SimulationResponse(execution_type=ExecutionType.EXECUTE, execution_response=None)
@@ -277,28 +278,28 @@ class ActionsHub:
         cls._workflow_id_to_simulation_map[workflow_id] = simulation_service
         await simulation_service._initialize_simulation_data()
         logger.info("Simulation initialized for workflow", workflow_id=workflow_id)
-        
+
         # Upload to S3 for cross-worker access
         try:
             s3_key = f"simulation-data/{workflow_id}.json"
             simulation_data = {
                 "config": simulation_service.simulation_config.model_dump(),
                 "node_id_to_payload_map": {
-                    k: v.model_dump() if hasattr(v, 'model_dump') else v 
+                    k: v.model_dump() if hasattr(v, "model_dump") else v
                     for k, v in simulation_service.node_id_to_payload_map.items()
-                }
+                },
             }
             blob_base64 = base64.b64encode(json.dumps(simulation_data).encode()).decode()
-            
+
             await cls.execute_activity(
                 "upload_to_s3",
                 UploadToS3Input(
-                    bucket_name="zamp-dev-us-temporal-history-export",
+                    bucket_name=SIMULATION_S3_BUCKET,
                     file_name=s3_key,
                     blob_base64=blob_base64,
-                    content_type="application/json"
+                    content_type="application/json",
                 ),
-                skip_simulation=True
+                skip_simulation=True,
             )
         except Exception:
             pass
@@ -307,29 +308,31 @@ class ActionsHub:
     def _add_simulation_memo_to_child(cls, workflow_id: str, kwargs: dict) -> None:
         """
         Add simulation S3 key to child workflow memo if simulation is active.
-        
+
         Args:
             workflow_id: Current workflow ID
             kwargs: Keyword arguments dict to modify (memo key will be added/updated)
         """
         if not cls._workflow_id_to_simulation_map.get(workflow_id):
             return
-            
-        if 'memo' not in kwargs:
-            kwargs['memo'] = {}
-        
+
+        if "memo" not in kwargs:
+            kwargs["memo"] = {}
+
         try:
             memo = workflow.memo()
-            kwargs['memo'][SIMULATION_S3_KEY_MEMO] = (
-                workflow.memo_value(SIMULATION_S3_KEY_MEMO, type_hint=str) 
-                if memo and SIMULATION_S3_KEY_MEMO in memo 
+            kwargs["memo"][SIMULATION_S3_KEY_MEMO] = (
+                workflow.memo_value(SIMULATION_S3_KEY_MEMO, type_hint=str)
+                if memo and SIMULATION_S3_KEY_MEMO in memo
                 else f"simulation-data/{workflow_id}.json"
             )
         except Exception:
-            kwargs['memo'][SIMULATION_S3_KEY_MEMO] = f"simulation-data/{workflow_id}.json"
+            kwargs["memo"][SIMULATION_S3_KEY_MEMO] = f"simulation-data/{workflow_id}.json"
 
     @classmethod
-    async def _load_simulation_from_s3_memo(cls, workflow_id: str, simulation_s3_key: str) -> WorkflowSimulationService | None:
+    async def _load_simulation_from_s3_memo(
+        cls, workflow_id: str, simulation_s3_key: str
+    ) -> WorkflowSimulationService | None:
         """
         Load simulation service from S3 using the memo key.
 
@@ -343,29 +346,24 @@ class ActionsHub:
         try:
             download_result = await cls.execute_activity(
                 "download_from_s3",
-                DownloadFromS3Input(
-                    bucket_name="zamp-dev-us-temporal-history-export",
-                    file_name=simulation_s3_key
-                ),
+                DownloadFromS3Input(bucket_name=SIMULATION_S3_BUCKET, file_name=simulation_s3_key),
                 start_to_close_timeout=timedelta(seconds=10),
-                skip_simulation=True
+                skip_simulation=True,
             )
-            
+
             content_base64 = (
-                download_result.get('content_base64') 
-                if isinstance(download_result, dict) 
+                download_result.get("content_base64")
+                if isinstance(download_result, dict)
                 else download_result.content_base64
             )
             simulation_data = json.loads(base64.b64decode(content_base64).decode())
-            
-            simulation_service = WorkflowSimulationService(
-                SimulationConfig.model_validate(simulation_data["config"])
-            )
+
+            simulation_service = WorkflowSimulationService(SimulationConfig.model_validate(simulation_data["config"]))
             simulation_service.node_id_to_payload_map = {
-                node_id: NodePayload.model_validate(payload) if isinstance(payload, dict) else payload 
+                node_id: NodePayload.model_validate(payload) if isinstance(payload, dict) else payload
                 for node_id, payload in simulation_data["node_id_to_payload_map"].items()
             }
-            
+
             cls._workflow_id_to_simulation_map[workflow_id] = simulation_service
             return simulation_service
         except Exception:
@@ -396,7 +394,7 @@ class ActionsHub:
                 simulation_service = await cls._load_simulation_from_s3_memo(workflow_id, simulation_s3_key)
                 if simulation_service:
                     return simulation_service
-            
+
             info = workflow.info()
             # Check if the workflow is a child workflow and if so, use the parent's simulation
             if hasattr(info, "parent") and info.parent:
