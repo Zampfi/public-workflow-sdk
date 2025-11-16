@@ -2,6 +2,8 @@
 Unit tests for simulation activities.
 """
 
+import base64
+import json
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -322,3 +324,136 @@ class TestReturnMockedResult:
 
         assert isinstance(result, MockedResultOutput)
         assert result.root == {"result": "value"}
+
+
+class TestGetSimulationDataFromS3:
+    """Test cases for get_simulation_data_from_s3 activity."""
+
+    @pytest.mark.asyncio
+    async def test_get_simulation_data_from_s3_success(self):
+        """Test successful download and decoding of simulation data from S3."""
+        from zamp_public_workflow_sdk.simulation.activities import get_simulation_data_from_s3
+        from zamp_public_workflow_sdk.simulation.models.simulation_s3 import (
+            GetSimulationDataFromS3Input,
+            DownloadFromS3Output,
+        )
+        from zamp_public_workflow_sdk.simulation.models.config import SimulationConfig
+        from zamp_public_workflow_sdk.simulation.models.node_payload import NodePayload
+        from zamp_public_workflow_sdk.simulation.models import NodeMockConfig
+
+        # Create mock simulation data
+        mock_config = SimulationConfig(mock_config=NodeMockConfig(node_strategies=[]))
+        mock_node_payload = NodePayload(node_id="test#1", input_payload="test_input", output_payload="test_output")
+        simulation_data = {
+            "config": mock_config.model_dump(),
+            "node_id_to_payload_map": {"test#1": mock_node_payload.model_dump()},
+        }
+
+        # Encode the data as it would be stored in S3
+        content_base64 = base64.b64encode(json.dumps(simulation_data).encode()).decode()
+        mock_download_result = DownloadFromS3Output(content_base64=content_base64)
+
+        input_params = GetSimulationDataFromS3Input(
+            simulation_s3_key="simulation-data/test_wf.json",
+            bucket_name="test-bucket",
+        )
+
+        with patch(
+            "zamp_public_workflow_sdk.simulation.activities.ActionsHub.execute_activity",
+            new_callable=AsyncMock,
+        ) as mock_execute:
+            mock_execute.return_value = mock_download_result
+
+            result = await get_simulation_data_from_s3(input_params)
+
+            assert result is not None
+            assert hasattr(result, "simulation_memo")
+            assert result.simulation_memo.config is not None
+            assert "test#1" in result.simulation_memo.node_id_to_payload_map
+
+            # Verify execute_activity was called correctly
+            mock_execute.assert_called_once()
+            call_args = mock_execute.call_args
+            assert call_args[0][0] == "download_from_s3"
+            assert call_args[1]["skip_simulation"] is True
+            assert call_args[1]["return_type"] == DownloadFromS3Output
+
+    @pytest.mark.asyncio
+    async def test_get_simulation_data_from_s3_download_failure(self):
+        """Test handling of download failure from S3."""
+        from zamp_public_workflow_sdk.simulation.activities import get_simulation_data_from_s3
+        from zamp_public_workflow_sdk.simulation.models.simulation_s3 import GetSimulationDataFromS3Input
+
+        input_params = GetSimulationDataFromS3Input(
+            simulation_s3_key="simulation-data/test_wf.json",
+            bucket_name="test-bucket",
+        )
+
+        with patch(
+            "zamp_public_workflow_sdk.simulation.activities.ActionsHub.execute_activity",
+            new_callable=AsyncMock,
+        ) as mock_execute:
+            mock_execute.side_effect = Exception("S3 download failed")
+
+            with pytest.raises(Exception, match="Failed to get simulation data from S3: S3 download failed"):
+                await get_simulation_data_from_s3(input_params)
+
+            mock_execute.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_get_simulation_data_from_s3_decode_failure(self):
+        """Test handling of decode failure."""
+        from zamp_public_workflow_sdk.simulation.activities import get_simulation_data_from_s3
+        from zamp_public_workflow_sdk.simulation.models.simulation_s3 import (
+            GetSimulationDataFromS3Input,
+            DownloadFromS3Output,
+        )
+
+        # Create invalid base64 content
+        invalid_content_base64 = "invalid_base64_content"
+        mock_download_result = DownloadFromS3Output(content_base64=invalid_content_base64)
+
+        input_params = GetSimulationDataFromS3Input(
+            simulation_s3_key="simulation-data/test_wf.json",
+            bucket_name="test-bucket",
+        )
+
+        with patch(
+            "zamp_public_workflow_sdk.simulation.activities.ActionsHub.execute_activity",
+            new_callable=AsyncMock,
+        ) as mock_execute:
+            mock_execute.return_value = mock_download_result
+
+            with pytest.raises(Exception, match="Failed to get simulation data from S3"):
+                await get_simulation_data_from_s3(input_params)
+
+            mock_execute.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_get_simulation_data_from_s3_invalid_json(self):
+        """Test handling of invalid JSON data."""
+        from zamp_public_workflow_sdk.simulation.activities import get_simulation_data_from_s3
+        from zamp_public_workflow_sdk.simulation.models.simulation_s3 import (
+            GetSimulationDataFromS3Input,
+            DownloadFromS3Output,
+        )
+
+        # Create invalid JSON content
+        invalid_json = base64.b64encode(b"invalid json {]").decode()
+        mock_download_result = DownloadFromS3Output(content_base64=invalid_json)
+
+        input_params = GetSimulationDataFromS3Input(
+            simulation_s3_key="simulation-data/test_wf.json",
+            bucket_name="test-bucket",
+        )
+
+        with patch(
+            "zamp_public_workflow_sdk.simulation.activities.ActionsHub.execute_activity",
+            new_callable=AsyncMock,
+        ) as mock_execute:
+            mock_execute.return_value = mock_download_result
+
+            with pytest.raises(Exception, match="Failed to get simulation data from S3"):
+                await get_simulation_data_from_s3(input_params)
+
+            mock_execute.assert_called_once()

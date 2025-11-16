@@ -20,6 +20,11 @@ from .simulation_fetch_data_workflow import (
 from .node_payload import (
     NodePayload,
 )
+from .simulation_s3 import (
+    GetSimulationDataFromS3Input,
+    GetSimulationDataFromS3Output,
+    SimulationMemo,
+)
 
 __all__ = [
     "SimulationFetchDataWorkflowInput",
@@ -34,4 +39,7 @@ __all__ = [
     "SimulationResponse",
     "ExecutionType",
     "NodePayload",
+    "SimulationMemo",
+    "GetSimulationDataFromS3Input",
+    "GetSimulationDataFromS3Output",
 ]

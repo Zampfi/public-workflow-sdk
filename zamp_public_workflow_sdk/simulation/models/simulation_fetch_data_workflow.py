@@ -7,6 +7,7 @@ from zamp_public_workflow_sdk.simulation.models.node_payload import NodePayload
 class SimulationFetchDataWorkflowInput(BaseModel):
     simulation_config: SimulationConfig = Field(..., description="Simulation config")
     workflow_id: str = Field(..., description="Workflow ID for S3 key generation")
+    bucket_name: str = Field(..., description="S3 bucket name for storing simulation data")
 
 
 class SimulationFetchDataWorkflowOutput(BaseModel):

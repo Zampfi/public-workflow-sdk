@@ -1,4 +1,6 @@
 from pydantic import BaseModel, Field
+from zamp_public_workflow_sdk.simulation.models.config import SimulationConfig
+from zamp_public_workflow_sdk.simulation.models.node_payload import NodePayload
 
 
 class DownloadFromS3Input(BaseModel):
@@ -30,3 +32,17 @@ class UploadToS3Output(BaseModel):
         ...,
         description="HTTPS URL of the uploaded file (https://s3.amazonaws.com/...)",
     )
+
+
+class GetSimulationDataFromS3Input(BaseModel):
+    simulation_s3_key: str = Field(..., description="S3 key where simulation data is stored")
+    bucket_name: str = Field(..., description="S3 bucket name where simulation data is stored")
+
+
+class SimulationMemo(BaseModel):
+    config: SimulationConfig = Field(..., description="Simulation configuration")
+    node_id_to_payload_map: dict[str, NodePayload] = Field(..., description="Mapping of node IDs to their payloads")
+
+
+class GetSimulationDataFromS3Output(BaseModel):
+    simulation_memo: SimulationMemo = Field(..., description="Simulation memo data loaded from S3")

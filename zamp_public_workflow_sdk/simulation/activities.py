@@ -1,7 +1,17 @@
+import base64
+import json
+
 import structlog
 from zamp_public_workflow_sdk.actions_hub.action_hub_core import ActionsHub
 from zamp_public_workflow_sdk.actions_hub.constants import ExecutionMode
 from zamp_public_workflow_sdk.simulation.models.mocked_result import MockedResultInput, MockedResultOutput
+from zamp_public_workflow_sdk.simulation.models.simulation_s3 import (
+    DownloadFromS3Input,
+    DownloadFromS3Output,
+    GetSimulationDataFromS3Input,
+    GetSimulationDataFromS3Output,
+    SimulationMemo,
+)
 from zamp_public_workflow_sdk.temporal.workflow_history.models.node_payload_data import (
     DecodeNodePayloadInput,
     DecodeNodePayloadOutput,
@@ -70,3 +80,55 @@ async def return_mocked_result(input_params: MockedResultInput) -> MockedResultO
             error_type=type(e).__name__,
         )
         raise
+
+
+@ActionsHub.register_activity("Get simulation data from S3, download and decode it")
+async def get_simulation_data_from_s3(
+    input_params: GetSimulationDataFromS3Input,
+) -> GetSimulationDataFromS3Output:
+    """
+    Activity to download simulation data from S3 and decode it.
+
+    This activity:
+    1. Downloads the simulation data file from S3
+    2. Decodes the base64 content
+    3. Parses the JSON data
+    4. Returns a SimulationMemo model
+
+    Args:
+        input_params: Contains the S3 key where simulation data is stored
+
+    Returns:
+        GetSimulationDataFromS3Output containing the decoded SimulationMemo
+
+    Raises:
+        Exception: If download or decoding fails
+    """
+
+    try:
+        download_result: DownloadFromS3Output = await ActionsHub.execute_activity(
+            "download_from_s3",
+            DownloadFromS3Input(
+                bucket_name=input_params.bucket_name,
+                file_name=input_params.simulation_s3_key,
+            ),
+            return_type=DownloadFromS3Output,
+            execution_mode=ExecutionMode.API,
+            skip_simulation=True,
+        )
+
+        content_base64 = download_result.content_base64
+        decoded_content = base64.b64decode(content_base64).decode()
+        simulation_data = json.loads(decoded_content)
+        simulation_memo = SimulationMemo.model_validate(simulation_data)
+
+        return GetSimulationDataFromS3Output(simulation_memo=simulation_memo)
+
+    except Exception as e:
+        logger.error(
+            "Failed to get simulation data from S3",
+            simulation_s3_key=input_params.simulation_s3_key,
+            error=str(e),
+            error_type=type(e).__name__,
+        )
+        raise Exception(f"Failed to get simulation data from S3: {str(e)}")

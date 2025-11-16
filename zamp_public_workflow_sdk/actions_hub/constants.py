@@ -57,16 +57,3 @@ SKIP_SIMULATION_WORKFLOWS = [
     "SimulationFetchDataWorkflow",
     "FetchTemporalWorkflowHistoryWorkflow",
 ]
-
-
-def get_simulation_s3_key(workflow_id: str) -> str:
-    """
-    Generate the S3 key for simulation data stored in S3.
-
-    Args:
-        workflow_id: The workflow ID
-
-    Returns:
-        The S3 key in format: simulation-data/{workflow_id}.json
-    """
-    return f"simulation-data/{workflow_id}.json"

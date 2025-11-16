@@ -2,8 +2,6 @@
 Tests for ActionsHub simulation methods.
 """
 
-import base64
-import json
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
@@ -11,7 +9,6 @@ from pydantic import BaseModel
 
 from zamp_public_workflow_sdk.actions_hub.action_hub_core import ActionsHub
 from zamp_public_workflow_sdk.simulation.constants.simulation import (
-    SIMULATION_S3_BUCKET,
     SIMULATION_S3_KEY_MEMO,
 )
 from zamp_public_workflow_sdk.simulation.models import (
@@ -22,7 +19,11 @@ from zamp_public_workflow_sdk.simulation.models import (
     SimulationResponse,
 )
 from zamp_public_workflow_sdk.simulation.models.mocked_result import MockedResultOutput
-from zamp_public_workflow_sdk.simulation.models.simulation_s3 import DownloadFromS3Output
+from zamp_public_workflow_sdk.simulation.models.simulation_s3 import (
+    GetSimulationDataFromS3Output,
+    SimulationMemo,
+)
+from zamp_public_workflow_sdk.simulation.constants.simulation import SIMULATION_S3_BUCKET_MEMO
 from zamp_public_workflow_sdk.simulation.workflow_simulation_service import (
     WorkflowSimulationService,
 )
@@ -248,7 +249,9 @@ class TestActionsHubSimulation:
             "_initialize_simulation_data",
             new_callable=AsyncMock,
         ):
-            await ActionsHub.init_simulation_for_workflow(simulation_config, workflow_id="test_workflow_123")
+            await ActionsHub.init_simulation_for_workflow(
+                simulation_config, workflow_id="test_workflow_123", bucket_name="test-bucket"
+            )
 
             # Check that simulation was registered
             assert "test_workflow_123" in ActionsHub._workflow_id_to_simulation_map
@@ -269,7 +272,9 @@ class TestActionsHubSimulation:
             "_initialize_simulation_data",
             new_callable=AsyncMock,
         ):
-            await ActionsHub.init_simulation_for_workflow(simulation_config, workflow_id="explicit_wf")
+            await ActionsHub.init_simulation_for_workflow(
+                simulation_config, workflow_id="explicit_wf", bucket_name="test-bucket"
+            )
 
             # Check that simulation was registered with explicit workflow id
             assert "explicit_wf" in ActionsHub._workflow_id_to_simulation_map
@@ -374,20 +379,22 @@ class TestActionsHubSimulation:
     async def test_load_simulation_from_s3_memo_success(self):
         """Test successful loading of simulation data from S3."""
         # Create mock simulation data
-        mock_config = {"mock_config": {"node_strategies": []}}
-        mock_node_payload = {"node_id": "test#1", "input_payload": "test_input", "output_payload": "test_output"}
-        simulation_data = {"config": mock_config, "node_id_to_payload_map": {"test#1": mock_node_payload}}
+        from zamp_public_workflow_sdk.simulation.models.config import SimulationConfig
+        from zamp_public_workflow_sdk.simulation.models.node_payload import NodePayload
 
-        # Encode the data as it would be stored in S3
-        content_base64 = base64.b64encode(json.dumps(simulation_data).encode()).decode()
+        mock_config = SimulationConfig(mock_config=NodeMockConfig(node_strategies=[]))
+        mock_node_payload = NodePayload(node_id="test#1", input_payload="test_input", output_payload="test_output")
+        simulation_memo = SimulationMemo(config=mock_config, node_id_to_payload_map={"test#1": mock_node_payload})
 
-        mock_download_result = DownloadFromS3Output(content_base64=content_base64)
+        mock_result = GetSimulationDataFromS3Output(simulation_memo=simulation_memo)
 
         with patch.object(ActionsHub, "execute_activity", new_callable=AsyncMock) as mock_execute:
-            mock_execute.return_value = mock_download_result
+            mock_execute.return_value = mock_result
 
             result = await ActionsHub._load_simulation_from_s3_memo(
-                workflow_id="test_wf", simulation_s3_key="simulation-data/test_wf.json"
+                workflow_id="test_wf",
+                simulation_s3_key="simulation-data/test_wf.json",
+                bucket_name="test-bucket",
             )
 
             # Verify result is a WorkflowSimulationService instance
@@ -401,26 +408,27 @@ class TestActionsHubSimulation:
             # Verify execute_activity was called correctly
             mock_execute.assert_called_once()
             call_args = mock_execute.call_args
-            assert call_args[0][0] == "download_from_s3"
+            assert call_args[0][0] == "get_simulation_data_from_s3"
 
     @pytest.mark.asyncio
     async def test_load_simulation_from_s3_memo_with_dict_result(self):
-        """Test loading simulation data when download returns a proper DownloadFromS3Output object."""
+        """Test loading simulation data when download returns a proper GetSimulationDataFromS3Output object."""
         # Create mock simulation data
-        mock_config = {"mock_config": {"node_strategies": []}}
-        simulation_data = {"config": mock_config, "node_id_to_payload_map": {}}
+        from zamp_public_workflow_sdk.simulation.models.config import SimulationConfig
 
-        # Encode the data as it would be stored in S3
-        content_base64 = base64.b64encode(json.dumps(simulation_data).encode()).decode()
+        mock_config = SimulationConfig(mock_config=NodeMockConfig(node_strategies=[]))
+        simulation_memo = SimulationMemo(config=mock_config, node_id_to_payload_map={})
 
-        # Return a proper DownloadFromS3Output object
-        mock_download_result = DownloadFromS3Output(content_base64=content_base64)
+        # Return a proper GetSimulationDataFromS3Output object
+        mock_result = GetSimulationDataFromS3Output(simulation_memo=simulation_memo)
 
         with patch.object(ActionsHub, "execute_activity", new_callable=AsyncMock) as mock_execute:
-            mock_execute.return_value = mock_download_result
+            mock_execute.return_value = mock_result
 
             result = await ActionsHub._load_simulation_from_s3_memo(
-                workflow_id="test_wf_dict", simulation_s3_key="simulation-data/test_wf_dict.json"
+                workflow_id="test_wf_dict",
+                simulation_s3_key="simulation-data/test_wf_dict.json",
+                bucket_name="test-bucket",
             )
 
             # Verify result is a WorkflowSimulationService instance
@@ -434,7 +442,9 @@ class TestActionsHubSimulation:
             mock_execute.side_effect = Exception("S3 download failed")
 
             result = await ActionsHub._load_simulation_from_s3_memo(
-                workflow_id="test_wf_fail", simulation_s3_key="simulation-data/test_wf_fail.json"
+                workflow_id="test_wf_fail",
+                simulation_s3_key="simulation-data/test_wf_fail.json",
+                bucket_name="test-bucket",
             )
 
             # Should return None on failure
@@ -446,36 +456,30 @@ class TestActionsHubSimulation:
     @pytest.mark.asyncio
     async def test_load_simulation_from_s3_memo_invalid_json(self):
         """Test handling of invalid JSON data from S3."""
-        # Create invalid JSON (not base64 decodable properly)
-        content_base64 = base64.b64encode(b"invalid json {]").decode()
-
-        mock_download_result = DownloadFromS3Output(content_base64=content_base64)
-
+        # Mock activity to raise exception for invalid data
         with patch.object(ActionsHub, "execute_activity", new_callable=AsyncMock) as mock_execute:
-            mock_execute.return_value = mock_download_result
+            mock_execute.side_effect = Exception("Invalid simulation data")
 
             result = await ActionsHub._load_simulation_from_s3_memo(
-                workflow_id="test_wf_invalid", simulation_s3_key="simulation-data/test_wf_invalid.json"
+                workflow_id="test_wf_invalid",
+                simulation_s3_key="simulation-data/test_wf_invalid.json",
+                bucket_name="test-bucket",
             )
 
-            # Should return None on JSON parsing failure
+            # Should return None on failure
             assert result is None
 
     @pytest.mark.asyncio
     async def test_load_simulation_from_s3_memo_invalid_config(self):
         """Test handling of invalid simulation config data."""
-        # Create data with invalid config structure
-        simulation_data = {"config": "invalid_config_should_be_dict", "node_id_to_payload_map": {}}
-
-        content_base64 = base64.b64encode(json.dumps(simulation_data).encode()).decode()
-
-        mock_download_result = DownloadFromS3Output(content_base64=content_base64)
-
+        # Mock activity to raise exception for invalid config
         with patch.object(ActionsHub, "execute_activity", new_callable=AsyncMock) as mock_execute:
-            mock_execute.return_value = mock_download_result
+            mock_execute.side_effect = Exception("Invalid simulation config")
 
             result = await ActionsHub._load_simulation_from_s3_memo(
-                workflow_id="test_wf_bad_config", simulation_s3_key="simulation-data/test_wf_bad_config.json"
+                workflow_id="test_wf_bad_config",
+                simulation_s3_key="simulation-data/test_wf_bad_config.json",
+                bucket_name="test-bucket",
             )
 
             # Should return None on validation failure
@@ -483,31 +487,36 @@ class TestActionsHubSimulation:
 
     @pytest.mark.asyncio
     async def test_load_simulation_from_s3_memo_uses_correct_bucket(self):
-        """Test that the correct S3 bucket constant is used."""
-        mock_config = {"mock_config": {"node_strategies": []}}
-        simulation_data = {"config": mock_config, "node_id_to_payload_map": {}}
+        """Test that the correct S3 bucket is used."""
+        from zamp_public_workflow_sdk.simulation.models.config import SimulationConfig
 
-        content_base64 = base64.b64encode(json.dumps(simulation_data).encode()).decode()
-        mock_download_result = DownloadFromS3Output(content_base64=content_base64)
+        mock_config = SimulationConfig(mock_config=NodeMockConfig(node_strategies=[]))
+        simulation_memo = SimulationMemo(config=mock_config, node_id_to_payload_map={})
+        mock_result = GetSimulationDataFromS3Output(simulation_memo=simulation_memo)
+
+        test_bucket_name = "test-simulation-bucket"
 
         with patch.object(ActionsHub, "execute_activity", new_callable=AsyncMock) as mock_execute:
-            mock_execute.return_value = mock_download_result
+            mock_execute.return_value = mock_result
 
             await ActionsHub._load_simulation_from_s3_memo(
-                workflow_id="test_wf_bucket", simulation_s3_key="simulation-data/test_wf_bucket.json"
+                workflow_id="test_wf_bucket",
+                simulation_s3_key="simulation-data/test_wf_bucket.json",
+                bucket_name=test_bucket_name,
             )
 
             # Verify the correct bucket was used
             call_args = mock_execute.call_args
             download_input = call_args[0][1]
-            assert download_input.bucket_name == SIMULATION_S3_BUCKET
-            assert download_input.file_name == "simulation-data/test_wf_bucket.json"
+            assert download_input.bucket_name == test_bucket_name
+            assert download_input.simulation_s3_key == "simulation-data/test_wf_bucket.json"
 
     def test_add_simulation_memo_to_child_with_active_simulation(self):
         """Test adding simulation memo to child workflow kwargs when simulation is active."""
         # Add a simulation to the map
         mock_simulation = Mock(spec=WorkflowSimulationService)
         mock_simulation.s3_key = None  # Simulation without S3 upload
+        mock_simulation.bucket_name = "test-bucket"
         ActionsHub._workflow_id_to_simulation_map["parent_wf"] = mock_simulation
 
         # Create kwargs dict
@@ -527,6 +536,7 @@ class TestActionsHubSimulation:
         """Test adding simulation memo when workflow already has memo with S3 key."""
         # Add a simulation to the map
         mock_simulation = Mock(spec=WorkflowSimulationService)
+        mock_simulation.bucket_name = "test-bucket"
         ActionsHub._workflow_id_to_simulation_map["parent_wf"] = mock_simulation
 
         # Create kwargs dict
@@ -551,6 +561,7 @@ class TestActionsHubSimulation:
         # Add a simulation to the map
         mock_simulation = Mock(spec=WorkflowSimulationService)
         mock_simulation.s3_key = None  # Simulation without S3 upload
+        mock_simulation.bucket_name = "test-bucket"
         ActionsHub._workflow_id_to_simulation_map["parent_wf"] = mock_simulation
 
         # Create kwargs dict with existing memo
@@ -585,6 +596,7 @@ class TestActionsHubSimulation:
         # Add a simulation to the map
         mock_simulation = Mock(spec=WorkflowSimulationService)
         mock_simulation.s3_key = None  # Simulation without S3 upload
+        mock_simulation.bucket_name = "test-bucket"
         ActionsHub._workflow_id_to_simulation_map["parent_wf"] = mock_simulation
 
         kwargs = {}
@@ -782,3 +794,153 @@ class TestActionsHubSimulation:
             assert result.execution_response == raw_payload
             # Verify return_mocked_result activity was called (it handles both encoded and raw)
             mock_execute.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_get_simulation_response_skip_simulation(self):
+        """Test _get_simulation_response when skip_simulation is True."""
+        result = await ActionsHub._get_simulation_response(
+            workflow_id="test_wf",
+            node_id="node_1",
+            action="test_action",
+            return_type=None,
+            skip_simulation=True,
+        )
+
+        assert result.execution_type == ExecutionType.EXECUTE
+        assert result.execution_response is None
+
+    @pytest.mark.asyncio
+    async def test_get_simulation_response_skip_simulation_workflow(self):
+        """Test _get_simulation_response when action_name is in SKIP_SIMULATION_WORKFLOWS."""
+        from zamp_public_workflow_sdk.actions_hub.constants import SKIP_SIMULATION_WORKFLOWS
+
+        # Use a workflow name from SKIP_SIMULATION_WORKFLOWS
+        skip_workflow = SKIP_SIMULATION_WORKFLOWS[0] if SKIP_SIMULATION_WORKFLOWS else "SimulationFetchDataWorkflow"
+
+        result = await ActionsHub._get_simulation_response(
+            workflow_id="test_wf",
+            node_id="node_1",
+            action=skip_workflow,
+            return_type=None,
+            skip_simulation=False,
+        )
+
+        assert result.execution_type == ExecutionType.EXECUTE
+        assert result.execution_response is None
+
+    def test_add_simulation_memo_to_child_with_bucket_name_in_memo(self):
+        """Test adding simulation memo when bucket_name is already in workflow memo."""
+
+        # Add a simulation to the map
+        mock_simulation = Mock(spec=WorkflowSimulationService)
+        mock_simulation.s3_key = "existing-key.json"
+        mock_simulation.bucket_name = "test-bucket"
+        ActionsHub._workflow_id_to_simulation_map["parent_wf"] = mock_simulation
+
+        # Create kwargs dict
+        kwargs = {}
+
+        with (
+            patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.memo") as mock_memo,
+            patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.memo_value") as mock_memo_value,
+        ):
+            # Mock that memo exists with both S3 key and bucket name
+            mock_memo.return_value = {
+                SIMULATION_S3_KEY_MEMO: "existing-key.json",
+                SIMULATION_S3_BUCKET_MEMO: "memo-bucket-name",
+            }
+            mock_memo_value.side_effect = lambda key, **kwargs: {
+                SIMULATION_S3_KEY_MEMO: "existing-key.json",
+                SIMULATION_S3_BUCKET_MEMO: "memo-bucket-name",
+            }[key]
+
+            ActionsHub._add_simulation_memo_to_child("parent_wf", kwargs)
+
+            # Verify memo was added with values from memo (not from service)
+            assert "memo" in kwargs
+            assert kwargs["memo"][SIMULATION_S3_KEY_MEMO] == "existing-key.json"
+            assert kwargs["memo"][SIMULATION_S3_BUCKET_MEMO] == "memo-bucket-name"
+
+    @pytest.mark.asyncio
+    async def test_get_simulation_from_workflow_id_with_bucket_name_in_memo(self):
+        """Test get_simulation_from_workflow_id when bucket_name is in memo."""
+        from zamp_public_workflow_sdk.simulation.constants.simulation import (
+            SIMULATION_S3_KEY_MEMO,
+        )
+        from zamp_public_workflow_sdk.simulation.models.config import SimulationConfig
+
+        mock_config = SimulationConfig(mock_config=NodeMockConfig(node_strategies=[]))
+        simulation_memo = SimulationMemo(config=mock_config, node_id_to_payload_map={})
+        mock_result = GetSimulationDataFromS3Output(simulation_memo=simulation_memo)
+
+        with (
+            patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.memo") as mock_memo,
+            patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.memo_value") as mock_memo_value,
+            patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.info") as mock_info,
+            patch.object(ActionsHub, "execute_activity", new_callable=AsyncMock) as mock_execute,
+        ):
+            mock_memo.return_value = {
+                SIMULATION_S3_KEY_MEMO: "simulation-data/test_wf.json",
+                SIMULATION_S3_BUCKET_MEMO: "test-bucket",
+            }
+            mock_memo_value.side_effect = lambda key, **kwargs: {
+                SIMULATION_S3_KEY_MEMO: "simulation-data/test_wf.json",
+                SIMULATION_S3_BUCKET_MEMO: "test-bucket",
+            }[key]
+            mock_info.return_value = Mock(parent=None)
+            mock_execute.return_value = mock_result
+
+            result = await ActionsHub.get_simulation_from_workflow_id("test_wf")
+
+            assert result is not None
+            assert isinstance(result, WorkflowSimulationService)
+            mock_execute.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_get_simulation_from_workflow_id_missing_bucket_name(self):
+        """Test get_simulation_from_workflow_id when bucket_name is missing from memo."""
+        from zamp_public_workflow_sdk.simulation.constants.simulation import SIMULATION_S3_KEY_MEMO
+
+        with (
+            patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.memo") as mock_memo,
+            patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.memo_value") as mock_memo_value,
+            patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.info") as mock_info,
+            patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.logger") as mock_logger,
+        ):
+            # Mock that memo exists with S3 key but NO bucket name
+            mock_memo.return_value = {SIMULATION_S3_KEY_MEMO: "simulation-data/test_wf.json"}
+            mock_memo_value.return_value = "simulation-data/test_wf.json"
+            mock_info.return_value = Mock(parent=None)
+
+            result = await ActionsHub.get_simulation_from_workflow_id("test_wf")
+
+            # Should return None and log warning
+            assert result is None
+            mock_logger.warning.assert_called_once()
+            assert "Could not determine bucket_name" in str(mock_logger.warning.call_args)
+
+    @pytest.mark.asyncio
+    async def test_execute_child_workflow_api_mode_non_async(self):
+        """Test execute_child_workflow in API mode with non-async function."""
+        from zamp_public_workflow_sdk.actions_hub.constants import ExecutionMode
+
+        def non_async_workflow(*args):
+            return {"result": "success"}
+
+        with (
+            patch(
+                "zamp_public_workflow_sdk.actions_hub.action_hub_core.get_execution_mode_from_context"
+            ) as mock_get_mode,
+            patch(
+                "zamp_public_workflow_sdk.actions_hub.action_hub_core.ActionsHub._log_action_execution_response"
+            ) as mock_log,
+        ):
+            mock_get_mode.return_value = ExecutionMode.API
+
+            result = await ActionsHub.execute_child_workflow(
+                non_async_workflow,
+                {"param": "value"},
+            )
+
+            assert result == {"result": "success"}
+            mock_log.assert_called_once()

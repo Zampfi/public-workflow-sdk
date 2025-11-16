@@ -102,7 +102,9 @@ class TestSimulationFetchDataWorkflowIntegration:
         )
 
         sim_config = SimulationConfig(mock_config=mock_config)
-        input_data = SimulationFetchDataWorkflowInput(simulation_config=sim_config, workflow_id="test_workflow_123")
+        input_data = SimulationFetchDataWorkflowInput(
+            simulation_config=sim_config, workflow_id="test_workflow_123", bucket_name="test-bucket"
+        )
 
         with patch(
             "zamp_public_workflow_sdk.simulation.workflows.simulation_fetch_data_workflow.ActionsHub.execute_activity",
@@ -143,7 +145,9 @@ class TestSimulationFetchDataWorkflowIntegration:
         )
 
         sim_config = SimulationConfig(mock_config=mock_config)
-        input_data = SimulationFetchDataWorkflowInput(simulation_config=sim_config, workflow_id="test_workflow_id")
+        input_data = SimulationFetchDataWorkflowInput(
+            simulation_config=sim_config, workflow_id="test_workflow_id", bucket_name="test-bucket"
+        )
 
         # Mock the temporal history strategy at the point where it's created
         with (
@@ -208,7 +212,9 @@ class TestSimulationFetchDataWorkflowIntegration:
         )
 
         sim_config = SimulationConfig(mock_config=mock_config)
-        input_data = SimulationFetchDataWorkflowInput(simulation_config=sim_config, workflow_id="test_workflow_id")
+        input_data = SimulationFetchDataWorkflowInput(
+            simulation_config=sim_config, workflow_id="test_workflow_id", bucket_name="test-bucket"
+        )
 
         # Mock the temporal history strategy at the point where it's created
         with (
@@ -261,7 +267,9 @@ class TestSimulationFetchDataWorkflowIntegration:
         )
 
         sim_config = SimulationConfig(mock_config=mock_config)
-        input_data = SimulationFetchDataWorkflowInput(simulation_config=sim_config, workflow_id="test_workflow_id")
+        input_data = SimulationFetchDataWorkflowInput(
+            simulation_config=sim_config, workflow_id="test_workflow_id", bucket_name="test-bucket"
+        )
 
         # Mock strategy to raise exception at the point where it's created
         with (
@@ -305,7 +313,9 @@ class TestSimulationFetchDataWorkflowIntegration:
         )
 
         sim_config = SimulationConfig(mock_config=mock_config)
-        input_data = SimulationFetchDataWorkflowInput(simulation_config=sim_config, workflow_id="test_workflow_id")
+        input_data = SimulationFetchDataWorkflowInput(
+            simulation_config=sim_config, workflow_id="test_workflow_id", bucket_name="test-bucket"
+        )
 
         # Mock strategy to return empty node_outputs at the point where it's created
         with (
@@ -349,7 +359,9 @@ class TestSimulationFetchDataWorkflowIntegration:
         )
 
         sim_config = SimulationConfig(mock_config=mock_config)
-        input_data = SimulationFetchDataWorkflowInput(simulation_config=sim_config, workflow_id="test_workflow_id")
+        input_data = SimulationFetchDataWorkflowInput(
+            simulation_config=sim_config, workflow_id="test_workflow_id", bucket_name="test-bucket"
+        )
 
         # Mock strategy to return None output at the point where it's created
         with (
@@ -420,7 +432,7 @@ class TestSimulationServiceIntegration:
             mock_result = MockedResultOutput(root="integration_test_output")
             mock_actions_hub.execute_activity = AsyncMock(return_value=mock_result)
 
-            await service._initialize_simulation_data(workflow_id="integration_test_wf")
+            await service._initialize_simulation_data(workflow_id="integration_test_wf", bucket_name="test-bucket")
 
             assert len(service.node_id_to_payload_map) == 1
             assert service.node_id_to_payload_map["integration_node#1"].output_payload == "integration_test_output"
