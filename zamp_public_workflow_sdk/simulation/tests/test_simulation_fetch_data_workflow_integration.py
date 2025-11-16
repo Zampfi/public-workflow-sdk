@@ -10,26 +10,28 @@ from zamp_public_workflow_sdk.simulation.models import (
     CustomOutputConfig,
     NodeMockConfig,
     NodeStrategy,
+    NodePayload,
     SimulationConfig,
     SimulationStrategyConfig,
-    SimulationWorkflowInput,
-    SimulationWorkflowOutput,
+    SimulationFetchDataWorkflowInput,
+    SimulationFetchDataWorkflowOutput,
     StrategyType,
     TemporalHistoryConfig,
 )
 from zamp_public_workflow_sdk.simulation.models.simulation_response import (
     SimulationStrategyOutput,
 )
+from zamp_public_workflow_sdk.simulation.models.simulation_s3 import UploadToS3Output
 from zamp_public_workflow_sdk.simulation.workflow_simulation_service import (
     WorkflowSimulationService,
 )
-from zamp_public_workflow_sdk.simulation.workflows.simulation_workflow import (
-    SimulationWorkflow,
+from zamp_public_workflow_sdk.simulation.workflows.simulation_fetch_data_workflow import (
+    SimulationFetchDataWorkflow,
 )
 
 
-class TestSimulationWorkflowIntegration:
-    """Integration tests for SimulationWorkflow."""
+class TestSimulationFetchDataWorkflowIntegration:
+    """Integration tests for SimulationFetchDataWorkflow."""
 
     def test_create_strategy_custom_output(self):
         """Test create_strategy method with custom output strategy."""
@@ -78,7 +80,7 @@ class TestSimulationWorkflowIntegration:
     @pytest.mark.asyncio
     async def test_execute_with_custom_output_strategies(self):
         """Test execute method with custom output strategies."""
-        workflow = SimulationWorkflow()
+        workflow = SimulationFetchDataWorkflow()
 
         mock_config = NodeMockConfig(
             node_strategies=[
@@ -100,20 +102,32 @@ class TestSimulationWorkflowIntegration:
         )
 
         sim_config = SimulationConfig(mock_config=mock_config)
-        input_data = SimulationWorkflowInput(simulation_config=sim_config)
+        input_data = SimulationFetchDataWorkflowInput(
+            simulation_config=sim_config, workflow_id="test_workflow_123", bucket_name="test-bucket"
+        )
 
-        result = await workflow.execute(input_data)
+        with patch(
+            "zamp_public_workflow_sdk.simulation.workflows.simulation_fetch_data_workflow.ActionsHub.execute_activity",
+            new_callable=AsyncMock,
+        ) as mock_execute_activity:
+            mock_execute_activity.return_value = UploadToS3Output(
+                metadata={},
+                s3_url="s3://test-bucket/test-key",
+                https_url="https://s3.amazonaws.com/test-bucket/test-key",
+            )
 
-        assert isinstance(result, SimulationWorkflowOutput)
-        assert len(result.node_id_to_response_map) == 3
-        assert result.node_id_to_response_map["node1#1"] == "output1"
-        assert result.node_id_to_response_map["node2#1"] == "output1"
-        assert result.node_id_to_response_map["node3#1"] == "output2"
+            result = await workflow.execute(input_data)
+
+        assert isinstance(result, SimulationFetchDataWorkflowOutput)
+        assert len(result.node_id_to_payload_map) == 3
+        assert result.node_id_to_payload_map["node1#1"].output_payload == "output1"
+        assert result.node_id_to_payload_map["node2#1"].output_payload == "output1"
+        assert result.node_id_to_payload_map["node3#1"].output_payload == "output2"
 
     @pytest.mark.asyncio
     async def test_execute_with_temporal_history_strategies(self):
         """Test execute method with temporal history strategies."""
-        workflow = SimulationWorkflow()
+        workflow = SimulationFetchDataWorkflow()
 
         mock_config = NodeMockConfig(
             node_strategies=[
@@ -131,34 +145,49 @@ class TestSimulationWorkflowIntegration:
         )
 
         sim_config = SimulationConfig(mock_config=mock_config)
-        input_data = SimulationWorkflowInput(simulation_config=sim_config)
+        input_data = SimulationFetchDataWorkflowInput(
+            simulation_config=sim_config, workflow_id="test_workflow_id", bucket_name="test-bucket"
+        )
 
         # Mock the temporal history strategy at the point where it's created
-        with patch(
-            "zamp_public_workflow_sdk.simulation.workflow_simulation_service.TemporalHistoryStrategyHandler"
-        ) as mock_handler_class:
+        with (
+            patch(
+                "zamp_public_workflow_sdk.simulation.workflow_simulation_service.TemporalHistoryStrategyHandler"
+            ) as mock_handler_class,
+            patch(
+                "zamp_public_workflow_sdk.simulation.workflows.simulation_fetch_data_workflow.ActionsHub.execute_activity",
+                new_callable=AsyncMock,
+            ) as mock_execute_activity,
+        ):
             mock_strategy = Mock()
             mock_strategy.execute = AsyncMock(
                 return_value=SimulationStrategyOutput(
-                    node_outputs={
-                        "node1#1": "history_output",
-                        "node2#1": "history_output",
+                    node_id_to_payload_map={
+                        "node1#1": NodePayload(node_id="node1#1", input_payload=None, output_payload="history_output"),
+                        "node2#1": NodePayload(node_id="node2#1", input_payload=None, output_payload="history_output"),
                     }
                 )
             )
             mock_handler_class.return_value = mock_strategy
+            mock_execute_activity.return_value = UploadToS3Output(
+                metadata={},
+                s3_url="s3://test-bucket/test-key",
+                https_url="https://s3.amazonaws.com/test-bucket/test-key",
+            )
 
             result = await workflow.execute(input_data)
 
-            assert isinstance(result, SimulationWorkflowOutput)
-            assert len(result.node_id_to_response_map) == 2
-            assert result.node_id_to_response_map["node1#1"] == "history_output"
-            assert result.node_id_to_response_map["node2#1"] == "history_output"
+            assert isinstance(result, SimulationFetchDataWorkflowOutput)
+            assert len(result.node_id_to_payload_map) == 2
+            assert isinstance(result.node_id_to_payload_map["node1#1"], NodePayload)
+            assert result.node_id_to_payload_map["node1#1"].output_payload == "history_output"
+            assert isinstance(result.node_id_to_payload_map["node2#1"], NodePayload)
+            assert result.node_id_to_payload_map["node2#1"].output_payload == "history_output"
 
     @pytest.mark.asyncio
     async def test_execute_with_mixed_strategies(self):
         """Test execute method with mixed strategy types."""
-        workflow = SimulationWorkflow()
+        workflow = SimulationFetchDataWorkflow()
 
         mock_config = NodeMockConfig(
             node_strategies=[
@@ -183,29 +212,47 @@ class TestSimulationWorkflowIntegration:
         )
 
         sim_config = SimulationConfig(mock_config=mock_config)
-        input_data = SimulationWorkflowInput(simulation_config=sim_config)
+        input_data = SimulationFetchDataWorkflowInput(
+            simulation_config=sim_config, workflow_id="test_workflow_id", bucket_name="test-bucket"
+        )
 
         # Mock the temporal history strategy at the point where it's created
-        with patch(
-            "zamp_public_workflow_sdk.simulation.workflow_simulation_service.TemporalHistoryStrategyHandler"
-        ) as mock_handler_class:
+        with (
+            patch(
+                "zamp_public_workflow_sdk.simulation.workflow_simulation_service.TemporalHistoryStrategyHandler"
+            ) as mock_handler_class,
+            patch(
+                "zamp_public_workflow_sdk.simulation.workflows.simulation_fetch_data_workflow.ActionsHub.execute_activity",
+                new_callable=AsyncMock,
+            ) as mock_execute_activity,
+        ):
             mock_strategy = Mock()
             mock_strategy.execute = AsyncMock(
-                return_value=SimulationStrategyOutput(node_outputs={"node2#1": "history_output"})
+                return_value=SimulationStrategyOutput(
+                    node_id_to_payload_map={
+                        "node2#1": NodePayload(node_id="node2#1", input_payload=None, output_payload="history_output")
+                    }
+                )
             )
             mock_handler_class.return_value = mock_strategy
+            mock_execute_activity.return_value = UploadToS3Output(
+                metadata={},
+                s3_url="s3://test-bucket/test-key",
+                https_url="https://s3.amazonaws.com/test-bucket/test-key",
+            )
 
             result = await workflow.execute(input_data)
 
-            assert isinstance(result, SimulationWorkflowOutput)
-            assert len(result.node_id_to_response_map) == 2
-            assert result.node_id_to_response_map["node1#1"] == "custom_output"
-            assert result.node_id_to_response_map["node2#1"] == "history_output"
+            assert isinstance(result, SimulationFetchDataWorkflowOutput)
+            assert len(result.node_id_to_payload_map) == 2
+            assert result.node_id_to_payload_map["node1#1"].output_payload == "custom_output"
+            assert isinstance(result.node_id_to_payload_map["node2#1"], NodePayload)
+            assert result.node_id_to_payload_map["node2#1"].output_payload == "history_output"
 
     @pytest.mark.asyncio
     async def test_execute_strategy_execution_failure(self):
         """Test execute method when strategy execution fails."""
-        workflow = SimulationWorkflow()
+        workflow = SimulationFetchDataWorkflow()
 
         mock_config = NodeMockConfig(
             node_strategies=[
@@ -220,25 +267,38 @@ class TestSimulationWorkflowIntegration:
         )
 
         sim_config = SimulationConfig(mock_config=mock_config)
-        input_data = SimulationWorkflowInput(simulation_config=sim_config)
+        input_data = SimulationFetchDataWorkflowInput(
+            simulation_config=sim_config, workflow_id="test_workflow_id", bucket_name="test-bucket"
+        )
 
         # Mock strategy to raise exception at the point where it's created
-        with patch(
-            "zamp_public_workflow_sdk.simulation.workflow_simulation_service.CustomOutputStrategyHandler"
-        ) as mock_handler_class:
+        with (
+            patch(
+                "zamp_public_workflow_sdk.simulation.workflow_simulation_service.CustomOutputStrategyHandler"
+            ) as mock_handler_class,
+            patch(
+                "zamp_public_workflow_sdk.simulation.workflows.simulation_fetch_data_workflow.ActionsHub.execute_activity",
+                new_callable=AsyncMock,
+            ) as mock_execute_activity,
+        ):
             mock_strategy = Mock()
             mock_strategy.execute = AsyncMock(side_effect=Exception("Strategy failed"))
             mock_handler_class.return_value = mock_strategy
+            mock_execute_activity.return_value = UploadToS3Output(
+                metadata={},
+                s3_url="s3://test-bucket/test-key",
+                https_url="https://s3.amazonaws.com/test-bucket/test-key",
+            )
 
             result = await workflow.execute(input_data)
 
-            assert isinstance(result, SimulationWorkflowOutput)
-            assert len(result.node_id_to_response_map) == 0  # No successful executions
+            assert isinstance(result, SimulationFetchDataWorkflowOutput)
+            assert len(result.node_id_to_payload_map) == 0  # No successful executions
 
     @pytest.mark.asyncio
     async def test_execute_strategy_returns_empty_outputs(self):
         """Test execute method when strategy returns empty node_outputs."""
-        workflow = SimulationWorkflow()
+        workflow = SimulationFetchDataWorkflow()
 
         mock_config = NodeMockConfig(
             node_strategies=[
@@ -253,25 +313,38 @@ class TestSimulationWorkflowIntegration:
         )
 
         sim_config = SimulationConfig(mock_config=mock_config)
-        input_data = SimulationWorkflowInput(simulation_config=sim_config)
+        input_data = SimulationFetchDataWorkflowInput(
+            simulation_config=sim_config, workflow_id="test_workflow_id", bucket_name="test-bucket"
+        )
 
         # Mock strategy to return empty node_outputs at the point where it's created
-        with patch(
-            "zamp_public_workflow_sdk.simulation.workflow_simulation_service.CustomOutputStrategyHandler"
-        ) as mock_handler_class:
+        with (
+            patch(
+                "zamp_public_workflow_sdk.simulation.workflow_simulation_service.CustomOutputStrategyHandler"
+            ) as mock_handler_class,
+            patch(
+                "zamp_public_workflow_sdk.simulation.workflows.simulation_fetch_data_workflow.ActionsHub.execute_activity",
+                new_callable=AsyncMock,
+            ) as mock_execute_activity,
+        ):
             mock_strategy = Mock()
-            mock_strategy.execute = AsyncMock(return_value=SimulationStrategyOutput(node_outputs={}))
+            mock_strategy.execute = AsyncMock(return_value=SimulationStrategyOutput(node_id_to_payload_map={}))
             mock_handler_class.return_value = mock_strategy
+            mock_execute_activity.return_value = UploadToS3Output(
+                metadata={},
+                s3_url="s3://test-bucket/test-key",
+                https_url="https://s3.amazonaws.com/test-bucket/test-key",
+            )
 
             result = await workflow.execute(input_data)
 
-            assert isinstance(result, SimulationWorkflowOutput)
-            assert len(result.node_id_to_response_map) == 0  # No mock outputs
+            assert isinstance(result, SimulationFetchDataWorkflowOutput)
+            assert len(result.node_id_to_payload_map) == 0  # No mock outputs
 
     @pytest.mark.asyncio
     async def test_execute_strategy_returns_none_output(self):
         """Test execute method when strategy returns None output."""
-        workflow = SimulationWorkflow()
+        workflow = SimulationFetchDataWorkflow()
 
         mock_config = NodeMockConfig(
             node_strategies=[
@@ -286,20 +359,33 @@ class TestSimulationWorkflowIntegration:
         )
 
         sim_config = SimulationConfig(mock_config=mock_config)
-        input_data = SimulationWorkflowInput(simulation_config=sim_config)
+        input_data = SimulationFetchDataWorkflowInput(
+            simulation_config=sim_config, workflow_id="test_workflow_id", bucket_name="test-bucket"
+        )
 
         # Mock strategy to return None output at the point where it's created
-        with patch(
-            "zamp_public_workflow_sdk.simulation.workflow_simulation_service.CustomOutputStrategyHandler"
-        ) as mock_handler_class:
+        with (
+            patch(
+                "zamp_public_workflow_sdk.simulation.workflow_simulation_service.CustomOutputStrategyHandler"
+            ) as mock_handler_class,
+            patch(
+                "zamp_public_workflow_sdk.simulation.workflows.simulation_fetch_data_workflow.ActionsHub.execute_activity",
+                new_callable=AsyncMock,
+            ) as mock_execute_activity,
+        ):
             mock_strategy = Mock()
-            mock_strategy.execute = AsyncMock(return_value=SimulationStrategyOutput(node_outputs={}))
+            mock_strategy.execute = AsyncMock(return_value=SimulationStrategyOutput(node_id_to_payload_map={}))
             mock_handler_class.return_value = mock_strategy
+            mock_execute_activity.return_value = UploadToS3Output(
+                metadata={},
+                s3_url="s3://test-bucket/test-key",
+                https_url="https://s3.amazonaws.com/test-bucket/test-key",
+            )
 
             result = await workflow.execute(input_data)
 
-            assert isinstance(result, SimulationWorkflowOutput)
-            assert len(result.node_id_to_response_map) == 0  # No mock outputs
+            assert isinstance(result, SimulationFetchDataWorkflowOutput)
+            assert len(result.node_id_to_payload_map) == 0  # No mock outputs
 
 
 class TestSimulationServiceIntegration:
@@ -317,7 +403,9 @@ class TestSimulationServiceIntegration:
                 NodeStrategy(
                     strategy=SimulationStrategyConfig(
                         type=StrategyType.CUSTOM_OUTPUT,
-                        config=CustomOutputConfig(output_value="integration_test_output"),
+                        config=CustomOutputConfig(
+                            output_value="integration_test_output", input_value="integration_test_output"
+                        ),
                     ),
                     nodes=["integration_node#1"],
                 ),
@@ -327,21 +415,30 @@ class TestSimulationServiceIntegration:
         sim_config = SimulationConfig(mock_config=mock_config)
         service = WorkflowSimulationService(sim_config)
 
-        # Mock the workflow execution
+        # Mock the workflow execution - note the new data structure with input/output payloads
         mock_workflow_result = Mock()
-        mock_workflow_result.node_id_to_response_map = {"integration_node#1": "integration_test_output"}
+        mock_workflow_result.node_id_to_payload_map = {
+            "integration_node#1": NodePayload(
+                node_id="integration_node#1", input_payload=None, output_payload="integration_test_output"
+            )
+        }
 
         with patch("zamp_public_workflow_sdk.actions_hub.ActionsHub") as mock_actions_hub:
             mock_actions_hub.execute_child_workflow = AsyncMock(return_value=mock_workflow_result)
             mock_actions_hub.clear_node_id_tracker = Mock()
+            # Also patch execute_activity for the get_simulation_response call
+            from zamp_public_workflow_sdk.simulation.models.mocked_result import MockedResultOutput
 
-            await service._initialize_simulation_data()
+            mock_result = MockedResultOutput(root="integration_test_output")
+            mock_actions_hub.execute_activity = AsyncMock(return_value=mock_result)
 
-            assert len(service.node_id_to_response_map) == 1
-            assert service.node_id_to_response_map["integration_node#1"] == "integration_test_output"
+            await service._initialize_simulation_data(workflow_id="integration_test_wf", bucket_name="test-bucket")
 
-            # Test that simulation response works
-            response = service.get_simulation_response("integration_node#1")
+            assert len(service.node_id_to_payload_map) == 1
+            assert service.node_id_to_payload_map["integration_node#1"].output_payload == "integration_test_output"
+
+            # Test that simulation response works - mock ActionsHub.execute_activity since get_simulation_response now calls return_mocked_result
+            response = await service.get_simulation_response("integration_node#1")
             assert response is not None
             assert response.execution_type.value == "MOCK"
             assert response.execution_response == "integration_test_output"

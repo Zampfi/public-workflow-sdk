@@ -34,11 +34,18 @@ class TestActionsHubSimulationIntegration:
         ) as mock_execute:
             mock_execute.return_value = "workflow_result"
 
-            # Mock context
-            with patch(
-                "zamp_public_workflow_sdk.actions_hub.action_hub_core.get_execution_mode_from_context"
-            ) as mock_mode:
-                mock_mode.return_value = "TEMPORAL"
+            # Mock workflow.info() to simulate being in a workflow context
+            with patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.info") as mock_info:
+                mock_workflow_info = Mock()
+                mock_workflow_info.workflow_id = "parent-workflow-id"
+                mock_workflow_info.headers = {}
+                mock_info.return_value = mock_workflow_info
+
+                # Mock context
+                with patch(
+                    "zamp_public_workflow_sdk.actions_hub.action_hub_core.get_execution_mode_from_context"
+                ) as mock_mode:
+                    mock_mode.return_value = "TEMPORAL"
 
                 with patch(
                     "zamp_public_workflow_sdk.actions_hub.action_hub_core.get_variable_from_context"
@@ -60,12 +67,11 @@ class TestActionsHubSimulationIntegration:
         class MockWorkflow:
             __name__ = "RegularWorkflow"
 
-        # Setup simulation
-        workflow_id = "default"
+        workflow_id = "parent-workflow-id"
 
         mock_simulation = Mock()
-        mock_simulation.get_simulation_response.return_value = SimulationResponse(
-            execution_type=ExecutionType.MOCK, execution_response="simulated_result"
+        mock_simulation.get_simulation_response = AsyncMock(
+            return_value=SimulationResponse(execution_type=ExecutionType.MOCK, execution_response="simulated_result")
         )
         ActionsHub._workflow_id_to_simulation_map[workflow_id] = mock_simulation
 
@@ -74,9 +80,9 @@ class TestActionsHubSimulationIntegration:
             mock_var.return_value = workflow_id
 
             with patch(
-                "zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.execute_child_workflow"
-            ) as mock_execute:
-                mock_execute.return_value = "simulated_result"
+                "zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.execute_activity"
+            ) as mock_execute_activity:
+                mock_execute_activity.return_value = "simulated_result"
 
                 # Mock workflow.info() to avoid workflow event loop error
                 with patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.info") as mock_info:
@@ -98,8 +104,8 @@ class TestActionsHubSimulationIntegration:
         workflow_id = "default"
 
         mock_simulation = Mock()
-        mock_simulation.get_simulation_response.return_value = SimulationResponse(
-            execution_type=ExecutionType.EXECUTE, execution_response=None
+        mock_simulation.get_simulation_response = AsyncMock(
+            return_value=SimulationResponse(execution_type=ExecutionType.EXECUTE, execution_response=None)
         )
         ActionsHub._workflow_id_to_simulation_map[workflow_id] = mock_simulation
 
@@ -109,11 +115,18 @@ class TestActionsHubSimulationIntegration:
         ) as mock_execute:
             mock_execute.return_value = "workflow_result"
 
-            # Mock context
-            with patch(
-                "zamp_public_workflow_sdk.actions_hub.action_hub_core.get_execution_mode_from_context"
-            ) as mock_mode:
-                mock_mode.return_value = "TEMPORAL"
+            # Mock workflow.info() to simulate being in a workflow context
+            with patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.info") as mock_info:
+                mock_workflow_info = Mock()
+                mock_workflow_info.workflow_id = "parent-workflow-id"
+                mock_workflow_info.headers = {}
+                mock_info.return_value = mock_workflow_info
+
+                # Mock context
+                with patch(
+                    "zamp_public_workflow_sdk.actions_hub.action_hub_core.get_execution_mode_from_context"
+                ) as mock_mode:
+                    mock_mode.return_value = "TEMPORAL"
 
                 with patch(
                     "zamp_public_workflow_sdk.actions_hub.action_hub_core.get_variable_from_context"
@@ -149,11 +162,18 @@ class TestActionsHubSimulationIntegration:
         ) as mock_execute:
             mock_execute.return_value = {"value": "test"}
 
-            # Mock context
-            with patch(
-                "zamp_public_workflow_sdk.actions_hub.action_hub_core.get_execution_mode_from_context"
-            ) as mock_mode:
-                mock_mode.return_value = "TEMPORAL"
+            # Mock workflow.info() to simulate being in a workflow context
+            with patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.info") as mock_info:
+                mock_workflow_info = Mock()
+                mock_workflow_info.workflow_id = "parent-workflow-id"
+                mock_workflow_info.headers = {}
+                mock_info.return_value = mock_workflow_info
+
+                # Mock context
+                with patch(
+                    "zamp_public_workflow_sdk.actions_hub.action_hub_core.get_execution_mode_from_context"
+                ) as mock_mode:
+                    mock_mode.return_value = "TEMPORAL"
 
                 with patch(
                     "zamp_public_workflow_sdk.actions_hub.action_hub_core.get_variable_from_context"
@@ -201,12 +221,11 @@ class TestActionsHubSimulationIntegration:
         class MockWorkflow:
             __name__ = "RegularWorkflow"
 
-        # Setup simulation
-        workflow_id = "default"
+        workflow_id = "parent-workflow-id"
 
         mock_simulation = Mock()
-        mock_simulation.get_simulation_response.return_value = SimulationResponse(
-            execution_type=ExecutionType.MOCK, execution_response="simulated_result"
+        mock_simulation.get_simulation_response = AsyncMock(
+            return_value=SimulationResponse(execution_type=ExecutionType.MOCK, execution_response="simulated_result")
         )
         ActionsHub._workflow_id_to_simulation_map[workflow_id] = mock_simulation
 
@@ -215,9 +234,9 @@ class TestActionsHubSimulationIntegration:
             mock_var.return_value = workflow_id
 
             with patch(
-                "zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.start_child_workflow"
-            ) as mock_start:
-                mock_start.return_value = "simulated_result"
+                "zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.execute_activity"
+            ) as mock_execute_activity:
+                mock_execute_activity.return_value = "simulated_result"
 
                 # Mock workflow.info() to avoid workflow event loop error
                 with patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.info") as mock_info:
@@ -312,7 +331,7 @@ class TestActionsHubSimulationIntegration:
         )
 
         expected_workflows = [
-            "SimulationWorkflow",
+            "SimulationFetchDataWorkflow",
             "FetchTemporalWorkflowHistoryWorkflow",
         ]
 

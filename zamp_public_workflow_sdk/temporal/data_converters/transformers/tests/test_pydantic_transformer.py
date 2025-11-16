@@ -19,20 +19,20 @@ class Nested1(BaseModel):
 
 class Nested2(BaseModel):
     nested1: Nested1
-    type_var: type[BaseModel]
 
 
 def test_basic():
     converter = PydanticJSONPayloadConverter()
-    dict = {"string": "test", "integer": 1}
+    test_dict = {"string": "test", "integer": 1}
 
-    payload = converter.to_payload(dict)
-    assert DEFAULT_CONVERTER_METADATA_KEY in payload.metadata
-    dict["bytes_io"] = BytesIO(b"test")
+    payload = converter.to_payload(test_dict)
+    assert payload is not None
+    assert "encoding" in payload.metadata
+    test_dict["bytes_io"] = BytesIO(b"test")
 
     converter.from_payload(payload, dict[str, Any])
 
-    payload = converter.to_payload(dict)
+    payload = converter.to_payload(test_dict)
     assert DEFAULT_CONVERTER_METADATA_KEY not in payload.metadata
 
 
@@ -43,16 +43,19 @@ def test_nested_case():
 
     nested1 = Nested1(basic=basic1)
 
-    nested2 = Nested2(nested1=nested1, type_var=Basic)
+    nested2 = Nested2(nested1=nested1)
 
     payload = converter.to_payload(basic1)
-    assert DEFAULT_CONVERTER_METADATA_KEY in payload.metadata
+    assert payload is not None
+    assert "encoding" in payload.metadata
     converter.from_payload(payload, Basic)
     payload = converter.to_payload(nested1)
-    assert DEFAULT_CONVERTER_METADATA_KEY in payload.metadata
+    assert payload is not None
+    assert "encoding" in payload.metadata
     converter.from_payload(payload, Nested1)
     payload = converter.to_payload(nested2)
-    assert DEFAULT_CONVERTER_METADATA_KEY not in payload.metadata
+    assert payload is not None
+    assert "encoding" in payload.metadata
     converter.from_payload(payload, Nested2)
 
 

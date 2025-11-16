@@ -15,7 +15,7 @@ from zamp_public_workflow_sdk.temporal.interceptors.node_id_interceptor import (
     NODE_ID_HEADER_KEY,
 )
 
-from .constants import DEFAULT_MODE, SKIP_SIMULATION_WORKFLOWS, LogMode
+from .constants import DEFAULT_MODE, MEMO_KEY, SKIP_SIMULATION_WORKFLOWS, LogMode
 from .models.mcp_models import MCPConfig
 
 with workflow.unsafe.imports_passed_through():
@@ -31,8 +31,17 @@ with workflow.unsafe.imports_passed_through():
         SimulationConfig,
         SimulationResponse,
     )
+    from zamp_public_workflow_sdk.simulation.constants.simulation import (
+        SIMULATION_S3_BUCKET_MEMO,
+        SIMULATION_S3_KEY_MEMO,
+        get_simulation_s3_key,
+    )
     from zamp_public_workflow_sdk.simulation.workflow_simulation_service import (
         WorkflowSimulationService,
+    )
+    from zamp_public_workflow_sdk.simulation.models.simulation_s3 import (
+        GetSimulationDataFromS3Input,
+        GetSimulationDataFromS3Output,
     )
     from zamp_public_workflow_sdk.temporal.data_converters.type_utils import get_fqn
     from zamp_public_workflow_sdk.temporal.interceptors.node_id_interceptor import (
@@ -180,23 +189,25 @@ class ActionsHub:
         return node_id
 
     @classmethod
-    def _get_simulation_response(
+    async def _get_simulation_response(
         cls,
         workflow_id: str,
         node_id: str,
         action: str | Callable = None,
         return_type: type | None = None,
+        skip_simulation: bool = False,
     ) -> SimulationResponse:
         """Get simulation response for a workflow execution and handle return type conversion."""
 
         action_name = cls._get_action_name(action)
-        if action_name and action_name in SKIP_SIMULATION_WORKFLOWS:
+        if skip_simulation or (action_name and action_name in SKIP_SIMULATION_WORKFLOWS):
             return SimulationResponse(execution_type=ExecutionType.EXECUTE, execution_response=None)
-        simulation = cls.get_simulation_from_workflow_id(workflow_id)
+
+        simulation = await cls.get_simulation_from_workflow_id(workflow_id)
         if not simulation:
             return SimulationResponse(execution_type=ExecutionType.EXECUTE, execution_response=None)
 
-        simulation_response = simulation.get_simulation_response(node_id)
+        simulation_response = await simulation.get_simulation_response(node_id, action_name=action_name)
         if simulation_response.execution_type == ExecutionType.MOCK:
             if return_type is None and action:
                 return_type = cls._get_action_return_type(action)
@@ -226,6 +237,7 @@ class ActionsHub:
         if not return_type or result is None:
             return result
 
+        # Case 1: For dict results, convert to Pydantic model
         if hasattr(return_type, "model_validate") and isinstance(result, dict):
             try:
                 return return_type.model_validate(result)
@@ -236,25 +248,105 @@ class ActionsHub:
                     e,
                 )
                 return result
-
+        # Case 2: For non-dict results, construct Pydantic model from the raw value
+        try:
+            if hasattr(return_type, "model_fields"):
+                fields = return_type.model_fields
+                if len(fields) == 1:
+                    field_name = next(iter(fields.keys()))
+                    return return_type.model_validate({field_name: result})
+        except Exception as e:
+            logger.warning(
+                "Could not convert result to Pydantic model %s: %s",
+                return_type.__name__,
+                e,
+            )
         return result
 
     @classmethod
-    async def init_simulation_for_workflow(cls, simulation_config: SimulationConfig, workflow_id: str) -> None:
+    async def init_simulation_for_workflow(
+        cls, simulation_config: SimulationConfig, workflow_id: str, bucket_name: str
+    ) -> None:
         """
         Initialize simulation for a workflow.
 
         Args:
             simulation_config: Simulation configuration
             workflow_id: Workflow ID to associate with simulation
+            bucket_name: S3 bucket name for storing simulation data
         """
-        simulation_service = WorkflowSimulationService(simulation_config)
+        simulation_service = WorkflowSimulationService(simulation_config=simulation_config, bucket_name=bucket_name)
         cls._workflow_id_to_simulation_map[workflow_id] = simulation_service
-        await simulation_service._initialize_simulation_data()
+        await simulation_service._initialize_simulation_data(workflow_id=workflow_id, bucket_name=bucket_name)
         logger.info("Simulation initialized for workflow", workflow_id=workflow_id)
 
     @classmethod
-    def get_simulation_from_workflow_id(cls, workflow_id: str) -> WorkflowSimulationService | None:
+    def _add_simulation_memo_to_child(cls, workflow_id: str, kwargs: dict) -> None:
+        """
+        Add simulation S3 key and bucket name to child workflow memo if simulation is active.
+
+        Args:
+            workflow_id: Current workflow ID
+            kwargs: Keyword arguments dict to modify (memo keys will be added/updated)
+        """
+        simulation_service = cls._workflow_id_to_simulation_map.get(workflow_id)
+        if not simulation_service:
+            return
+        if MEMO_KEY not in kwargs:
+            kwargs[MEMO_KEY] = {}
+        try:
+            memo = workflow.memo()
+        except Exception:
+            memo = None
+        # Add S3 key to memo
+        if memo and SIMULATION_S3_KEY_MEMO in memo:
+            kwargs[MEMO_KEY][SIMULATION_S3_KEY_MEMO] = workflow.memo_value(SIMULATION_S3_KEY_MEMO, type_hint=str)
+        elif simulation_service.s3_key:
+            kwargs[MEMO_KEY][SIMULATION_S3_KEY_MEMO] = simulation_service.s3_key
+        else:
+            kwargs[MEMO_KEY][SIMULATION_S3_KEY_MEMO] = get_simulation_s3_key(workflow_id)
+        # Add bucket name to memo
+        if memo and SIMULATION_S3_BUCKET_MEMO in memo:
+            kwargs[MEMO_KEY][SIMULATION_S3_BUCKET_MEMO] = workflow.memo_value(SIMULATION_S3_BUCKET_MEMO, type_hint=str)
+        elif simulation_service.bucket_name:
+            kwargs[MEMO_KEY][SIMULATION_S3_BUCKET_MEMO] = simulation_service.bucket_name
+
+    @classmethod
+    async def _load_simulation_from_s3_memo(
+        cls, workflow_id: str, simulation_s3_key: str, bucket_name: str
+    ) -> WorkflowSimulationService | None:
+        """
+        Load simulation service from S3 using the memo key.
+
+        Args:
+            workflow_id: The workflow ID to associate with the simulation
+            simulation_s3_key: The S3 key where simulation data is stored
+            bucket_name: S3 bucket name where simulation data is stored
+
+        Returns:
+            WorkflowSimulationService if successfully loaded, None otherwise
+        """
+        try:
+            result: GetSimulationDataFromS3Output = await cls.execute_activity(
+                "get_simulation_data_from_s3",
+                GetSimulationDataFromS3Input(simulation_s3_key=simulation_s3_key, bucket_name=bucket_name),
+                return_type=GetSimulationDataFromS3Output,
+                skip_simulation=True,
+            )
+
+            simulation_memo = result.simulation_memo
+            simulation_service = WorkflowSimulationService(
+                simulation_config=simulation_memo.config, bucket_name=bucket_name
+            )
+            simulation_service.node_id_to_payload_map = simulation_memo.node_id_to_payload_map
+
+            cls._workflow_id_to_simulation_map[workflow_id] = simulation_service
+            return simulation_service
+        except Exception:
+            return None
+
+    @classmethod
+    async def get_simulation_from_workflow_id(cls, workflow_id: str) -> WorkflowSimulationService | None:
         """
         Get simulation service for a workflow_id with hierarchical lookup.
 
@@ -272,7 +364,27 @@ class ActionsHub:
             return simulation
 
         try:
+            memo = workflow.memo()
             info = workflow.info()
+            if memo and SIMULATION_S3_KEY_MEMO in memo:
+                simulation_s3_key = workflow.memo_value(SIMULATION_S3_KEY_MEMO, type_hint=str)
+                # Get bucket_name from memo
+                bucket_name = None
+                if memo and SIMULATION_S3_BUCKET_MEMO in memo:
+                    bucket_name = workflow.memo_value(SIMULATION_S3_BUCKET_MEMO, type_hint=str)
+
+                if bucket_name:
+                    simulation_service = await cls._load_simulation_from_s3_memo(
+                        workflow_id=workflow_id, simulation_s3_key=simulation_s3_key, bucket_name=bucket_name
+                    )
+                    if simulation_service:
+                        return simulation_service
+                else:
+                    logger.warning(
+                        "Could not determine bucket_name for loading simulation from S3",
+                        workflow_id=workflow_id,
+                    )
+
             # Check if the workflow is a child workflow and if so, use the parent's simulation
             if hasattr(info, "parent") and info.parent:
                 parent_workflow_id = info.parent.workflow_id
@@ -445,7 +557,9 @@ class ActionsHub:
         return_type: type | None = None,
         start_to_close_timeout: timedelta = timedelta(minutes=10),
         retry_policy: RetryPolicy = RetryPolicy.default(),
+        custom_node_id: str | None = None,
         task_queue: str | None = None,
+        skip_simulation: bool = False,
         **kwargs,
     ):
         # Check if execution_mode is set to "API" in context variables
@@ -488,16 +602,18 @@ class ActionsHub:
         activity_name, workflow_id, node_id = cls._generate_node_id_for_action(activity)
 
         # Check for simulation result
-        simulation_result = cls._get_simulation_response(
+        simulation_result = await cls._get_simulation_response(
             workflow_id=workflow_id,
             node_id=node_id,
             action=activity,
             return_type=return_type,
+            skip_simulation=skip_simulation,
         )
         if simulation_result.execution_type == ExecutionType.MOCK:
             logger.info(
                 "Activity mocked",
                 node_id=node_id,
+                activity_name=activity_name,
             )
             return simulation_result.execution_response
 
@@ -506,7 +622,10 @@ class ActionsHub:
         retry_policy.initial_interval = convert_iso_to_timedelta(retry_policy.initial_interval)
         retry_policy.maximum_interval = convert_iso_to_timedelta(retry_policy.maximum_interval)
 
-        node_id_arg = {TEMPORAL_NODE_ID_KEY: node_id}
+        if custom_node_id:
+            node_id_arg = {TEMPORAL_NODE_ID_KEY: custom_node_id}
+        else:
+            node_id_arg = {TEMPORAL_NODE_ID_KEY: node_id}
         args = (node_id_arg,) + args
 
         # Executing in temporal mode
@@ -744,7 +863,7 @@ class ActionsHub:
         child_workflow_name, workflow_id, node_id = cls._generate_node_id_for_action(workflow_name)
 
         # Check for simulation result
-        simulation_result = cls._get_simulation_response(
+        simulation_result = await cls._get_simulation_response(
             workflow_id=workflow_id,
             node_id=node_id,
             action=workflow_name,
@@ -755,12 +874,15 @@ class ActionsHub:
             logger.info(
                 "Child workflow mocked",
                 node_id=node_id,
+                workflow_name=child_workflow_name,
             )
             return simulation_result.execution_response
 
-        # Temporal execution mode
         node_id_arg = {TEMPORAL_NODE_ID_KEY: node_id}
         args = (node_id_arg,) + args
+
+        # Pass simulation S3 key to child workflow via memo
+        cls._add_simulation_memo_to_child(workflow_id=workflow_id, kwargs=kwargs)
 
         # Executing in temporal mode
         logger.info(
@@ -793,13 +915,26 @@ class ActionsHub:
         workflow_name: str | Callable,
         *args,
         result_type: type | None = None,
+        skip_node_id_gen: bool = False,
         **kwargs,
     ):
+        if skip_node_id_gen:
+            logger.info(
+                "Skipping node id generation while starting child workflow",
+                workflow_name=workflow_name,
+            )
+            return await workflow.start_child_workflow(
+                workflow_name,
+                result_type=result_type,
+                args=args,
+                **kwargs,
+            )
+
         # Generate node_id for this child workflow execution
         child_workflow_name, workflow_id, node_id = cls._generate_node_id_for_action(workflow_name)
 
         # Check for simulation result
-        simulation_result = cls._get_simulation_response(
+        simulation_result = await cls._get_simulation_response(
             workflow_id=workflow_id,
             node_id=node_id,
             action=workflow_name,
@@ -808,7 +943,7 @@ class ActionsHub:
         if simulation_result.execution_type == ExecutionType.MOCK:
             logger.info(
                 "Child workflow mocked",
-                activity_name=workflow_name,
+                workflow_name=child_workflow_name,
                 node_id=node_id,
             )
             return simulation_result.execution_response
@@ -822,6 +957,9 @@ class ActionsHub:
 
         node_id_arg = {TEMPORAL_NODE_ID_KEY: node_id}
         args = (node_id_arg,) + args
+
+        # Pass simulation S3 key to child workflow via memo
+        cls._add_simulation_memo_to_child(workflow_id=workflow_id, kwargs=kwargs)
 
         return await workflow.start_child_workflow(
             workflow_name,

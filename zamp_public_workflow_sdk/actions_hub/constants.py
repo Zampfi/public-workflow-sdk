@@ -54,6 +54,9 @@ class LogMode(str, Enum):
 
 # Simulation constants
 SKIP_SIMULATION_WORKFLOWS = [
-    "SimulationWorkflow",
+    "SimulationFetchDataWorkflow",
     "FetchTemporalWorkflowHistoryWorkflow",
 ]
+
+# Temporal memo key
+MEMO_KEY = "memo"

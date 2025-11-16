@@ -2,18 +2,18 @@
 Workflow Simulation Service for managing simulation state and responses.
 """
 
-from typing import Any
-
 import structlog
-
-from zamp_public_workflow_sdk.simulation.models import ExecutionType, SimulationResponse
+from zamp_public_workflow_sdk.simulation.models import (
+    ExecutionType,
+    SimulationFetchDataWorkflowOutput,
+    SimulationResponse,
+    NodePayload,
+    SimulationFetchDataWorkflowInput,
+)
 from zamp_public_workflow_sdk.simulation.models.config import SimulationConfig
 from zamp_public_workflow_sdk.simulation.models.simulation_strategy import (
     NodeStrategy,
     StrategyType,
-)
-from zamp_public_workflow_sdk.simulation.models.simulation_workflow import (
-    SimulationWorkflowInput,
 )
 from zamp_public_workflow_sdk.simulation.strategies.base_strategy import BaseStrategy
 from zamp_public_workflow_sdk.simulation.strategies.custom_output_strategy import (
@@ -22,6 +22,7 @@ from zamp_public_workflow_sdk.simulation.strategies.custom_output_strategy impor
 from zamp_public_workflow_sdk.simulation.strategies.temporal_history_strategy import (
     TemporalHistoryStrategyHandler,
 )
+from zamp_public_workflow_sdk.simulation.models.mocked_result import MockedResultInput, MockedResultOutput
 
 logger = structlog.get_logger(__name__)
 
@@ -33,85 +34,131 @@ class WorkflowSimulationService:
     This service pre-computes simulation responses during initialization
     """
 
-    def __init__(self, simulation_config: SimulationConfig):
+    def __init__(self, simulation_config: SimulationConfig, bucket_name: str | None = None):
         """
         Initialize simulation service with configuration.
 
         Args:
             simulation_config: Simulation configuration
+            bucket_name: S3 bucket name for storing simulation data
         """
         self.simulation_config = simulation_config
         # this response is raw response to be set using FetchWorkflowHistoryWorkflow
-        self.node_id_to_response_map: dict[str, Any] = {}
+        self.node_id_to_payload_map: dict[str, NodePayload] = {}
+        # S3 key where simulation data is stored
+        self.s3_key: str | None = None
+        # S3 bucket name for storing simulation data
+        self.bucket_name: str | None = bucket_name
 
-    async def _initialize_simulation_data(self) -> None:
+    async def _initialize_simulation_data(self, workflow_id: str, bucket_name: str) -> None:
         """
         Initialize simulation data by pre-computing all responses.
 
-        This method builds the node_id_to_response_map by processing
+        This method builds the node_id_to_payload_map by processing
         all strategies in the simulation configuration.
         This method should be called from within a workflow context.
+
+        Args:
+            workflow_id: The workflow ID for S3 key generation
+            bucket_name: S3 bucket name for storing simulation data
         """
         logger.info(
             "Initializing simulation data",
             config_version=self.simulation_config.version,
+            workflow_id=workflow_id,
         )
 
         from zamp_public_workflow_sdk.actions_hub import ActionsHub
-        from zamp_public_workflow_sdk.simulation.workflows.simulation_workflow import (
-            SimulationWorkflow,
+        from zamp_public_workflow_sdk.simulation.workflows.simulation_fetch_data_workflow import (
+            SimulationFetchDataWorkflow,
         )
 
         try:
-            workflow_result = await ActionsHub.execute_child_workflow(
-                SimulationWorkflow,
-                SimulationWorkflowInput(simulation_config=self.simulation_config),
+            workflow_result: SimulationFetchDataWorkflowOutput = await ActionsHub.execute_child_workflow(
+                SimulationFetchDataWorkflow,
+                SimulationFetchDataWorkflowInput(
+                    simulation_config=self.simulation_config,
+                    workflow_id=workflow_id,
+                    bucket_name=bucket_name,
+                ),
             )
 
             logger.info(
-                "SimulationWorkflow completed",
-                workflow_result=workflow_result,
-                has_node_id_to_response_map=workflow_result is not None
-                and hasattr(workflow_result, "node_id_to_response_map"),
+                "SimulationFetchDataWorkflow completed",
+                has_node_id_to_payload_map=workflow_result is not None
+                and hasattr(workflow_result, "node_id_to_payload_map"),
+                has_s3_key=workflow_result is not None and hasattr(workflow_result, "s3_key"),
             )
 
-            self.node_id_to_response_map = workflow_result.node_id_to_response_map
+            self.node_id_to_payload_map = workflow_result.node_id_to_payload_map
+            self.s3_key = workflow_result.s3_key
 
             logger.info(
                 "Simulation data initialized successfully",
-                total_nodes=len(self.node_id_to_response_map),
+                total_nodes=len(self.node_id_to_payload_map),
+                s3_key=self.s3_key,
             )
 
         except Exception as e:
             logger.error(
-                "Failed to execute SimulationWorkflow",
+                "Failed to execute SimulationFetchDataWorkflow",
                 error=str(e),
                 error_type=type(e).__name__,
             )
             raise
 
-    def get_simulation_response(self, node_id: str) -> SimulationResponse:
+    async def get_simulation_response(self, node_id: str, action_name: str | None = None) -> SimulationResponse:
         """
-        Get simulation response for a specific node.
+        Get simulation response for a specific node by calling return_mocked_result activity.
+
+        This method delegates the decoding of encoded payloads to the return_mocked_result activity,
+        which runs in API mode and handles both TemporalHistoryStrategy (encoded) and
+        CustomOutputStrategy (raw) outputs.
 
         Args:
             node_id: The node execution ID
+            action_name: Optional action name for activity summary
 
         Returns:
-            SimulationResponse with MOCK if node should be mocked, EXECUTE otherwise
+            SimulationResponse with MOCK if node should be mocked (decoded if needed), EXECUTE otherwise
         """
+        from zamp_public_workflow_sdk.actions_hub import ActionsHub
 
         # check if node is in the response map
-        is_response_mocked = node_id in self.node_id_to_response_map
+        is_response_mocked = node_id in self.node_id_to_payload_map
+        if not is_response_mocked:
+            return SimulationResponse(execution_type=ExecutionType.EXECUTE, execution_response=None)
 
         # If node is in the response map, it should be mocked
-        if is_response_mocked:
-            return SimulationResponse(
-                execution_type=ExecutionType.MOCK,
-                execution_response=self.node_id_to_response_map[node_id],
+        # node_payload is a NodePayload instance with input_payload and output_payload attributes
+        node_payload = self.node_id_to_payload_map[node_id]
+
+        try:
+            decoded_result: MockedResultOutput = await ActionsHub.execute_activity(
+                "return_mocked_result",
+                MockedResultInput(
+                    node_id=node_id,
+                    input_payload=node_payload.input_payload,
+                    output_payload=node_payload.output_payload,
+                    action_name=action_name,
+                ),
+                return_type=MockedResultOutput,
+                custom_node_id=node_id,
+                summary=action_name,
             )
 
-        return SimulationResponse(execution_type=ExecutionType.EXECUTE, execution_response=None)
+            return SimulationResponse(
+                execution_type=ExecutionType.MOCK,
+                execution_response=decoded_result.root,
+            )
+        except Exception as e:
+            logger.error(
+                "Failed to get mocked result",
+                node_id=node_id,
+                error=str(e),
+                error_type=type(e).__name__,
+            )
+            raise
 
     @staticmethod
     def get_strategy(node_strategy: NodeStrategy) -> BaseStrategy | None:

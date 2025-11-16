@@ -61,14 +61,13 @@ def node_id_dict(sample_node_id):
 class TestNodeIdWorkflowOutboundInterceptor:
     def test_init(self, mock_next_outbound):
         """Test interceptor initialization."""
-        interceptor = NodeIdWorkflowOutboundInterceptor(mock_next_outbound, "test_header_key")
+        interceptor = NodeIdWorkflowOutboundInterceptor(mock_next_outbound)
 
-        assert interceptor.node_id_header_key == NODE_ID_HEADER_KEY
         assert interceptor.next == mock_next_outbound
 
     def test_extract_node_id_from_args_with_node_id(self, mock_next_outbound, node_id_dict, sample_node_id):
         """Test extracting node_id from args when present."""
-        interceptor = NodeIdWorkflowOutboundInterceptor(mock_next_outbound, "test_key")
+        interceptor = NodeIdWorkflowOutboundInterceptor(mock_next_outbound)
 
         args = ("arg1", node_id_dict, "arg3")
         result = interceptor._extract_node_id_from_args(args)
@@ -77,7 +76,7 @@ class TestNodeIdWorkflowOutboundInterceptor:
 
     def test_extract_node_id_from_args_without_node_id(self, mock_next_outbound):
         """Test extracting node_id from args when not present."""
-        interceptor = NodeIdWorkflowOutboundInterceptor(mock_next_outbound, "test_key")
+        interceptor = NodeIdWorkflowOutboundInterceptor(mock_next_outbound)
 
         args = ("arg1", "arg2", {"other_key": "value"})
         result = interceptor._extract_node_id_from_args(args)
@@ -86,7 +85,7 @@ class TestNodeIdWorkflowOutboundInterceptor:
 
     def test_extract_node_id_from_args_empty(self, mock_next_outbound):
         """Test extracting node_id from empty args."""
-        interceptor = NodeIdWorkflowOutboundInterceptor(mock_next_outbound, "test_key")
+        interceptor = NodeIdWorkflowOutboundInterceptor(mock_next_outbound)
 
         args = ()
         result = interceptor._extract_node_id_from_args(args)
@@ -95,77 +94,79 @@ class TestNodeIdWorkflowOutboundInterceptor:
 
     def test_extract_node_id_from_args_multiple_keys_dict(self, mock_next_outbound):
         """Test that dict with multiple keys is not considered node_id."""
-        interceptor = NodeIdWorkflowOutboundInterceptor(mock_next_outbound, "test_key")
+        interceptor = NodeIdWorkflowOutboundInterceptor(mock_next_outbound)
 
         args = ({"__temporal_node_id": "test", "other_key": "value"},)
         result = interceptor._extract_node_id_from_args(args)
 
         assert result is None
 
-    def test_add_node_id_to_headers(self, mock_next_outbound, mock_payload_converter, sample_node_id):
+    def test_add_node_id_to_activity_headers(self, mock_next_outbound, mock_payload_converter, sample_node_id):
         """Test adding node_id to activity headers."""
-        interceptor = NodeIdWorkflowOutboundInterceptor(mock_next_outbound, "test_key")
+        interceptor = NodeIdWorkflowOutboundInterceptor(mock_next_outbound)
 
         with patch.object(workflow, "payload_converter", return_value=mock_payload_converter):
             input_obj = MagicMock()
             input_obj.headers = {}
 
-            interceptor._add_node_id_to_headers(input_obj, sample_node_id)
+            interceptor._add_node_id_to_activity_headers(input_obj, sample_node_id)
 
             assert NODE_ID_HEADER_KEY in input_obj.headers
             assert input_obj.headers[NODE_ID_HEADER_KEY] == f"payload:{sample_node_id}"
 
-    def test_add_node_id_to_headers_no_node_id(self, mock_next_outbound):
+    def test_add_node_id_to_activity_headers_no_node_id(self, mock_next_outbound):
         """Test adding node_id to headers when node_id is None."""
-        interceptor = NodeIdWorkflowOutboundInterceptor(mock_next_outbound, "test_key")
+        interceptor = NodeIdWorkflowOutboundInterceptor(mock_next_outbound)
 
         input_obj = MagicMock()
         input_obj.headers = {}
 
-        interceptor._add_node_id_to_headers(input_obj, None)
+        interceptor._add_node_id_to_activity_headers(input_obj, None)
 
         assert NODE_ID_HEADER_KEY not in input_obj.headers
 
-    def test_add_node_id_to_child_workflow_headers(self, mock_next_outbound, mock_payload_converter, sample_node_id):
+    def test_add_node_id_to_activity_headers_for_child_workflow(
+        self, mock_next_outbound, mock_payload_converter, sample_node_id
+    ):
         """Test adding node_id to child workflow headers."""
-        interceptor = NodeIdWorkflowOutboundInterceptor(mock_next_outbound, "test_key")
+        interceptor = NodeIdWorkflowOutboundInterceptor(mock_next_outbound)
 
         with patch.object(workflow, "payload_converter", return_value=mock_payload_converter):
             input_obj = MagicMock(spec=StartChildWorkflowInput)
             input_obj.headers = {}
 
-            interceptor._add_node_id_to_child_workflow_headers(input_obj, sample_node_id)
+            interceptor._add_node_id_to_activity_headers(input_obj, sample_node_id)
 
             assert NODE_ID_HEADER_KEY in input_obj.headers
             assert input_obj.headers[NODE_ID_HEADER_KEY] == f"payload:{sample_node_id}"
 
-    def test_add_node_id_to_child_workflow_headers_no_headers_attr(
+    def test_add_node_id_to_activity_headers_no_headers_attr(
         self, mock_next_outbound, mock_payload_converter, sample_node_id
     ):
-        """Test adding node_id to child workflow headers when headers attribute doesn't exist."""
-        interceptor = NodeIdWorkflowOutboundInterceptor(mock_next_outbound, "test_key")
+        """Test adding node_id to headers when headers attribute doesn't exist."""
+        interceptor = NodeIdWorkflowOutboundInterceptor(mock_next_outbound)
 
         with patch.object(workflow, "payload_converter", return_value=mock_payload_converter):
             input_obj = MagicMock(spec=StartChildWorkflowInput)
             delattr(input_obj, "headers")
 
-            interceptor._add_node_id_to_child_workflow_headers(input_obj, sample_node_id)
+            interceptor._add_node_id_to_activity_headers(input_obj, sample_node_id)
 
             assert hasattr(input_obj, "headers")
             assert NODE_ID_HEADER_KEY in input_obj.headers
             assert input_obj.headers[NODE_ID_HEADER_KEY] == f"payload:{sample_node_id}"
 
-    def test_add_node_id_to_child_workflow_headers_none_headers(
+    def test_add_node_id_to_activity_headers_none_headers(
         self, mock_next_outbound, mock_payload_converter, sample_node_id
     ):
-        """Test adding node_id to child workflow headers when headers is None."""
-        interceptor = NodeIdWorkflowOutboundInterceptor(mock_next_outbound, "test_key")
+        """Test adding node_id to headers when headers is None."""
+        interceptor = NodeIdWorkflowOutboundInterceptor(mock_next_outbound)
 
         with patch.object(workflow, "payload_converter", return_value=mock_payload_converter):
             input_obj = MagicMock(spec=StartChildWorkflowInput)
             input_obj.headers = None
 
-            interceptor._add_node_id_to_child_workflow_headers(input_obj, sample_node_id)
+            interceptor._add_node_id_to_activity_headers(input_obj, sample_node_id)
 
             assert input_obj.headers is not None
             assert NODE_ID_HEADER_KEY in input_obj.headers
@@ -173,7 +174,7 @@ class TestNodeIdWorkflowOutboundInterceptor:
 
     def test_filter_node_id_from_args(self, mock_next_outbound, node_id_dict):
         """Test filtering node_id dict from args."""
-        interceptor = NodeIdWorkflowOutboundInterceptor(mock_next_outbound, "test_key")
+        interceptor = NodeIdWorkflowOutboundInterceptor(mock_next_outbound)
 
         args = ("arg1", node_id_dict, "arg3", {"other": "dict"})
         result = interceptor._filter_node_id_from_args(args)
@@ -183,7 +184,7 @@ class TestNodeIdWorkflowOutboundInterceptor:
 
     def test_filter_node_id_from_args_no_node_id(self, mock_next_outbound):
         """Test filtering args when no node_id dict is present."""
-        interceptor = NodeIdWorkflowOutboundInterceptor(mock_next_outbound, "test_key")
+        interceptor = NodeIdWorkflowOutboundInterceptor(mock_next_outbound)
 
         args = ("arg1", "arg2", {"other": "dict"})
         result = interceptor._filter_node_id_from_args(args)
@@ -192,7 +193,7 @@ class TestNodeIdWorkflowOutboundInterceptor:
 
     def test_filter_node_id_from_args_empty(self, mock_next_outbound):
         """Test filtering empty args."""
-        interceptor = NodeIdWorkflowOutboundInterceptor(mock_next_outbound, "test_key")
+        interceptor = NodeIdWorkflowOutboundInterceptor(mock_next_outbound)
 
         args = ()
         result = interceptor._filter_node_id_from_args(args)
@@ -201,7 +202,7 @@ class TestNodeIdWorkflowOutboundInterceptor:
 
     def test_filter_node_id_from_args_multiple_node_id_dicts(self, mock_next_outbound):
         """Test filtering args with multiple node_id dicts."""
-        interceptor = NodeIdWorkflowOutboundInterceptor(mock_next_outbound, "test_key")
+        interceptor = NodeIdWorkflowOutboundInterceptor(mock_next_outbound)
 
         node_id_dict1 = {"__temporal_node_id": "node1"}
         node_id_dict2 = {"__temporal_node_id": "node2"}
@@ -216,7 +217,7 @@ class TestNodeIdWorkflowOutboundInterceptor:
         self, mock_next_outbound, mock_payload_converter, node_id_dict, sample_node_id
     ):
         """Test start_activity with node_id in args."""
-        interceptor = NodeIdWorkflowOutboundInterceptor(mock_next_outbound, "test_key")
+        interceptor = NodeIdWorkflowOutboundInterceptor(mock_next_outbound)
 
         with patch.object(workflow, "payload_converter", return_value=mock_payload_converter):
             input_obj = MagicMock(spec=StartActivityInput)
@@ -237,7 +238,7 @@ class TestNodeIdWorkflowOutboundInterceptor:
 
     def test_start_activity_without_node_id(self, mock_next_outbound):
         """Test start_activity without node_id in args."""
-        interceptor = NodeIdWorkflowOutboundInterceptor(mock_next_outbound, "test_key")
+        interceptor = NodeIdWorkflowOutboundInterceptor(mock_next_outbound)
 
         input_obj = MagicMock(spec=StartActivityInput)
         input_obj.headers = {}
@@ -260,7 +261,7 @@ class TestNodeIdWorkflowOutboundInterceptor:
         self, mock_next_outbound, mock_payload_converter, node_id_dict, sample_node_id
     ):
         """Test start_child_workflow with node_id in args."""
-        interceptor = NodeIdWorkflowOutboundInterceptor(mock_next_outbound, "test_key")
+        interceptor = NodeIdWorkflowOutboundInterceptor(mock_next_outbound)
 
         with patch.object(workflow, "payload_converter", return_value=mock_payload_converter):
             input_obj = MagicMock(spec=StartChildWorkflowInput)
@@ -282,7 +283,7 @@ class TestNodeIdWorkflowOutboundInterceptor:
     @pytest.mark.asyncio
     async def test_start_child_workflow_without_node_id(self, mock_next_outbound):
         """Test start_child_workflow without node_id in args."""
-        interceptor = NodeIdWorkflowOutboundInterceptor(mock_next_outbound, "test_key")
+        interceptor = NodeIdWorkflowOutboundInterceptor(mock_next_outbound)
 
         input_obj = MagicMock(spec=StartChildWorkflowInput)
         input_obj.headers = {}
@@ -307,17 +308,14 @@ class TestNodeIdInterceptor:
         """Test interceptor initialization with default values."""
         interceptor = NodeIdInterceptor()
 
-        assert interceptor.node_id_header_key == NODE_ID_HEADER_KEY
         assert interceptor.logger_module is None
 
     def test_init_custom_values(self):
         """Test interceptor initialization with custom values."""
         mock_logger = MagicMock()
-        custom_header_key = "custom_node_id"
 
-        interceptor = NodeIdInterceptor(node_id_header_key=custom_header_key, logger_module=mock_logger)
+        interceptor = NodeIdInterceptor(logger_module=mock_logger)
 
-        assert interceptor.node_id_header_key == custom_header_key
         assert interceptor.logger_module == mock_logger
 
     def test_workflow_interceptor_class(self):
@@ -353,17 +351,12 @@ class TestNodeIdInterceptorIntegration:
 
     def test_complete_activity_flow(self, mock_payload_converter, sample_node_id, node_id_dict):
         """Test the complete flow for activity execution with node_id."""
-        # Create the main interceptor
-        main_interceptor = NodeIdInterceptor()
-
         # Create mock next interceptors
         mock_next_outbound = MagicMock(spec=WorkflowOutboundInterceptor)
         mock_next_outbound.start_activity = MagicMock()
 
         # Create outbound interceptor
-        outbound_interceptor = NodeIdWorkflowOutboundInterceptor(
-            mock_next_outbound, main_interceptor.node_id_header_key
-        )
+        outbound_interceptor = NodeIdWorkflowOutboundInterceptor(mock_next_outbound)
 
         # Test activity start with node_id
         with patch.object(workflow, "payload_converter", return_value=mock_payload_converter):
@@ -382,17 +375,12 @@ class TestNodeIdInterceptorIntegration:
     @pytest.mark.asyncio
     async def test_complete_child_workflow_flow(self, mock_payload_converter, sample_node_id, node_id_dict):
         """Test the complete flow for child workflow execution with node_id."""
-        # Create the main interceptor
-        main_interceptor = NodeIdInterceptor()
-
         # Create mock next interceptors
         mock_next_outbound = MagicMock(spec=WorkflowOutboundInterceptor)
         mock_next_outbound.start_child_workflow = AsyncMock()
 
         # Create outbound interceptor
-        outbound_interceptor = NodeIdWorkflowOutboundInterceptor(
-            mock_next_outbound, main_interceptor.node_id_header_key
-        )
+        outbound_interceptor = NodeIdWorkflowOutboundInterceptor(mock_next_outbound)
 
         # Test child workflow start with node_id
         with patch.object(workflow, "payload_converter", return_value=mock_payload_converter):
@@ -433,12 +421,9 @@ class TestNodeIdInterceptorIntegration:
 
     def test_multiple_node_id_handling(self, mock_payload_converter):
         """Test handling of multiple node_id dicts in args."""
-        main_interceptor = NodeIdInterceptor()
         mock_next_outbound = MagicMock(spec=WorkflowOutboundInterceptor)
 
-        outbound_interceptor = NodeIdWorkflowOutboundInterceptor(
-            mock_next_outbound, main_interceptor.node_id_header_key
-        )
+        outbound_interceptor = NodeIdWorkflowOutboundInterceptor(mock_next_outbound)
 
         with patch.object(workflow, "payload_converter", return_value=mock_payload_converter):
             # Test with multiple node_id dicts - should take the first one
@@ -461,12 +446,9 @@ class TestNodeIdInterceptorIntegration:
 
     def test_edge_case_empty_args(self):
         """Test handling of empty args."""
-        main_interceptor = NodeIdInterceptor()
         mock_next_outbound = MagicMock(spec=WorkflowOutboundInterceptor)
 
-        outbound_interceptor = NodeIdWorkflowOutboundInterceptor(
-            mock_next_outbound, main_interceptor.node_id_header_key
-        )
+        outbound_interceptor = NodeIdWorkflowOutboundInterceptor(mock_next_outbound)
 
         activity_input = MagicMock(spec=StartActivityInput)
         activity_input.headers = {}
@@ -481,12 +463,9 @@ class TestNodeIdInterceptorIntegration:
 
     def test_edge_case_non_dict_args(self):
         """Test handling of args that are not dicts."""
-        main_interceptor = NodeIdInterceptor()
         mock_next_outbound = MagicMock(spec=WorkflowOutboundInterceptor)
 
-        outbound_interceptor = NodeIdWorkflowOutboundInterceptor(
-            mock_next_outbound, main_interceptor.node_id_header_key
-        )
+        outbound_interceptor = NodeIdWorkflowOutboundInterceptor(mock_next_outbound)
 
         activity_input = MagicMock(spec=StartActivityInput)
         activity_input.headers = {}
@@ -505,12 +484,9 @@ class TestNodeIdInterceptorIntegration:
 
     def test_payload_conversion_integration(self, mock_payload_converter, sample_node_id, node_id_dict):
         """Test that payload conversion is properly integrated."""
-        main_interceptor = NodeIdInterceptor()
         mock_next_outbound = MagicMock(spec=WorkflowOutboundInterceptor)
 
-        outbound_interceptor = NodeIdWorkflowOutboundInterceptor(
-            mock_next_outbound, main_interceptor.node_id_header_key
-        )
+        outbound_interceptor = NodeIdWorkflowOutboundInterceptor(mock_next_outbound)
 
         with patch.object(workflow, "payload_converter", return_value=mock_payload_converter) as mock_pc:
             activity_input = MagicMock(spec=StartActivityInput)
@@ -533,12 +509,9 @@ class TestNodeIdInterceptorErrorHandling:
 
     def test_payload_conversion_error(self, sample_node_id, node_id_dict):
         """Test handling of payload conversion errors."""
-        main_interceptor = NodeIdInterceptor()
         mock_next_outbound = MagicMock(spec=WorkflowOutboundInterceptor)
 
-        outbound_interceptor = NodeIdWorkflowOutboundInterceptor(
-            mock_next_outbound, main_interceptor.node_id_header_key
-        )
+        outbound_interceptor = NodeIdWorkflowOutboundInterceptor(mock_next_outbound)
 
         # Mock payload converter to raise an exception
         mock_converter = MagicMock()
@@ -555,12 +528,9 @@ class TestNodeIdInterceptorErrorHandling:
 
     def test_missing_headers_attribute(self, mock_payload_converter, sample_node_id, node_id_dict):
         """Test handling when input object doesn't have headers attribute."""
-        main_interceptor = NodeIdInterceptor()
         mock_next_outbound = MagicMock(spec=WorkflowOutboundInterceptor)
 
-        outbound_interceptor = NodeIdWorkflowOutboundInterceptor(
-            mock_next_outbound, main_interceptor.node_id_header_key
-        )
+        outbound_interceptor = NodeIdWorkflowOutboundInterceptor(mock_next_outbound)
 
         with patch.object(workflow, "payload_converter", return_value=mock_payload_converter):
             activity_input = MagicMock(spec=StartActivityInput)
@@ -568,10 +538,11 @@ class TestNodeIdInterceptorErrorHandling:
             delattr(activity_input, "headers")
             activity_input.args = (node_id_dict,)
 
-            # Should raise AttributeError when trying to access headers
-            with pytest.raises(AttributeError):
-                outbound_interceptor.start_activity(activity_input)
+            # Should not raise exception; code creates headers if missing
+            outbound_interceptor.start_activity(activity_input)
 
-
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])
+            # Verify that headers were created and node_id was added
+            assert hasattr(activity_input, "headers")
+            assert activity_input.headers is not None
+            assert NODE_ID_HEADER_KEY in activity_input.headers
+            assert activity_input.headers[NODE_ID_HEADER_KEY] == f"payload:{sample_node_id}"
