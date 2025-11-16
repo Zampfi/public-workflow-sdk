@@ -146,12 +146,15 @@ class TestSimulationFetchDataWorkflowIntegration:
         input_data = SimulationFetchDataWorkflowInput(simulation_config=sim_config, workflow_id="test_workflow_id")
 
         # Mock the temporal history strategy at the point where it's created
-        with patch(
-            "zamp_public_workflow_sdk.simulation.workflow_simulation_service.TemporalHistoryStrategyHandler"
-        ) as mock_handler_class, patch(
-            "zamp_public_workflow_sdk.simulation.workflows.simulation_fetch_data_workflow.ActionsHub.execute_activity",
-            new_callable=AsyncMock,
-        ) as mock_execute_activity:
+        with (
+            patch(
+                "zamp_public_workflow_sdk.simulation.workflow_simulation_service.TemporalHistoryStrategyHandler"
+            ) as mock_handler_class,
+            patch(
+                "zamp_public_workflow_sdk.simulation.workflows.simulation_fetch_data_workflow.ActionsHub.execute_activity",
+                new_callable=AsyncMock,
+            ) as mock_execute_activity,
+        ):
             mock_strategy = Mock()
             mock_strategy.execute = AsyncMock(
                 return_value=SimulationStrategyOutput(
@@ -208,12 +211,15 @@ class TestSimulationFetchDataWorkflowIntegration:
         input_data = SimulationFetchDataWorkflowInput(simulation_config=sim_config, workflow_id="test_workflow_id")
 
         # Mock the temporal history strategy at the point where it's created
-        with patch(
-            "zamp_public_workflow_sdk.simulation.workflow_simulation_service.TemporalHistoryStrategyHandler"
-        ) as mock_handler_class, patch(
-            "zamp_public_workflow_sdk.simulation.workflows.simulation_fetch_data_workflow.ActionsHub.execute_activity",
-            new_callable=AsyncMock,
-        ) as mock_execute_activity:
+        with (
+            patch(
+                "zamp_public_workflow_sdk.simulation.workflow_simulation_service.TemporalHistoryStrategyHandler"
+            ) as mock_handler_class,
+            patch(
+                "zamp_public_workflow_sdk.simulation.workflows.simulation_fetch_data_workflow.ActionsHub.execute_activity",
+                new_callable=AsyncMock,
+            ) as mock_execute_activity,
+        ):
             mock_strategy = Mock()
             mock_strategy.execute = AsyncMock(
                 return_value=SimulationStrategyOutput(
@@ -258,12 +264,15 @@ class TestSimulationFetchDataWorkflowIntegration:
         input_data = SimulationFetchDataWorkflowInput(simulation_config=sim_config, workflow_id="test_workflow_id")
 
         # Mock strategy to raise exception at the point where it's created
-        with patch(
-            "zamp_public_workflow_sdk.simulation.workflow_simulation_service.CustomOutputStrategyHandler"
-        ) as mock_handler_class, patch(
-            "zamp_public_workflow_sdk.simulation.workflows.simulation_fetch_data_workflow.ActionsHub.execute_activity",
-            new_callable=AsyncMock,
-        ) as mock_execute_activity:
+        with (
+            patch(
+                "zamp_public_workflow_sdk.simulation.workflow_simulation_service.CustomOutputStrategyHandler"
+            ) as mock_handler_class,
+            patch(
+                "zamp_public_workflow_sdk.simulation.workflows.simulation_fetch_data_workflow.ActionsHub.execute_activity",
+                new_callable=AsyncMock,
+            ) as mock_execute_activity,
+        ):
             mock_strategy = Mock()
             mock_strategy.execute = AsyncMock(side_effect=Exception("Strategy failed"))
             mock_handler_class.return_value = mock_strategy
@@ -299,12 +308,15 @@ class TestSimulationFetchDataWorkflowIntegration:
         input_data = SimulationFetchDataWorkflowInput(simulation_config=sim_config, workflow_id="test_workflow_id")
 
         # Mock strategy to return empty node_outputs at the point where it's created
-        with patch(
-            "zamp_public_workflow_sdk.simulation.workflow_simulation_service.CustomOutputStrategyHandler"
-        ) as mock_handler_class, patch(
-            "zamp_public_workflow_sdk.simulation.workflows.simulation_fetch_data_workflow.ActionsHub.execute_activity",
-            new_callable=AsyncMock,
-        ) as mock_execute_activity:
+        with (
+            patch(
+                "zamp_public_workflow_sdk.simulation.workflow_simulation_service.CustomOutputStrategyHandler"
+            ) as mock_handler_class,
+            patch(
+                "zamp_public_workflow_sdk.simulation.workflows.simulation_fetch_data_workflow.ActionsHub.execute_activity",
+                new_callable=AsyncMock,
+            ) as mock_execute_activity,
+        ):
             mock_strategy = Mock()
             mock_strategy.execute = AsyncMock(return_value=SimulationStrategyOutput(node_id_to_payload_map={}))
             mock_handler_class.return_value = mock_strategy
@@ -340,12 +352,15 @@ class TestSimulationFetchDataWorkflowIntegration:
         input_data = SimulationFetchDataWorkflowInput(simulation_config=sim_config, workflow_id="test_workflow_id")
 
         # Mock strategy to return None output at the point where it's created
-        with patch(
-            "zamp_public_workflow_sdk.simulation.workflow_simulation_service.CustomOutputStrategyHandler"
-        ) as mock_handler_class, patch(
-            "zamp_public_workflow_sdk.simulation.workflows.simulation_fetch_data_workflow.ActionsHub.execute_activity",
-            new_callable=AsyncMock,
-        ) as mock_execute_activity:
+        with (
+            patch(
+                "zamp_public_workflow_sdk.simulation.workflow_simulation_service.CustomOutputStrategyHandler"
+            ) as mock_handler_class,
+            patch(
+                "zamp_public_workflow_sdk.simulation.workflows.simulation_fetch_data_workflow.ActionsHub.execute_activity",
+                new_callable=AsyncMock,
+            ) as mock_execute_activity,
+        ):
             mock_strategy = Mock()
             mock_strategy.execute = AsyncMock(return_value=SimulationStrategyOutput(node_id_to_payload_map={}))
             mock_handler_class.return_value = mock_strategy
