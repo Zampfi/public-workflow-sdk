@@ -12,7 +12,7 @@ with workflow.unsafe.imports_passed_through():
         SimulationFetchDataWorkflowInput,
         SimulationFetchDataWorkflowOutput,
     )
-    from zamp_public_workflow_sdk.simulation.models.simulation_s3 import UploadToS3Input
+    from zamp_public_workflow_sdk.simulation.models.simulation_s3 import UploadToS3Input, UploadToS3Output
 
     logger = structlog.get_logger(__name__)
 
@@ -77,7 +77,7 @@ class SimulationFetchDataWorkflow:
             }
             blob_base64 = base64.b64encode(json.dumps(simulation_data).encode()).decode()
 
-            await ActionsHub.execute_activity(
+            result: UploadToS3Output = await ActionsHub.execute_activity(
                 "upload_to_s3",
                 UploadToS3Input(
                     bucket_name=SIMULATION_S3_BUCKET,
@@ -87,12 +87,14 @@ class SimulationFetchDataWorkflow:
                 ),
                 skip_simulation=True,
             )
-            logger.info("Simulation data uploaded to S3", s3_key=s3_key)
+            if result.s3_url:
+                logger.info("Simulation data uploaded to S3", s3_key=s3_key)
         except Exception as e:
             logger.error(
                 "Failed to upload simulation data to S3",
                 error=str(e),
                 error_type=type(e).__name__,
             )
+            raise Exception("Failed to upload simulation data to S3")
 
         return SimulationFetchDataWorkflowOutput(node_id_to_payload_map=node_id_to_payload_map, s3_key=s3_key)

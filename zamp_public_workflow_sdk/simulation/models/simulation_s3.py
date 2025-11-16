@@ -21,3 +21,12 @@ class DownloadFromS3Output(BaseModel):
 
     class Config:
         arbitrary_types_allowed = True
+
+
+class UploadToS3Output(BaseModel):
+    metadata: dict = Field(..., description="Metadata of the uploaded file")
+    s3_url: str = Field(..., description="S3 URL of the uploaded file (s3://...)")
+    https_url: str = Field(
+        ...,
+        description="HTTPS URL of the uploaded file (https://s3.amazonaws.com/...)",
+    )
