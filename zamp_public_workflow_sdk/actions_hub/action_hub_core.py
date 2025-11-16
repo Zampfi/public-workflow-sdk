@@ -321,7 +321,6 @@ class ActionsHub:
             download_result: DownloadFromS3Output = await cls.execute_activity(
                 "download_from_s3",
                 DownloadFromS3Input(bucket_name=SIMULATION_S3_BUCKET, file_name=simulation_s3_key),
-                start_to_close_timeout=timedelta(seconds=10),
                 skip_simulation=True,
             )
 
