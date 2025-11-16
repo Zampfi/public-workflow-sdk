@@ -27,7 +27,6 @@ jobs:
       - name: Install dependencies
         run: |
           uv sync --dev
-          uv pip install diff-cover
       - name: Run tests
         run: |
           chmod +x scripts/tests.sh
