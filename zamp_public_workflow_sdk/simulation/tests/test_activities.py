@@ -3,14 +3,21 @@ Unit tests for simulation activities.
 """
 
 import base64
-import json
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from zamp_public_workflow_sdk.actions_hub.constants import ExecutionMode
+from zamp_public_workflow_sdk.simulation.activities import get_simulation_data_from_s3, return_mocked_result
+from zamp_public_workflow_sdk.simulation.models import NodeMockConfig
+from zamp_public_workflow_sdk.simulation.models.config import SimulationConfig
 from zamp_public_workflow_sdk.simulation.models.mocked_result import MockedResultInput, MockedResultOutput
-from zamp_public_workflow_sdk.simulation.activities import return_mocked_result
+from zamp_public_workflow_sdk.simulation.models.node_payload import NodePayload
+from zamp_public_workflow_sdk.simulation.models.simulation_s3 import (
+    DownloadFromS3Output,
+    GetSimulationDataFromS3Input,
+    SimulationMemo,
+)
 from zamp_public_workflow_sdk.temporal.workflow_history.models.node_payload_data import DecodeNodePayloadOutput
 
 
@@ -332,25 +339,16 @@ class TestGetSimulationDataFromS3:
     @pytest.mark.asyncio
     async def test_get_simulation_data_from_s3_success(self):
         """Test successful download and decoding of simulation data from S3."""
-        from zamp_public_workflow_sdk.simulation.activities import get_simulation_data_from_s3
-        from zamp_public_workflow_sdk.simulation.models.simulation_s3 import (
-            GetSimulationDataFromS3Input,
-            DownloadFromS3Output,
-        )
-        from zamp_public_workflow_sdk.simulation.models.config import SimulationConfig
-        from zamp_public_workflow_sdk.simulation.models.node_payload import NodePayload
-        from zamp_public_workflow_sdk.simulation.models import NodeMockConfig
-
         # Create mock simulation data
         mock_config = SimulationConfig(mock_config=NodeMockConfig(node_strategies=[]))
         mock_node_payload = NodePayload(node_id="test#1", input_payload="test_input", output_payload="test_output")
-        simulation_data = {
-            "config": mock_config.model_dump(),
-            "node_id_to_payload_map": {"test#1": mock_node_payload.model_dump()},
-        }
+        simulation_memo = SimulationMemo(
+            config=mock_config,
+            node_id_to_payload_map={"test#1": mock_node_payload},
+        )
 
         # Encode the data as it would be stored in S3
-        content_base64 = base64.b64encode(json.dumps(simulation_data).encode()).decode()
+        content_base64 = base64.b64encode(simulation_memo.model_dump_json().encode()).decode()
         mock_download_result = DownloadFromS3Output(content_base64=content_base64)
 
         input_params = GetSimulationDataFromS3Input(
@@ -381,9 +379,6 @@ class TestGetSimulationDataFromS3:
     @pytest.mark.asyncio
     async def test_get_simulation_data_from_s3_download_failure(self):
         """Test handling of download failure from S3."""
-        from zamp_public_workflow_sdk.simulation.activities import get_simulation_data_from_s3
-        from zamp_public_workflow_sdk.simulation.models.simulation_s3 import GetSimulationDataFromS3Input
-
         input_params = GetSimulationDataFromS3Input(
             simulation_s3_key="simulation-data/test_wf.json",
             bucket_name="test-bucket",
@@ -403,12 +398,6 @@ class TestGetSimulationDataFromS3:
     @pytest.mark.asyncio
     async def test_get_simulation_data_from_s3_decode_failure(self):
         """Test handling of decode failure."""
-        from zamp_public_workflow_sdk.simulation.activities import get_simulation_data_from_s3
-        from zamp_public_workflow_sdk.simulation.models.simulation_s3 import (
-            GetSimulationDataFromS3Input,
-            DownloadFromS3Output,
-        )
-
         # Create invalid base64 content
         invalid_content_base64 = "invalid_base64_content"
         mock_download_result = DownloadFromS3Output(content_base64=invalid_content_base64)
@@ -432,12 +421,6 @@ class TestGetSimulationDataFromS3:
     @pytest.mark.asyncio
     async def test_get_simulation_data_from_s3_invalid_json(self):
         """Test handling of invalid JSON data."""
-        from zamp_public_workflow_sdk.simulation.activities import get_simulation_data_from_s3
-        from zamp_public_workflow_sdk.simulation.models.simulation_s3 import (
-            GetSimulationDataFromS3Input,
-            DownloadFromS3Output,
-        )
-
         # Create invalid JSON content
         invalid_json = base64.b64encode(b"invalid json {]").decode()
         mock_download_result = DownloadFromS3Output(content_base64=invalid_json)

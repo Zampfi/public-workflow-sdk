@@ -335,7 +335,7 @@ class ActionsHub:
             )
 
             simulation_memo = result.simulation_memo
-            simulation_service = WorkflowSimulationService(simulation_memo.config, bucket_name=bucket_name)
+            simulation_service = WorkflowSimulationService(simulation_config=simulation_memo.config, bucket_name=bucket_name)
             simulation_service.node_id_to_payload_map = simulation_memo.node_id_to_payload_map
 
             cls._workflow_id_to_simulation_map[workflow_id] = simulation_service
@@ -373,7 +373,7 @@ class ActionsHub:
 
                 if bucket_name:
                     simulation_service = await cls._load_simulation_from_s3_memo(
-                        workflow_id, simulation_s3_key, bucket_name
+                        workflow_id=workflow_id, simulation_s3_key=simulation_s3_key, bucket_name=bucket_name
                     )
                     if simulation_service:
                         return simulation_service
@@ -880,7 +880,7 @@ class ActionsHub:
         args = (node_id_arg,) + args
 
         # Pass simulation S3 key to child workflow via memo
-        cls._add_simulation_memo_to_child(workflow_id, kwargs)
+        cls._add_simulation_memo_to_child(workflow_id=workflow_id, kwargs=kwargs)
 
         # Executing in temporal mode
         logger.info(
@@ -957,7 +957,7 @@ class ActionsHub:
         args = (node_id_arg,) + args
 
         # Pass simulation S3 key to child workflow via memo
-        cls._add_simulation_memo_to_child(workflow_id, kwargs)
+        cls._add_simulation_memo_to_child(workflow_id=workflow_id, kwargs=kwargs)
 
         return await workflow.start_child_workflow(
             workflow_name,
