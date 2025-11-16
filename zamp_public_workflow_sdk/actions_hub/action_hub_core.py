@@ -335,7 +335,9 @@ class ActionsHub:
             )
 
             simulation_memo = result.simulation_memo
-            simulation_service = WorkflowSimulationService(simulation_config=simulation_memo.config, bucket_name=bucket_name)
+            simulation_service = WorkflowSimulationService(
+                simulation_config=simulation_memo.config, bucket_name=bucket_name
+            )
             simulation_service.node_id_to_payload_map = simulation_memo.node_id_to_payload_map
 
             cls._workflow_id_to_simulation_map[workflow_id] = simulation_service
