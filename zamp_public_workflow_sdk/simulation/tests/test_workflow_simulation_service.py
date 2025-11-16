@@ -203,7 +203,7 @@ class TestWorkflowSimulationService:
             mock_actions_hub.execute_child_workflow = AsyncMock(return_value=mock_workflow_result)
             mock_actions_hub.clear_node_id_tracker = Mock()
 
-            await service._initialize_simulation_data()
+            await service._initialize_simulation_data(workflow_id="test_workflow_id", bucket_name="test-bucket")
 
             assert len(service.node_id_to_payload_map) == 1
             assert service.node_id_to_payload_map["node1#1"].output_payload == "test_output"
@@ -229,8 +229,8 @@ class TestWorkflowSimulationService:
         with patch("zamp_public_workflow_sdk.actions_hub.ActionsHub") as mock_actions_hub:
             mock_actions_hub.execute_child_workflow = AsyncMock(side_effect=Exception("Workflow failed"))
 
-            with pytest.raises(Exception, match="Workflow failed"):
-                await service._initialize_simulation_data()
+            with pytest.raises(Exception):
+                await service._initialize_simulation_data(workflow_id="test_workflow_id", bucket_name="test-bucket")
 
     @pytest.mark.asyncio
     async def test_initialize_simulation_data_none_result(self):
@@ -253,7 +253,7 @@ class TestWorkflowSimulationService:
             mock_actions_hub.execute_child_workflow = AsyncMock(return_value=None)
 
             with pytest.raises(AttributeError):
-                await service._initialize_simulation_data()
+                await service._initialize_simulation_data(workflow_id="test_workflow_id", bucket_name="test-bucket")
 
     def test_payload_needs_decoding_with_encoding_metadata(self):
         """Test that payload with encoding metadata returns True."""

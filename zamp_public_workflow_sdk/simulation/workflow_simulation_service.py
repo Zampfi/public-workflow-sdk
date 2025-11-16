@@ -5,6 +5,7 @@ Workflow Simulation Service for managing simulation state and responses.
 import structlog
 from zamp_public_workflow_sdk.simulation.models import (
     ExecutionType,
+    SimulationFetchDataWorkflowOutput,
     SimulationResponse,
     NodePayload,
     SimulationFetchDataWorkflowInput,
@@ -33,28 +34,38 @@ class WorkflowSimulationService:
     This service pre-computes simulation responses during initialization
     """
 
-    def __init__(self, simulation_config: SimulationConfig):
+    def __init__(self, simulation_config: SimulationConfig, bucket_name: str | None = None):
         """
         Initialize simulation service with configuration.
 
         Args:
             simulation_config: Simulation configuration
+            bucket_name: S3 bucket name for storing simulation data
         """
         self.simulation_config = simulation_config
         # this response is raw response to be set using FetchWorkflowHistoryWorkflow
         self.node_id_to_payload_map: dict[str, NodePayload] = {}
+        # S3 key where simulation data is stored
+        self.s3_key: str | None = None
+        # S3 bucket name for storing simulation data
+        self.bucket_name: str | None = bucket_name
 
-    async def _initialize_simulation_data(self) -> None:
+    async def _initialize_simulation_data(self, workflow_id: str, bucket_name: str) -> None:
         """
         Initialize simulation data by pre-computing all responses.
 
         This method builds the node_id_to_payload_map by processing
         all strategies in the simulation configuration.
         This method should be called from within a workflow context.
+
+        Args:
+            workflow_id: The workflow ID for S3 key generation
+            bucket_name: S3 bucket name for storing simulation data
         """
         logger.info(
             "Initializing simulation data",
             config_version=self.simulation_config.version,
+            workflow_id=workflow_id,
         )
 
         from zamp_public_workflow_sdk.actions_hub import ActionsHub
@@ -63,22 +74,29 @@ class WorkflowSimulationService:
         )
 
         try:
-            workflow_result = await ActionsHub.execute_child_workflow(
+            workflow_result: SimulationFetchDataWorkflowOutput = await ActionsHub.execute_child_workflow(
                 SimulationFetchDataWorkflow,
-                SimulationFetchDataWorkflowInput(simulation_config=self.simulation_config),
+                SimulationFetchDataWorkflowInput(
+                    simulation_config=self.simulation_config,
+                    workflow_id=workflow_id,
+                    bucket_name=bucket_name,
+                ),
             )
 
             logger.info(
                 "SimulationFetchDataWorkflow completed",
                 has_node_id_to_payload_map=workflow_result is not None
                 and hasattr(workflow_result, "node_id_to_payload_map"),
+                has_s3_key=workflow_result is not None and hasattr(workflow_result, "s3_key"),
             )
 
             self.node_id_to_payload_map = workflow_result.node_id_to_payload_map
+            self.s3_key = workflow_result.s3_key
 
             logger.info(
                 "Simulation data initialized successfully",
                 total_nodes=len(self.node_id_to_payload_map),
+                s3_key=self.s3_key,
             )
 
         except Exception as e:

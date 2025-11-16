@@ -57,3 +57,6 @@ SKIP_SIMULATION_WORKFLOWS = [
     "SimulationFetchDataWorkflow",
     "FetchTemporalWorkflowHistoryWorkflow",
 ]
+
+# Temporal memo key
+MEMO_KEY = "memo"
