@@ -275,9 +275,9 @@ class ActionsHub:
             workflow_id: Workflow ID to associate with simulation
             bucket_name: S3 bucket name for storing simulation data
         """
-        simulation_service = WorkflowSimulationService(simulation_config, bucket_name=bucket_name)
+        simulation_service = WorkflowSimulationService(simulation_config=simulation_config, bucket_name=bucket_name)
         cls._workflow_id_to_simulation_map[workflow_id] = simulation_service
-        await simulation_service._initialize_simulation_data(workflow_id, bucket_name)
+        await simulation_service._initialize_simulation_data(workflow_id=workflow_id, bucket_name=bucket_name)
         logger.info("Simulation initialized for workflow", workflow_id=workflow_id)
 
     @classmethod

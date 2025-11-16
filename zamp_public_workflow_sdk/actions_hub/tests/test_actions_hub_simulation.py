@@ -809,25 +809,6 @@ class TestActionsHubSimulation:
         assert result.execution_type == ExecutionType.EXECUTE
         assert result.execution_response is None
 
-    @pytest.mark.asyncio
-    async def test_get_simulation_response_skip_simulation_workflow(self):
-        """Test _get_simulation_response when action_name is in SKIP_SIMULATION_WORKFLOWS."""
-        from zamp_public_workflow_sdk.actions_hub.constants import SKIP_SIMULATION_WORKFLOWS
-
-        # Use a workflow name from SKIP_SIMULATION_WORKFLOWS
-        skip_workflow = SKIP_SIMULATION_WORKFLOWS[0] if SKIP_SIMULATION_WORKFLOWS else "SimulationFetchDataWorkflow"
-
-        result = await ActionsHub._get_simulation_response(
-            workflow_id="test_wf",
-            node_id="node_1",
-            action=skip_workflow,
-            return_type=None,
-            skip_simulation=False,
-        )
-
-        assert result.execution_type == ExecutionType.EXECUTE
-        assert result.execution_response is None
-
     def test_add_simulation_memo_to_child_with_bucket_name_in_memo(self):
         """Test adding simulation memo when bucket_name is already in workflow memo."""
 

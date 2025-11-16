@@ -1,7 +1,5 @@
-import base64
-import json
-
 import structlog
+import base64
 from zamp_public_workflow_sdk.actions_hub.action_hub_core import ActionsHub
 from zamp_public_workflow_sdk.actions_hub.constants import ExecutionMode
 from zamp_public_workflow_sdk.simulation.models.mocked_result import MockedResultInput, MockedResultOutput
@@ -119,8 +117,7 @@ async def get_simulation_data_from_s3(
 
         content_base64 = download_result.content_base64
         decoded_content = base64.b64decode(content_base64).decode()
-        simulation_data = json.loads(decoded_content)
-        simulation_memo = SimulationMemo.model_validate(simulation_data)
+        simulation_memo = SimulationMemo.model_validate_json(decoded_content)
 
         return GetSimulationDataFromS3Output(simulation_memo=simulation_memo)
 
