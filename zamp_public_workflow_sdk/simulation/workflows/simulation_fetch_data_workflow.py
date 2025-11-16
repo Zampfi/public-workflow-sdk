@@ -119,7 +119,6 @@ class SimulationFetchDataWorkflow:
         )
 
         blob_base64 = base64.b64encode(simulation_memo.model_dump_json().encode()).decode()
-
         result: UploadToS3Output = await ActionsHub.execute_activity(
             "upload_to_s3",
             UploadToS3Input(
@@ -131,7 +130,7 @@ class SimulationFetchDataWorkflow:
             return_type=UploadToS3Output,
             skip_simulation=True,
         )
-        if result.s3_url:
-            logger.info("Simulation data uploaded to S3", s3_key=s3_key)
-
+        if not result.s3_url:
+            raise Exception(f"Failed to upload simulation data to S3: {result.s3_url}")
+        logger.info("Simulation data uploaded to S3", s3_key=s3_key)
         return s3_key

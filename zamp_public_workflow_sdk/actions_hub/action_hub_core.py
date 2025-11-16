@@ -23,6 +23,7 @@ with workflow.unsafe.imports_passed_through():
     from functools import wraps
     from pathlib import Path
     from typing import Any, Callable
+
     import structlog
 
     from zamp_public_workflow_sdk.simulation.models import (
@@ -291,15 +292,12 @@ class ActionsHub:
         simulation_service = cls._workflow_id_to_simulation_map.get(workflow_id)
         if not simulation_service:
             return
-
         if "memo" not in kwargs:
             kwargs["memo"] = {}
-
         try:
             memo = workflow.memo()
         except Exception:
             memo = None
-
         # Add S3 key to memo
         if memo and SIMULATION_S3_KEY_MEMO in memo:
             kwargs["memo"][SIMULATION_S3_KEY_MEMO] = workflow.memo_value(SIMULATION_S3_KEY_MEMO, type_hint=str)
@@ -307,7 +305,6 @@ class ActionsHub:
             kwargs["memo"][SIMULATION_S3_KEY_MEMO] = simulation_service.s3_key
         else:
             kwargs["memo"][SIMULATION_S3_KEY_MEMO] = get_simulation_s3_key(workflow_id)
-
         # Add bucket name to memo
         if memo and SIMULATION_S3_BUCKET_MEMO in memo:
             kwargs["memo"][SIMULATION_S3_BUCKET_MEMO] = workflow.memo_value(SIMULATION_S3_BUCKET_MEMO, type_hint=str)
