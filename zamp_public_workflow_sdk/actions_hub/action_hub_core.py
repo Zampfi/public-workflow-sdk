@@ -15,7 +15,7 @@ from zamp_public_workflow_sdk.temporal.interceptors.node_id_interceptor import (
     NODE_ID_HEADER_KEY,
 )
 
-from .constants import DEFAULT_MODE, SKIP_SIMULATION_WORKFLOWS, LogMode
+from .constants import DEFAULT_MODE, MEMO_KEY, SKIP_SIMULATION_WORKFLOWS, LogMode
 from .models.mcp_models import MCPConfig
 
 with workflow.unsafe.imports_passed_through():
@@ -292,24 +292,24 @@ class ActionsHub:
         simulation_service = cls._workflow_id_to_simulation_map.get(workflow_id)
         if not simulation_service:
             return
-        if "memo" not in kwargs:
-            kwargs["memo"] = {}
+        if MEMO_KEY not in kwargs:
+            kwargs[MEMO_KEY] = {}
         try:
             memo = workflow.memo()
         except Exception:
             memo = None
         # Add S3 key to memo
         if memo and SIMULATION_S3_KEY_MEMO in memo:
-            kwargs["memo"][SIMULATION_S3_KEY_MEMO] = workflow.memo_value(SIMULATION_S3_KEY_MEMO, type_hint=str)
+            kwargs[MEMO_KEY][SIMULATION_S3_KEY_MEMO] = workflow.memo_value(SIMULATION_S3_KEY_MEMO, type_hint=str)
         elif simulation_service.s3_key:
-            kwargs["memo"][SIMULATION_S3_KEY_MEMO] = simulation_service.s3_key
+            kwargs[MEMO_KEY][SIMULATION_S3_KEY_MEMO] = simulation_service.s3_key
         else:
-            kwargs["memo"][SIMULATION_S3_KEY_MEMO] = get_simulation_s3_key(workflow_id)
+            kwargs[MEMO_KEY][SIMULATION_S3_KEY_MEMO] = get_simulation_s3_key(workflow_id)
         # Add bucket name to memo
         if memo and SIMULATION_S3_BUCKET_MEMO in memo:
-            kwargs["memo"][SIMULATION_S3_BUCKET_MEMO] = workflow.memo_value(SIMULATION_S3_BUCKET_MEMO, type_hint=str)
+            kwargs[MEMO_KEY][SIMULATION_S3_BUCKET_MEMO] = workflow.memo_value(SIMULATION_S3_BUCKET_MEMO, type_hint=str)
         elif simulation_service.bucket_name:
-            kwargs["memo"][SIMULATION_S3_BUCKET_MEMO] = simulation_service.bucket_name
+            kwargs[MEMO_KEY][SIMULATION_S3_BUCKET_MEMO] = simulation_service.bucket_name
 
     @classmethod
     async def _load_simulation_from_s3_memo(

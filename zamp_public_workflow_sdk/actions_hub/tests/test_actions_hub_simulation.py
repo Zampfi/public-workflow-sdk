@@ -8,6 +8,7 @@ import pytest
 from pydantic import BaseModel
 
 from zamp_public_workflow_sdk.actions_hub.action_hub_core import ActionsHub
+from zamp_public_workflow_sdk.actions_hub.constants import MEMO_KEY
 from zamp_public_workflow_sdk.simulation.constants.simulation import (
     SIMULATION_S3_KEY_MEMO,
 )
@@ -528,9 +529,9 @@ class TestActionsHubSimulation:
             ActionsHub._add_simulation_memo_to_child("parent_wf", kwargs)
 
             # Verify memo was added
-            assert "memo" in kwargs
-            assert SIMULATION_S3_KEY_MEMO in kwargs["memo"]
-            assert kwargs["memo"][SIMULATION_S3_KEY_MEMO] == "simulation-data/parent_wf.json"
+            assert MEMO_KEY in kwargs
+            assert SIMULATION_S3_KEY_MEMO in kwargs[MEMO_KEY]
+            assert kwargs[MEMO_KEY][SIMULATION_S3_KEY_MEMO] == "simulation-data/parent_wf.json"
 
     def test_add_simulation_memo_to_child_with_existing_memo_in_workflow(self):
         """Test adding simulation memo when workflow already has memo with S3 key."""
@@ -553,8 +554,8 @@ class TestActionsHubSimulation:
             ActionsHub._add_simulation_memo_to_child("parent_wf", kwargs)
 
             # Verify existing memo key was used
-            assert "memo" in kwargs
-            assert kwargs["memo"][SIMULATION_S3_KEY_MEMO] == "existing-key.json"
+            assert MEMO_KEY in kwargs
+            assert kwargs[MEMO_KEY][SIMULATION_S3_KEY_MEMO] == "existing-key.json"
 
     def test_add_simulation_memo_to_child_with_existing_kwargs_memo(self):
         """Test adding simulation memo when kwargs already has a memo dict."""
@@ -565,7 +566,7 @@ class TestActionsHubSimulation:
         ActionsHub._workflow_id_to_simulation_map["parent_wf"] = mock_simulation
 
         # Create kwargs dict with existing memo
-        kwargs = {"memo": {"other_key": "other_value"}}
+        kwargs = {MEMO_KEY: {"other_key": "other_value"}}
 
         with patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.memo") as mock_memo:
             mock_memo.return_value = None
@@ -573,10 +574,10 @@ class TestActionsHubSimulation:
             ActionsHub._add_simulation_memo_to_child("parent_wf", kwargs)
 
             # Verify memo was added and existing keys preserved
-            assert "memo" in kwargs
-            assert "other_key" in kwargs["memo"]
-            assert kwargs["memo"]["other_key"] == "other_value"
-            assert SIMULATION_S3_KEY_MEMO in kwargs["memo"]
+            assert MEMO_KEY in kwargs
+            assert "other_key" in kwargs[MEMO_KEY]
+            assert kwargs[MEMO_KEY]["other_key"] == "other_value"
+            assert SIMULATION_S3_KEY_MEMO in kwargs[MEMO_KEY]
 
     def test_add_simulation_memo_to_child_no_active_simulation(self):
         """Test that memo is not added when no simulation is active."""
@@ -589,7 +590,7 @@ class TestActionsHubSimulation:
         ActionsHub._add_simulation_memo_to_child("no_sim_wf", kwargs)
 
         # Verify no memo was added
-        assert "memo" not in kwargs
+        assert MEMO_KEY not in kwargs
 
     def test_add_simulation_memo_to_child_memo_access_error(self):
         """Test handling of error when accessing workflow memo."""
@@ -607,8 +608,8 @@ class TestActionsHubSimulation:
             ActionsHub._add_simulation_memo_to_child("parent_wf", kwargs)
 
             # Should still add memo with fallback key
-            assert "memo" in kwargs
-            assert kwargs["memo"][SIMULATION_S3_KEY_MEMO] == "simulation-data/parent_wf.json"
+            assert MEMO_KEY in kwargs
+            assert kwargs[MEMO_KEY][SIMULATION_S3_KEY_MEMO] == "simulation-data/parent_wf.json"
 
     @pytest.mark.asyncio
     async def test_execute_activity_simulation_integration(self):
@@ -838,9 +839,9 @@ class TestActionsHubSimulation:
             ActionsHub._add_simulation_memo_to_child("parent_wf", kwargs)
 
             # Verify memo was added with values from memo (not from service)
-            assert "memo" in kwargs
-            assert kwargs["memo"][SIMULATION_S3_KEY_MEMO] == "existing-key.json"
-            assert kwargs["memo"][SIMULATION_S3_BUCKET_MEMO] == "memo-bucket-name"
+            assert MEMO_KEY in kwargs
+            assert kwargs[MEMO_KEY][SIMULATION_S3_KEY_MEMO] == "existing-key.json"
+            assert kwargs[MEMO_KEY][SIMULATION_S3_BUCKET_MEMO] == "memo-bucket-name"
 
     @pytest.mark.asyncio
     async def test_get_simulation_from_workflow_id_with_bucket_name_in_memo(self):
