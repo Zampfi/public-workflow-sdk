@@ -21,7 +21,7 @@ SIMULATION_S3_BUCKET_MEMO = "__simulation_s3_bucket"
 
 
 def get_simulation_s3_key(workflow_id: str) -> str:
-    f"""
+    """
     Generate the S3 key for simulation data stored in S3.
 
     Args:
