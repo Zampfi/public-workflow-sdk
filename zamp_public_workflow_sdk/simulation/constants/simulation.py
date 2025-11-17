@@ -28,6 +28,6 @@ def get_simulation_s3_key(workflow_id: str) -> str:
         workflow_id: The workflow ID
 
     Returns:
-        The S3 key in format: f"{workflow_id}.json"
+        The S3 key in format: {workflow_id}.json"
     """
     return f"{workflow_id}.json"
