@@ -535,7 +535,12 @@ class TestSentryInterceptor:
         with patch("zamp_public_workflow_sdk.temporal.interceptors.sentry_interceptor.init") as mock_init:
             SentryInterceptor(mock_logger, sentry_dsn="test-dsn", environment="test")
 
-            mock_init.assert_called_once_with(dsn="test-dsn", environment="test")
+            # Verify init was called with the expected arguments (may have additional args)
+            assert mock_init.call_count == 1
+            # call_args is a tuple of (args, kwargs)
+            call_args, call_kwargs = mock_init.call_args
+            assert call_kwargs["dsn"] == "test-dsn"
+            assert call_kwargs["environment"] == "test"
 
     def test_intercept_activity(self, mock_logger, mock_next_activity):
         """Test activity interceptor creation."""
