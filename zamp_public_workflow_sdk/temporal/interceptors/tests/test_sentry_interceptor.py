@@ -459,8 +459,13 @@ class TestSentryWorkflowInboundInterceptor:
 
         input_obj = MagicMock(spec=StartChildWorkflowInput)
         input_obj.workflow = "ChildWorkflow"
+        input_obj.id = "child-workflow-id"
+        input_obj.task_queue = "test-queue"
         input_obj.headers = {}
         input_obj.args = ()
+        input_obj.cron_schedule = None
+        input_obj.execution_timeout = None
+        input_obj.run_timeout = None
 
         with (
             patch("zamp_public_workflow_sdk.temporal.interceptors.sentry_interceptor.capture_exception") as mock_capture,
