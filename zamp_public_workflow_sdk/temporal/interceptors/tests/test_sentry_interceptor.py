@@ -11,13 +11,12 @@ This module contains comprehensive tests for the SentryInterceptor, including:
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from temporalio import activity, workflow
+from temporalio import activity
 from temporalio.worker import (
     ActivityInboundInterceptor,
     ActivityOutboundInterceptor,
     ExecuteActivityInput,
     ExecuteWorkflowInput,
-    Interceptor,
     StartChildWorkflowInput,
     WorkflowInboundInterceptor,
     WorkflowInterceptorClassInput,
@@ -111,6 +110,7 @@ class TestExtractContextFromContextvars:
 
     def test_extract_context_with_function(self):
         """Test context extraction with a function."""
+
         def context_fn():
             return {
                 "user_id": "user123",
@@ -129,6 +129,7 @@ class TestExtractContextFromContextvars:
 
     def test_extract_context_partial_data(self):
         """Test context extraction with partial data."""
+
         def context_fn():
             return {"user_id": "user123"}
 
@@ -139,6 +140,7 @@ class TestExtractContextFromContextvars:
 
     def test_extract_context_function_error(self):
         """Test context extraction when function raises error."""
+
         def failing_context_fn():
             raise Exception("Context error")
 
@@ -176,7 +178,9 @@ class TestSentryActivityInboundInterceptor:
 
         with (
             patch.object(activity, "info", return_value=mock_activity_info),
-            patch("zamp_public_workflow_sdk.temporal.interceptors.sentry_interceptor.capture_exception") as mock_capture,
+            patch(
+                "zamp_public_workflow_sdk.temporal.interceptors.sentry_interceptor.capture_exception"
+            ) as mock_capture,
         ):
             with pytest.raises(Exception, match="Test error"):
                 await interceptor.execute_activity(mock_activity_input)
@@ -199,7 +203,9 @@ class TestSentryActivityInboundInterceptor:
 
         with (
             patch.object(activity, "info", return_value=mock_activity_info),
-            patch("zamp_public_workflow_sdk.temporal.interceptors.sentry_interceptor.capture_exception") as mock_capture,
+            patch(
+                "zamp_public_workflow_sdk.temporal.interceptors.sentry_interceptor.capture_exception"
+            ) as mock_capture,
         ):
             with pytest.raises(Exception, match="Test error"):
                 await interceptor.execute_activity(mock_activity_input)
@@ -222,7 +228,9 @@ class TestSentryActivityInboundInterceptor:
 
         with (
             patch.object(activity, "info", return_value=mock_activity_info),
-            patch("zamp_public_workflow_sdk.temporal.interceptors.sentry_interceptor.capture_exception") as mock_capture,
+            patch(
+                "zamp_public_workflow_sdk.temporal.interceptors.sentry_interceptor.capture_exception"
+            ) as mock_capture,
             patch("zamp_public_workflow_sdk.temporal.interceptors.sentry_interceptor.push_scope") as mock_scope,
         ):
             mock_scope.return_value.__enter__.return_value = MagicMock()
@@ -248,7 +256,9 @@ class TestSentryActivityInboundInterceptor:
 
         with (
             patch.object(activity, "info", return_value=mock_activity_info),
-            patch("zamp_public_workflow_sdk.temporal.interceptors.sentry_interceptor.capture_exception") as mock_capture,
+            patch(
+                "zamp_public_workflow_sdk.temporal.interceptors.sentry_interceptor.capture_exception"
+            ) as mock_capture,
             patch("zamp_public_workflow_sdk.temporal.interceptors.sentry_interceptor.push_scope") as mock_scope,
         ):
             mock_scope.return_value.__enter__.return_value = MagicMock()
@@ -270,7 +280,9 @@ class TestSentryActivityInboundInterceptor:
 
         with (
             patch.object(activity, "info", side_effect=Exception("Info error")),
-            patch("zamp_public_workflow_sdk.temporal.interceptors.sentry_interceptor.capture_exception") as mock_capture,
+            patch(
+                "zamp_public_workflow_sdk.temporal.interceptors.sentry_interceptor.capture_exception"
+            ) as mock_capture,
         ):
             with pytest.raises(Exception, match="Test error"):
                 await interceptor.execute_activity(mock_activity_input)
@@ -283,6 +295,7 @@ class TestSentryActivityInboundInterceptor:
         self, mock_next_activity, mock_logger, mock_activity_input
     ):
         """Test activity failure with context extraction function."""
+
         def context_fn():
             return {"user_id": "user123", "organization_id": "org456"}
 
@@ -297,7 +310,9 @@ class TestSentryActivityInboundInterceptor:
 
         with (
             patch.object(activity, "info", return_value=mock_activity_info),
-            patch("zamp_public_workflow_sdk.temporal.interceptors.sentry_interceptor.capture_exception") as mock_capture,
+            patch(
+                "zamp_public_workflow_sdk.temporal.interceptors.sentry_interceptor.capture_exception"
+            ) as mock_capture,
             patch("zamp_public_workflow_sdk.temporal.interceptors.sentry_interceptor.push_scope") as mock_scope,
         ):
             mock_scope_obj = MagicMock()
@@ -324,7 +339,10 @@ class TestSentryActivityInboundInterceptor:
 
         with (
             patch.object(activity, "info", return_value=mock_activity_info),
-            patch("zamp_public_workflow_sdk.temporal.interceptors.sentry_interceptor.capture_exception", side_effect=Exception("Sentry error")),
+            patch(
+                "zamp_public_workflow_sdk.temporal.interceptors.sentry_interceptor.capture_exception",
+                side_effect=Exception("Sentry error"),
+            ),
             patch("zamp_public_workflow_sdk.temporal.interceptors.sentry_interceptor.push_scope") as mock_scope,
         ):
             mock_scope.return_value.__enter__.return_value = MagicMock()
@@ -363,7 +381,9 @@ class TestSentryActivityOutboundInterceptor:
 
         with (
             patch.object(activity, "info", return_value=mock_activity_info),
-            patch("zamp_public_workflow_sdk.temporal.interceptors.sentry_interceptor.capture_exception") as mock_capture,
+            patch(
+                "zamp_public_workflow_sdk.temporal.interceptors.sentry_interceptor.capture_exception"
+            ) as mock_capture,
         ):
             with pytest.raises(Exception, match="Test error"):
                 await interceptor.execute_activity(mock_activity_input)
@@ -384,7 +404,9 @@ class TestSentryActivityOutboundInterceptor:
 
         with (
             patch.object(activity, "info", return_value=mock_activity_info),
-            patch("zamp_public_workflow_sdk.temporal.interceptors.sentry_interceptor.capture_exception") as mock_capture,
+            patch(
+                "zamp_public_workflow_sdk.temporal.interceptors.sentry_interceptor.capture_exception"
+            ) as mock_capture,
             patch("zamp_public_workflow_sdk.temporal.interceptors.sentry_interceptor.push_scope") as mock_scope,
         ):
             mock_scope.return_value.__enter__.return_value = MagicMock()
@@ -399,9 +421,7 @@ class TestSentryActivityOutboundInterceptor:
 class TestSentryWorkflowInboundInterceptor:
     def test_init(self, mock_next_workflow_inbound, mock_logger):
         """Test interceptor initialization."""
-        interceptor = SentryWorkflowInboundInterceptor(
-            mock_next_workflow_inbound, mock_logger.get_logger(__name__)
-        )
+        interceptor = SentryWorkflowInboundInterceptor(mock_next_workflow_inbound, mock_logger.get_logger(__name__))
         mock_outbound = MagicMock(spec=WorkflowOutboundInterceptor)
 
         interceptor.init(mock_outbound)
@@ -413,9 +433,7 @@ class TestSentryWorkflowInboundInterceptor:
     @pytest.mark.asyncio
     async def test_execute_workflow_success(self, mock_next_workflow_inbound, mock_logger, mock_workflow_input):
         """Test successful workflow execution doesn't report to Sentry."""
-        interceptor = SentryWorkflowInboundInterceptor(
-            mock_next_workflow_inbound, mock_logger.get_logger(__name__)
-        )
+        interceptor = SentryWorkflowInboundInterceptor(mock_next_workflow_inbound, mock_logger.get_logger(__name__))
         mock_next_workflow_inbound.execute_workflow.return_value = "success"
 
         result = await interceptor.execute_workflow(mock_workflow_input)
@@ -424,18 +442,16 @@ class TestSentryWorkflowInboundInterceptor:
         mock_next_workflow_inbound.execute_workflow.assert_called_once_with(mock_workflow_input)
 
     @pytest.mark.asyncio
-    async def test_execute_workflow_failure_reports(
-        self, mock_next_workflow_inbound, mock_logger, mock_workflow_input
-    ):
+    async def test_execute_workflow_failure_reports(self, mock_next_workflow_inbound, mock_logger, mock_workflow_input):
         """Test that workflow failures always report to Sentry (no retry count check)."""
-        interceptor = SentryWorkflowInboundInterceptor(
-            mock_next_workflow_inbound, mock_logger.get_logger(__name__)
-        )
+        interceptor = SentryWorkflowInboundInterceptor(mock_next_workflow_inbound, mock_logger.get_logger(__name__))
         test_exception = Exception("Workflow error")
         mock_next_workflow_inbound.execute_workflow.side_effect = test_exception
 
         with (
-            patch("zamp_public_workflow_sdk.temporal.interceptors.sentry_interceptor.capture_exception") as mock_capture,
+            patch(
+                "zamp_public_workflow_sdk.temporal.interceptors.sentry_interceptor.capture_exception"
+            ) as mock_capture,
             patch("zamp_public_workflow_sdk.temporal.interceptors.sentry_interceptor.push_scope") as mock_scope,
         ):
             mock_scope.return_value.__enter__.return_value = MagicMock()
@@ -447,13 +463,9 @@ class TestSentryWorkflowInboundInterceptor:
             mock_capture.assert_called_once_with(test_exception)
 
     @pytest.mark.asyncio
-    async def test_start_child_workflow_failure_reports(
-        self, mock_next_workflow_inbound, mock_logger
-    ):
+    async def test_start_child_workflow_failure_reports(self, mock_next_workflow_inbound, mock_logger):
         """Test that child workflow failures always report to Sentry."""
-        interceptor = SentryWorkflowInboundInterceptor(
-            mock_next_workflow_inbound, mock_logger.get_logger(__name__)
-        )
+        interceptor = SentryWorkflowInboundInterceptor(mock_next_workflow_inbound, mock_logger.get_logger(__name__))
         test_exception = Exception("Child workflow error")
         mock_next_workflow_inbound.start_child_workflow.side_effect = test_exception
 
@@ -468,7 +480,9 @@ class TestSentryWorkflowInboundInterceptor:
         input_obj.run_timeout = None
 
         with (
-            patch("zamp_public_workflow_sdk.temporal.interceptors.sentry_interceptor.capture_exception") as mock_capture,
+            patch(
+                "zamp_public_workflow_sdk.temporal.interceptors.sentry_interceptor.capture_exception"
+            ) as mock_capture,
             patch("zamp_public_workflow_sdk.temporal.interceptors.sentry_interceptor.push_scope") as mock_scope,
         ):
             mock_scope.return_value.__enter__.return_value = MagicMock()
@@ -487,14 +501,14 @@ class TestSentryWorkflowOutboundInterceptor:
         self, mock_next_workflow_outbound, mock_logger, mock_workflow_input
     ):
         """Test that workflow failures always report to Sentry."""
-        interceptor = SentryWorkflowOutboundInterceptor(
-            mock_next_workflow_outbound, mock_logger.get_logger(__name__)
-        )
+        interceptor = SentryWorkflowOutboundInterceptor(mock_next_workflow_outbound, mock_logger.get_logger(__name__))
         test_exception = Exception("Workflow error")
         mock_next_workflow_outbound.execute_workflow.side_effect = test_exception
 
         with (
-            patch("zamp_public_workflow_sdk.temporal.interceptors.sentry_interceptor.capture_exception") as mock_capture,
+            patch(
+                "zamp_public_workflow_sdk.temporal.interceptors.sentry_interceptor.capture_exception"
+            ) as mock_capture,
             patch("zamp_public_workflow_sdk.temporal.interceptors.sentry_interceptor.push_scope") as mock_scope,
         ):
             mock_scope.return_value.__enter__.return_value = MagicMock()
@@ -519,7 +533,7 @@ class TestSentryInterceptor:
     def test_init_with_dsn(self, mock_logger):
         """Test interceptor initialization with DSN."""
         with patch("zamp_public_workflow_sdk.temporal.interceptors.sentry_interceptor.init") as mock_init:
-            interceptor = SentryInterceptor(mock_logger, sentry_dsn="test-dsn", environment="test")
+            SentryInterceptor(mock_logger, sentry_dsn="test-dsn", environment="test")
 
             mock_init.assert_called_once_with(dsn="test-dsn", environment="test")
 
@@ -550,6 +564,7 @@ class TestSentryInterceptor:
 
     def test_init_with_context_extraction_fn(self, mock_logger):
         """Test interceptor initialization with context extraction function."""
+
         def context_fn():
             return {"user_id": "user123"}
 
@@ -559,6 +574,7 @@ class TestSentryInterceptor:
 
     def test_init_with_additional_context_fn(self, mock_logger):
         """Test interceptor initialization with additional context function."""
+
         def additional_context_fn(input):
             return {"custom": "context"}
 
@@ -592,7 +608,9 @@ class TestSentryInterceptorIntegration:
 
         with (
             patch.object(activity, "info", return_value=mock_activity_info),
-            patch("zamp_public_workflow_sdk.temporal.interceptors.sentry_interceptor.capture_exception") as mock_capture,
+            patch(
+                "zamp_public_workflow_sdk.temporal.interceptors.sentry_interceptor.capture_exception"
+            ) as mock_capture,
         ):
             with pytest.raises(Exception):
                 await activity_interceptor.execute_activity(input_obj)
@@ -604,7 +622,9 @@ class TestSentryInterceptorIntegration:
 
         with (
             patch.object(activity, "info", return_value=mock_activity_info),
-            patch("zamp_public_workflow_sdk.temporal.interceptors.sentry_interceptor.capture_exception") as mock_capture,
+            patch(
+                "zamp_public_workflow_sdk.temporal.interceptors.sentry_interceptor.capture_exception"
+            ) as mock_capture,
             patch("zamp_public_workflow_sdk.temporal.interceptors.sentry_interceptor.push_scope") as mock_scope,
         ):
             mock_scope.return_value.__enter__.return_value = MagicMock()
@@ -633,7 +653,9 @@ class TestSentryInterceptorIntegration:
         workflow_input.args = ()
 
         with (
-            patch("zamp_public_workflow_sdk.temporal.interceptors.sentry_interceptor.capture_exception") as mock_capture,
+            patch(
+                "zamp_public_workflow_sdk.temporal.interceptors.sentry_interceptor.capture_exception"
+            ) as mock_capture,
             patch("zamp_public_workflow_sdk.temporal.interceptors.sentry_interceptor.push_scope") as mock_scope,
         ):
             mock_scope.return_value.__enter__.return_value = MagicMock()
@@ -643,4 +665,3 @@ class TestSentryInterceptorIntegration:
 
             # Workflows should always report (no retry count check)
             mock_capture.assert_called_once()
-
