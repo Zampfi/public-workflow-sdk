@@ -21,6 +21,7 @@ from temporalio.worker import (
 
 with workflow.unsafe.imports_passed_through():
     from sentry_sdk import capture_exception, init, push_scope
+    from sentry_sdk.integrations.logging import LoggingIntegration
 
 
 def extract_context_from_contextvars(
@@ -535,6 +536,9 @@ class SentryInterceptor(Interceptor):
             init(
                 dsn=sentry_dsn,
                 environment=environment,
+                integrations=[
+                    LoggingIntegration(level=None, event_level=None),  # Disables it
+                ],
                 **sentry_options,
             )
 
