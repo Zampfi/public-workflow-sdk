@@ -662,7 +662,7 @@ class ActionsHub:
     _workflows: dict[str, Workflow] = {}
 
     @classmethod
-    def register_workflow_defn(cls, description: str, labels: list[str]):
+    def register_workflow_defn(cls, description: str, labels: list[str], *args, **kwargs):
         def decorator(target: type):
             setattr(target, "_is_workflow_defn", True)
             workflow_name = target.__name__
@@ -677,7 +677,7 @@ class ActionsHub:
                 new_workflow.func = cls._workflows[workflow_name].func
 
             cls._workflows[workflow_name] = new_workflow
-            return workflow.defn(target, name=target.__name__)
+            return workflow.defn(target, name=target.__name__, *args, **kwargs)
 
         return decorator
 
