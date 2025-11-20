@@ -456,6 +456,7 @@ class ActionsHub:
         description: str,
         labels: list[str] | None = None,
         mcp_config: MCPConfig | None = None,
+        **kwargs,
     ):
         """
         Register an activity decorator with optional description, labels, and MCP access control
@@ -476,14 +477,14 @@ class ActionsHub:
             # Create the appropriate wrapper
             if is_async:
 
-                @activity.defn(name=activity_name)
+                @activity.defn(name=activity_name, **kwargs)
                 @wraps(func)
                 async def wrapper(*args, **kwargs):
                     return await func(*args, **kwargs)
 
             else:
 
-                @activity.defn(name=activity_name)
+                @activity.defn(name=activity_name, **kwargs)
                 @wraps(func)
                 def wrapper(*args, **kwargs):
                     return func(*args, **kwargs)
@@ -662,7 +663,7 @@ class ActionsHub:
     _workflows: dict[str, Workflow] = {}
 
     @classmethod
-    def register_workflow_defn(cls, description: str, labels: list[str]):
+    def register_workflow_defn(cls, description: str, labels: list[str], **kwargs):
         def decorator(target: type):
             setattr(target, "_is_workflow_defn", True)
             workflow_name = target.__name__
@@ -677,7 +678,7 @@ class ActionsHub:
                 new_workflow.func = cls._workflows[workflow_name].func
 
             cls._workflows[workflow_name] = new_workflow
-            return workflow.defn(target, name=target.__name__)
+            return workflow.defn(target, name=target.__name__, **kwargs)
 
         return decorator
 
