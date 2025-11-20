@@ -384,6 +384,85 @@ class TestActionsHubNodeIdIntegration:
         # Should return the direct result without Temporal
         assert result == "workflow_result"
 
+    @pytest.mark.asyncio
+    @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.start_activity")
+    @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.get_execution_mode_from_context")
+    @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.info")
+    @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.ActionsHub._get_simulation_response")
+    async def test_start_activity_with_node_id(
+        self, mock_get_simulation_response, mock_workflow_info, mock_get_mode, mock_start_activity
+    ):
+        """Test start_activity generates and uses node ID."""
+        from zamp_public_workflow_sdk.simulation.models import ExecutionType, SimulationResponse
+
+        mock_get_mode.return_value = ExecutionMode.TEMPORAL
+        mock_workflow_info.return_value = Mock(workflow_id="test-workflow", headers=None)
+        mock_handle = Mock()
+        mock_start_activity.return_value = mock_handle
+        mock_get_simulation_response.return_value = SimulationResponse(
+            execution_type=ExecutionType.EXECUTE, execution_response=None
+        )
+
+        # Register a test activity
+        @ActionsHub.register_activity("Test activity")
+        def test_activity() -> str:
+            return "test_result"
+
+        handle = await ActionsHub.start_activity("test_activity")
+
+        # Verify node ID was generated and used
+        mock_start_activity.assert_called_once()
+        call_args = mock_start_activity.call_args
+
+        # Check that node_id was passed in args
+        assert len(call_args[1]["args"]) > 0
+        node_id_arg = call_args[1]["args"][0]
+        assert "__temporal_node_id" in node_id_arg
+        assert node_id_arg["__temporal_node_id"].startswith("test_activity#")
+
+        # Verify handle is returned
+        assert handle == mock_handle
+
+    @pytest.mark.asyncio
+    @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.get_execution_mode_from_context")
+    @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.info")
+    async def test_start_activity_api_mode(self, mock_workflow_info, mock_get_mode):
+        """Test start_activity in API mode bypasses Temporal and returns a coroutine handle."""
+        mock_get_mode.return_value = ExecutionMode.API
+        mock_workflow_info.return_value = Mock(workflow_id="test-workflow", headers=None)
+
+        # Register a test activity
+        @ActionsHub.register_activity("Test activity")
+        def test_activity() -> str:
+            return "test_result"
+
+        # start_activity returns a coroutine handle that needs to be awaited
+        handle = await ActionsHub.start_activity("test_activity")
+        result = await handle
+
+        # Should return the result after awaiting the handle
+        assert result == "test_result"
+
+    @pytest.mark.asyncio
+    @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.get_execution_mode_from_context")
+    @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.info")
+    async def test_start_activity_api_mode_async(self, mock_workflow_info, mock_get_mode):
+        """Test start_activity in API mode with async activity returns a coroutine handle."""
+        mock_get_mode.return_value = ExecutionMode.API
+        mock_workflow_info.return_value = Mock(workflow_id="test-workflow", headers=None)
+
+        # Register an async test activity
+        @ActionsHub.register_activity("Test async activity")
+        async def test_async_activity() -> str:
+            return "async_result"
+
+        # start_activity returns a coroutine handle that needs to be awaited
+        handle = await ActionsHub.start_activity("test_async_activity")
+        result = await handle
+
+        # Should return the result after awaiting the handle
+        assert result == "async_result"
+
     def test_node_id_hierarchy_generation(self):
         """Test hierarchical node ID generation for nested workflows."""
         with (

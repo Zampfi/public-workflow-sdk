@@ -720,7 +720,7 @@ class ActionsHub:
         activity_name, workflow_id, node_id = cls._generate_node_id_for_action(activity)
 
         # Check for simulation result
-        simulation_result = cls._get_simulation_response(
+        simulation_result = await cls._get_simulation_response(
             workflow_id=workflow_id,
             node_id=node_id,
             action=activity,
