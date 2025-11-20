@@ -973,6 +973,16 @@ class ActionsHub:
     async def workflow_sleep(cls, seconds: int, summary: str = ""):
         return await workflow.sleep(seconds, summary=summary)
 
+    @classmethod
+    def continue_as_new(cls, *args, **kwargs):
+        """
+        Continue the workflow as a new execution.
+
+        This method allows a workflow to continue execution as a new run with fresh history,
+        which is useful for long-running workflows that need to avoid history size limits.
+        """
+        return workflow.continue_as_new(*args, **kwargs)
+
     """
     Business Logic
     """
