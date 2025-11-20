@@ -656,7 +656,6 @@ class ActionsHub:
 
         return result
 
-
     @classmethod
     async def start_activity(
         cls,
