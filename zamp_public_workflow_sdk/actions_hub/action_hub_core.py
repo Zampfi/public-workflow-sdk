@@ -657,6 +657,114 @@ class ActionsHub:
 
         return result
 
+    @classmethod
+    async def start_activity(
+        cls,
+        activity: str | Callable,
+        *args,
+        execution_mode: ExecutionMode | None = None,
+        return_type: type | None = None,
+        start_to_close_timeout: timedelta = timedelta(minutes=10),
+        retry_policy: RetryPolicy = RetryPolicy.default(),
+        task_queue: str | None = None,
+        **kwargs,
+    ):
+        """
+        Start an activity execution and return a handle that can be awaited or cancelled separately.
+        For most cases, use execute_activity() which waits for the result automatically.
+
+        Returns:
+            ActivityHandle that can be awaited or cancelled
+        """
+        # Check if execution_mode is set to "API" in context variables
+        if execution_mode is None:
+            execution_mode = get_execution_mode_from_context()
+
+        if execution_mode == ExecutionMode.API:
+            # In API mode, execute the activity directly and return an awaitable coroutine
+            activity_name = cls._get_action_name(activity)
+            logger.info(
+                "Starting activity in API mode, bypassing Temporal",
+                activity_name=activity_name,
+            )
+
+            # Get the activity function
+            if isinstance(activity, str):
+                if activity not in cls._activities:
+                    raise ValueError(f"Activity '{activity}' not found")
+                activity_obj = cls._activities[activity]
+                func = activity_obj.func
+            else:
+                func = activity
+
+            # Return a coroutine that executes the function
+            # The caller can await this if they need the result
+            async def execute_activity_coroutine():
+                result = None
+                if asyncio.iscoroutinefunction(func):
+                    result = await func(*args)
+                else:
+                    result = func(*args)
+
+                cls._log_action_execution_response(
+                    message="Activity executed",
+                    action_name=activity_name,
+                    action_type=ActionType.ACTIVITY,
+                    result=result,
+                )
+                return result
+
+            return execute_activity_coroutine()
+
+        # Generate node_id for this activity execution
+        activity_name, workflow_id, node_id = cls._generate_node_id_for_action(activity)
+
+        # Check for simulation result
+        simulation_result = await cls._get_simulation_response(
+            workflow_id=workflow_id,
+            node_id=node_id,
+            action=activity,
+            return_type=return_type,
+        )
+        if simulation_result.execution_type == ExecutionType.MOCK:
+            logger.info(
+                "Activity mocked in start_activity",
+                node_id=node_id,
+                activity_name=activity_name,
+            )
+            # For mocked activities, we return the result directly
+            # Note: This means the caller won't get a handle, but will get the result immediately
+            # This is consistent with how start_child_workflow handles mocked workflows
+            return simulation_result.execution_response
+
+        # Temporal execution mode
+        # Convert ISO string to timedelta
+        retry_policy.initial_interval = convert_iso_to_timedelta(retry_policy.initial_interval)
+        retry_policy.maximum_interval = convert_iso_to_timedelta(retry_policy.maximum_interval)
+
+        node_id_arg = {TEMPORAL_NODE_ID_KEY: node_id}
+        args = (node_id_arg,) + args
+
+        # Starting activity in temporal mode
+        logger.info(
+            "Starting activity",
+            activity_name=activity_name,
+            node_id=node_id,
+            workflow_id=workflow_id,
+        )
+
+        handle = workflow.start_activity(
+            activity,
+            args=args,
+            result_type=return_type,
+            start_to_close_timeout=start_to_close_timeout,
+            retry_policy=retry_policy.to_temporal_retry_policy(),
+            task_queue=task_queue,
+            **kwargs,
+        )
+
+        return handle
+
     """
     Workflows
     """

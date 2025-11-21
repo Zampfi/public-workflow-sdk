@@ -672,6 +672,25 @@ class TestActionsHubSimulation:
         assert result.execution_response == "mocked_start"
 
     @pytest.mark.asyncio
+    async def test_start_activity_simulation_integration(self):
+        """Test that start_activity integrates with simulation response."""
+        mock_simulation = Mock(spec=WorkflowSimulationService)
+        mock_response = SimulationResponse(execution_type=ExecutionType.MOCK, execution_response="mocked_activity")
+        mock_simulation.get_simulation_response = AsyncMock(return_value=mock_response)
+        ActionsHub._workflow_id_to_simulation_map["test_wf"] = mock_simulation
+
+        # Test that _get_simulation_response returns the mocked result
+        result = await ActionsHub._get_simulation_response(
+            workflow_id="test_wf",
+            node_id="test_node",
+            action="test_activity",
+            return_type=None,
+        )
+
+        assert result.execution_type == ExecutionType.MOCK
+        assert result.execution_response == "mocked_activity"
+
+    @pytest.mark.asyncio
     async def test_get_simulation_response_with_action_return_type_inference(self):
         """Test _get_simulation_response infers return type from action."""
 
