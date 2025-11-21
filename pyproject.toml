@@ -1,6 +1,41 @@
 [build-system]
-requires = ["setuptools"]
+requires = ["setuptools>=70"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "zamp_public_workflow_sdk"
+version = "0.0.143"
+description = "Workflow Manager"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [{ name = "Zamp Engineering", email = "engineering@zamp.com" }]
+urls = { Homepage = "https://github.com/zamp-engineering/workflow_manager" }
+
+dependencies = [
+    "pydantic",
+    "temporalio==1.13.0",
+    "python-dateutil",
+    "python-dotenv",
+    "sentry-sdk==2.41.0",
+    "structlog",
+]
+
+[dependency-groups]
+dev = [
+    "cryptography==45.0.5",
+    "deepdiff==8.4.2",
+    "google-cloud-storage==2.11.0",
+    "pandas>=2.2.2",
+    "pytest",
+    "pytest-asyncio",
+    "pytest-cov",
+    "pre-commit",
+    "diff-cover"
+]
+
+[tool.setuptools.packages.find]
+include = ["zamp_public_workflow_sdk*"]
 
 [tool.mypy]
 python_version = "3.12"
