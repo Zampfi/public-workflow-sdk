@@ -6,7 +6,7 @@ This interceptor captures workflow and activity failures and reports them to Sen
 
 from typing import Any, Callable
 
-from temporalio import workflow
+from temporalio import activity, workflow
 from temporalio.worker import (
     ActivityInboundInterceptor,
     ActivityOutboundInterceptor,
@@ -21,6 +21,7 @@ from temporalio.worker import (
 
 with workflow.unsafe.imports_passed_through():
     from sentry_sdk import capture_exception, init, push_scope
+    from sentry_sdk.integrations.logging import LoggingIntegration
 
 
 def extract_context_from_contextvars(
@@ -99,52 +100,64 @@ class SentryActivityInboundInterceptor(ActivityInboundInterceptor):
         try:
             return await self.next.execute_activity(input)
         except Exception as e:
-            with push_scope() as scope:
-                activity_name = input.fn.__name__
-                # Set activity-specific tags
-                scope.set_tag("activity.direction", "inbound")
-                scope.set_tag("activity_type", activity_name)
-                scope.set_tag("failure_level", "activity")
+            # Only report to Sentry if retry count is greater than 5
+            try:
+                activity_info = activity.info()
+                attempt = activity_info.attempt if activity_info else 1
+            except Exception:
+                # If we can't get activity info, default to attempt 1
+                attempt = 1
 
-                # Set fingerprint for better Sentry grouping
-                scope.fingerprint = [
-                    f"activity_{activity_name}",
-                    str(type(e).__name__),
-                    str(e),
-                    "activity_failure",
-                ]
+            # Only capture exception if retry count is greater than 5
+            if attempt > 5:
+                with push_scope() as scope:
+                    activity_name = input.fn.__name__
+                    # Set activity-specific tags
+                    scope.set_tag("activity.direction", "inbound")
+                    scope.set_tag("activity_type", activity_name)
+                    scope.set_tag("failure_level", "activity")
+                    scope.set_tag("retry_attempt", str(attempt))
 
-                # Extract context using provided function
-                extracted_tags, extracted_context = extract_context_from_contextvars(self.context_extraction_fn)
+                    # Set fingerprint for better Sentry grouping
+                    scope.fingerprint = [
+                        f"activity_{activity_name}",
+                        str(type(e).__name__),
+                        str(e),
+                        "activity_failure",
+                    ]
 
-                # Set tags for filtering/searching
-                for key, value in extracted_tags.items():
-                    scope.set_tag(key, value)
+                    # Extract context using provided function
+                    extracted_tags, extracted_context = extract_context_from_contextvars(self.context_extraction_fn)
 
-                # Add detailed context
-                context = {
-                    "name": activity_name,
-                    "headers": dict(input.headers),
-                    "type": "activity",
-                    "args": str(input.args),
-                    "direction": "inbound",
-                }
-                context.update(extracted_context)
+                    # Set tags for filtering/searching
+                    for key, value in extracted_tags.items():
+                        scope.set_tag(key, value)
 
-                # Add any additional context if provided
-                if self.additional_context_fn:
-                    additional_context = self.additional_context_fn(input)
-                    context.update(additional_context)
+                    # Add detailed context
+                    context = {
+                        "name": activity_name,
+                        "headers": dict(input.headers),
+                        "type": "activity",
+                        "args": str(input.args),
+                        "direction": "inbound",
+                        "retry_attempt": attempt,
+                    }
+                    context.update(extracted_context)
 
-                scope.set_context("activity_details", context)
-                try:
-                    capture_exception(e)
-                except Exception as e:
-                    self.logger.error(
-                        "Sentry captured failed",
-                        activity_name=activity_name,
-                        error=str(e),
-                    )
+                    # Add any additional context if provided
+                    if self.additional_context_fn:
+                        additional_context = self.additional_context_fn(input)
+                        context.update(additional_context)
+
+                    scope.set_context("activity_details", context)
+                    try:
+                        capture_exception(e)
+                    except Exception as e:
+                        self.logger.error(
+                            "Sentry captured failed",
+                            activity_name=activity_name,
+                            error=str(e),
+                        )
             raise
 
 
@@ -168,52 +181,64 @@ class SentryActivityOutboundInterceptor(ActivityOutboundInterceptor):
         try:
             return await self.next.execute_activity(input)
         except Exception as e:
-            with push_scope() as scope:
-                activity_name = input.fn.__name__
-                # Set activity-specific tags
-                scope.set_tag("activity.direction", "outbound")
-                scope.set_tag("activity_type", activity_name)
-                scope.set_tag("failure_level", "activity")
+            # Only report to Sentry if retry count is greater than 5
+            try:
+                activity_info = activity.info()
+                attempt = activity_info.attempt if activity_info else 1
+            except Exception:
+                # If we can't get activity info, default to attempt 1
+                attempt = 1
 
-                # Set fingerprint for better Sentry grouping
-                scope.fingerprint = [
-                    f"activity_{activity_name}",
-                    str(type(e).__name__),
-                    str(e),
-                    "activity_failure",
-                ]
+            # Only capture exception if retry count is greater than 5
+            if attempt > 5:
+                with push_scope() as scope:
+                    activity_name = input.fn.__name__
+                    # Set activity-specific tags
+                    scope.set_tag("activity.direction", "outbound")
+                    scope.set_tag("activity_type", activity_name)
+                    scope.set_tag("failure_level", "activity")
+                    scope.set_tag("retry_attempt", str(attempt))
 
-                # Extract context using provided function
-                extracted_tags, extracted_context = extract_context_from_contextvars(self.context_extraction_fn)
+                    # Set fingerprint for better Sentry grouping
+                    scope.fingerprint = [
+                        f"activity_{activity_name}",
+                        str(type(e).__name__),
+                        str(e),
+                        "activity_failure",
+                    ]
 
-                # Set tags for filtering/searching
-                for key, value in extracted_tags.items():
-                    scope.set_tag(key, value)
+                    # Extract context using provided function
+                    extracted_tags, extracted_context = extract_context_from_contextvars(self.context_extraction_fn)
 
-                # Add detailed context
-                context = {
-                    "name": activity_name,
-                    "headers": dict(input.headers),
-                    "type": "activity",
-                    "args": str(input.args),
-                    "direction": "outbound",
-                }
-                context.update(extracted_context)
+                    # Set tags for filtering/searching
+                    for key, value in extracted_tags.items():
+                        scope.set_tag(key, value)
 
-                # Add any additional context if provided
-                if self.additional_context_fn:
-                    additional_context = self.additional_context_fn(input)
-                    context.update(additional_context)
+                    # Add detailed context
+                    context = {
+                        "name": activity_name,
+                        "headers": dict(input.headers),
+                        "type": "activity",
+                        "args": str(input.args),
+                        "direction": "outbound",
+                        "retry_attempt": attempt,
+                    }
+                    context.update(extracted_context)
 
-                scope.set_context("activity_details", context)
-                try:
-                    capture_exception(e)
-                except Exception as e:
-                    self.logger.error(
-                        "Sentry captured failed",
-                        activity_name=activity_name,
-                        error=str(e),
-                    )
+                    # Add any additional context if provided
+                    if self.additional_context_fn:
+                        additional_context = self.additional_context_fn(input)
+                        context.update(additional_context)
+
+                    scope.set_context("activity_details", context)
+                    try:
+                        capture_exception(e)
+                    except Exception as e:
+                        self.logger.error(
+                            "Sentry captured failed",
+                            activity_name=activity_name,
+                            error=str(e),
+                        )
             raise
 
 
@@ -511,6 +536,9 @@ class SentryInterceptor(Interceptor):
             init(
                 dsn=sentry_dsn,
                 environment=environment,
+                integrations=[
+                    LoggingIntegration(level=None, event_level=None),  # Disables it
+                ],
                 **sentry_options,
             )
 

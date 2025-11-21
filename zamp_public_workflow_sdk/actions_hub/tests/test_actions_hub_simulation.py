@@ -531,7 +531,7 @@ class TestActionsHubSimulation:
             # Verify memo was added
             assert MEMO_KEY in kwargs
             assert SIMULATION_S3_KEY_MEMO in kwargs[MEMO_KEY]
-            assert kwargs[MEMO_KEY][SIMULATION_S3_KEY_MEMO] == "simulation-data/parent_wf.json"
+            assert kwargs[MEMO_KEY][SIMULATION_S3_KEY_MEMO] == "parent_wf.json"
 
     def test_add_simulation_memo_to_child_with_existing_memo_in_workflow(self):
         """Test adding simulation memo when workflow already has memo with S3 key."""
@@ -609,7 +609,7 @@ class TestActionsHubSimulation:
 
             # Should still add memo with fallback key
             assert MEMO_KEY in kwargs
-            assert kwargs[MEMO_KEY][SIMULATION_S3_KEY_MEMO] == "simulation-data/parent_wf.json"
+            assert kwargs[MEMO_KEY][SIMULATION_S3_KEY_MEMO] == "parent_wf.json"
 
     @pytest.mark.asyncio
     async def test_execute_activity_simulation_integration(self):
