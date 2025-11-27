@@ -1,11 +1,3 @@
-"""
-Unit tests for DEBUG mode behavior in child workflow execution.
-
-This module tests the new _start_child_workflow_in_log_mode helper method
-and verifies that both execute_child_workflow and start_child_workflow
-behave correctly in DEBUG and non-DEBUG modes.
-"""
-
 import pytest
 from unittest.mock import Mock, patch, AsyncMock
 
