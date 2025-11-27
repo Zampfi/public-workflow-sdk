@@ -911,7 +911,7 @@ class ActionsHub:
         return result
 
     @classmethod
-    async def _start_child_workflow_with_logging(
+    async def _start_child_workflow_in_log_mode(
         cls,
         workflow_name: str | Callable,
         action_name: str,
@@ -964,7 +964,7 @@ class ActionsHub:
                 workflow_name=workflow_name,
             )
             action_name = workflow_name if isinstance(workflow_name, str) else workflow_name.__name__
-            return await cls._start_child_workflow_with_logging(
+            return await cls._start_child_workflow_in_log_mode(
                 workflow_name=workflow_name,
                 action_name=action_name,
                 node_id=None,
@@ -1004,7 +1004,7 @@ class ActionsHub:
         # Pass simulation S3 key to child workflow via memo
         cls._add_simulation_memo_to_child(workflow_id=workflow_id, kwargs=kwargs)
 
-        return await cls._start_child_workflow_with_logging(
+        return await cls._start_child_workflow_in_log_mode(
             workflow_name=workflow_name,
             action_name=child_workflow_name,
             node_id=node_id,

@@ -1,7 +1,7 @@
 """
 Unit tests for DEBUG mode behavior in child workflow execution.
 
-This module tests the new _start_child_workflow_with_logging helper method
+This module tests the new _start_child_workflow_in_log_mode helper method
 and verifies that both execute_child_workflow and start_child_workflow
 behave correctly in DEBUG and non-DEBUG modes.
 """
@@ -32,17 +32,17 @@ class TestDebugModeChildWorkflows:
     @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.get_log_mode_from_context")
     @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.execute_child_workflow")
     @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.start_child_workflow")
-    async def test_start_child_workflow_with_logging_debug_mode(
+    async def test_start_child_workflow_in_log_mode_debug_mode(
         self,
         mock_start_child,
         mock_execute_child,
         mock_get_log_mode,
     ):
-        """Test _start_child_workflow_with_logging in DEBUG mode uses execute_child_workflow."""
+        """Test _start_child_workflow_in_log_mode in DEBUG mode uses execute_child_workflow."""
         mock_get_log_mode.return_value = LogMode.DEBUG
         mock_execute_child.return_value = "workflow_result"
 
-        result = await ActionsHub._start_child_workflow_with_logging(
+        result = await ActionsHub._start_child_workflow_in_log_mode(
             workflow_name="TestWorkflow",
             action_name="TestWorkflow",
             node_id="TestWorkflow#1",
@@ -63,19 +63,19 @@ class TestDebugModeChildWorkflows:
     @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.get_log_mode_from_context")
     @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.execute_child_workflow")
     @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.start_child_workflow")
-    async def test_start_child_workflow_with_logging_non_debug_mode(
+    async def test_start_child_workflow_in_log_mode_non_debug_mode(
         self,
         mock_start_child,
         mock_execute_child,
         mock_get_log_mode,
     ):
-        """Test _start_child_workflow_with_logging in non-DEBUG mode uses start_child_workflow."""
+        """Test _start_child_workflow_in_log_mode in non-DEBUG mode uses start_child_workflow."""
         mock_get_log_mode.return_value = LogMode.INFO
         mock_handle = AsyncMock()
         mock_handle.id = "test-workflow-id"
         mock_start_child.return_value = mock_handle
 
-        result = await ActionsHub._start_child_workflow_with_logging(
+        result = await ActionsHub._start_child_workflow_in_log_mode(
             workflow_name="TestWorkflow",
             action_name="TestWorkflow",
             node_id="TestWorkflow#1",
@@ -275,16 +275,16 @@ class TestDebugModeChildWorkflows:
     @pytest.mark.asyncio
     @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.get_log_mode_from_context")
     @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.execute_child_workflow")
-    async def test_start_child_workflow_with_logging_preserves_kwargs(
+    async def test_start_child_workflow_in_log_mode_preserves_kwargs(
         self,
         mock_execute_child,
         mock_get_log_mode,
     ):
-        """Test that _start_child_workflow_with_logging preserves all kwargs."""
+        """Test that _start_child_workflow_in_log_mode preserves all kwargs."""
         mock_get_log_mode.return_value = LogMode.DEBUG
         mock_execute_child.return_value = "workflow_result"
 
-        result = await ActionsHub._start_child_workflow_with_logging(
+        result = await ActionsHub._start_child_workflow_in_log_mode(
             workflow_name="TestWorkflow",
             action_name="TestWorkflow",
             node_id="TestWorkflow#1",
@@ -339,19 +339,19 @@ class TestDebugModeChildWorkflows:
     @pytest.mark.asyncio
     @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.get_log_mode_from_context")
     @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.execute_child_workflow")
-    async def test_start_child_workflow_with_logging_with_callable(
+    async def test_start_child_workflow_in_log_mode_with_callable(
         self,
         mock_execute_child,
         mock_get_log_mode,
     ):
-        """Test _start_child_workflow_with_logging works with callable workflow."""
+        """Test _start_child_workflow_in_log_mode works with callable workflow."""
         mock_get_log_mode.return_value = LogMode.DEBUG
         mock_execute_child.return_value = "workflow_result"
 
         async def test_workflow():
             return "result"
 
-        result = await ActionsHub._start_child_workflow_with_logging(
+        result = await ActionsHub._start_child_workflow_in_log_mode(
             workflow_name=test_workflow,
             action_name="test_workflow",
             node_id="test_workflow#1",
