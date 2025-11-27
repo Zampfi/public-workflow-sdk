@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "zamp_public_workflow_sdk"
-version = "0.0.143"
+version = "0.0.144"
 description = "Workflow Manager"
 readme = "README.md"
 requires-python = ">=3.12"
