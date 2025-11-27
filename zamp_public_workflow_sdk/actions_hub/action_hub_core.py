@@ -911,6 +911,45 @@ class ActionsHub:
         return result
 
     @classmethod
+    async def _start_child_workflow_with_logging(
+        cls,
+        workflow_name: str | Callable,
+        action_name: str,
+        node_id: str | None,
+        result_type: type | None,
+        args: tuple,
+        **kwargs,
+    ):
+        """
+        Helper method to start a child workflow with optional logging in DEBUG mode.
+
+        In non-DEBUG mode, returns the child workflow handle immediately.
+        In DEBUG mode, waits for the child workflow to complete and logs the result.
+        """
+        if get_log_mode_from_context() != LogMode.DEBUG:
+            return await workflow.start_child_workflow(
+                workflow_name,
+                result_type=result_type,
+                args=args,
+                **kwargs,
+            )
+
+        result = await workflow.execute_child_workflow(
+            workflow_name,
+            result_type=result_type,
+            args=args,
+            **kwargs,
+        )
+        cls._log_action_execution_response(
+            message="Child workflow executed",
+            action_name=action_name,
+            action_type=ActionType.WORKFLOW,
+            result=result,
+            node_id=node_id,
+        )
+        return result
+
+    @classmethod
     async def start_child_workflow(
         cls,
         workflow_name: str | Callable,
@@ -924,8 +963,11 @@ class ActionsHub:
                 "Skipping node id generation while starting child workflow",
                 workflow_name=workflow_name,
             )
-            return await workflow.start_child_workflow(
-                workflow_name,
+            action_name = workflow_name if isinstance(workflow_name, str) else workflow_name.__name__
+            return await cls._start_child_workflow_with_logging(
+                workflow_name=workflow_name,
+                action_name=action_name,
+                node_id=None,
                 result_type=result_type,
                 args=args,
                 **kwargs,
@@ -962,8 +1004,10 @@ class ActionsHub:
         # Pass simulation S3 key to child workflow via memo
         cls._add_simulation_memo_to_child(workflow_id=workflow_id, kwargs=kwargs)
 
-        return await workflow.start_child_workflow(
-            workflow_name,
+        return await cls._start_child_workflow_with_logging(
+            workflow_name=workflow_name,
+            action_name=child_workflow_name,
+            node_id=node_id,
             result_type=result_type,
             args=args,
             **kwargs,
