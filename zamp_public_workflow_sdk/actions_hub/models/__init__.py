@@ -5,7 +5,16 @@ Models for ActionsHub - independent of Pantheon platform.
 from .activity_models import Activity
 from .business_logic_models import BusinessLogic
 from .common_models import ZampMetadataContext
-from .core_models import Action, ActionFilter, RetryPolicy
+from .compensation_models import (
+    CompensationConfig,
+    activity_compensation,
+    workflow_compensation,
+)
+from .core_models import (
+    Action,
+    ActionFilter,
+    RetryPolicy,
+)
 from .credentials_models import (
     ActionConnectionsMapping,
     AutonomousAgentConfig,
@@ -17,13 +26,21 @@ from .credentials_models import (
 )
 from .decorators import external
 from .mcp_models import MCPAccessPattern, MCPAction, MCPConfig, MCPServiceConfig
-from .workflow_models import PLATFORM_WORKFLOW_LABEL, Workflow, WorkflowCoordinates, WorkflowParams
+from .workflow_models import (
+    PLATFORM_WORKFLOW_LABEL,
+    Workflow,
+    WorkflowCoordinates,
+    WorkflowParams,
+)
 
 __all__ = [
     # Core models
     "Action",
     "ActionFilter",
+    "CompensationConfig",
     "RetryPolicy",
+    "activity_compensation",
+    "workflow_compensation",
     # Workflow models
     "Workflow",
     "WorkflowParams",

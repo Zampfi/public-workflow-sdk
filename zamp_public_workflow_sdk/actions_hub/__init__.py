@@ -6,15 +6,28 @@ independent of the Pantheon platform.
 """
 
 from .action_hub_core import ActionsHub
-from .constants import ActionType, ExecutionMode, LogMode
-from .models.core_models import Action, ActionFilter, RetryPolicy
+from .constants import ActionType, CompensationActionType, ExecutionMode, LogMode
+from .models.compensation_models import (
+    CompensationConfig,
+    activity_compensation,
+    workflow_compensation,
+)
+from .models.core_models import (
+    Action,
+    ActionFilter,
+    RetryPolicy,
+)
 
 __all__ = [
     "ActionsHub",
     "Action",
     "ActionFilter",
+    "CompensationConfig",
+    "CompensationActionType",
     "RetryPolicy",
     "ActionType",
     "ExecutionMode",
     "LogMode",
+    "activity_compensation",
+    "workflow_compensation",
 ]
