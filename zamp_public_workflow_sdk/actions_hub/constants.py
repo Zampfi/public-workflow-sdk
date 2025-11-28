@@ -52,6 +52,17 @@ class LogMode(str, Enum):
     DEBUG = "DEBUG"
 
 
+class CompensationActionType(str, Enum):
+    """
+    Type of compensation action for saga pattern.
+    ACTIVITY: Compensation is handled by an activity
+    WORKFLOW: Compensation is handled by a workflow
+    """
+
+    ACTIVITY = "activity"
+    WORKFLOW = "workflow"
+
+
 # Simulation constants
 SKIP_SIMULATION_WORKFLOWS = [
     "SimulationFetchDataWorkflow",

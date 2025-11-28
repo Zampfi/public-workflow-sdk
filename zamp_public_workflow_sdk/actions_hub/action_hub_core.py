@@ -56,6 +56,7 @@ with workflow.unsafe.imports_passed_through():
     )
     from .models.activity_models import Activity
     from .models.business_logic_models import BusinessLogic
+    from .models.compensation_models import CompensationConfig
     from .models.core_models import (
         Action,
         ActionFilter,
@@ -375,7 +376,9 @@ class ActionsHub:
 
                 if bucket_name:
                     simulation_service = await cls._load_simulation_from_s3_memo(
-                        workflow_id=workflow_id, simulation_s3_key=simulation_s3_key, bucket_name=bucket_name
+                        workflow_id=workflow_id,
+                        simulation_s3_key=simulation_s3_key,
+                        bucket_name=bucket_name,
                     )
                     if simulation_service:
                         return simulation_service
@@ -456,14 +459,17 @@ class ActionsHub:
         description: str,
         labels: list[str] | None = None,
         mcp_config: MCPConfig | None = None,
+        compensation: CompensationConfig | None = None,
         **kwargs,
     ):
         """
-        Register an activity decorator with optional description, labels, and MCP access control
+        Register an activity decorator with optional description, labels, MCP access control,
+        and compensation configuration for saga pattern support.
 
         Args:
             description: Human-readable description of the activity
             mcp_config: Optional MCPConfig DTO with service_name and accesses list
+            compensation: Optional CompensationConfig for saga pattern rollback
         """
 
         def decorator(func: Callable) -> Callable:
@@ -495,6 +501,7 @@ class ActionsHub:
                 description=description,
                 func=wrapper,
                 mcp_config=mcp_config,
+                compensation_config=compensation,
             )
 
             assert new_activity.parameters is not None
@@ -525,6 +532,35 @@ class ActionsHub:
     @classmethod
     def get_available_activities(cls) -> list[Activity]:
         return list(cls._activities.values())
+
+    @classmethod
+    def get_compensation_config(cls, activity_name: str) -> CompensationConfig | None:
+        """
+        Get compensation config for an activity if registered.
+
+        Args:
+            activity_name: Name of the activity to get compensation config for
+
+        Returns:
+            CompensationConfig if the activity has compensation registered, None otherwise
+        """
+        activity = cls._activities.get(activity_name)
+        if activity is None:
+            return None
+        return activity.compensation_config
+
+    @classmethod
+    def has_compensation(cls, activity_name: str) -> bool:
+        """
+        Check if an activity has a registered compensation.
+
+        Args:
+            activity_name: Name of the activity to check
+
+        Returns:
+            True if the activity has compensation registered, False otherwise
+        """
+        return cls.get_compensation_config(activity_name) is not None
 
     @classmethod
     def _log_action_execution_response(

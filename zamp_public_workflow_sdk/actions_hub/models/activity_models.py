@@ -7,6 +7,7 @@ from typing import Any, Callable, Sequence
 
 from pydantic import BaseModel
 
+from .compensation_models import CompensationConfig
 from .mcp_models import MCPConfig
 
 
@@ -16,6 +17,7 @@ class Activity(BaseModel):
     func: Callable
     labels: list[str] = []
     mcp_config: MCPConfig | None = None
+    compensation_config: CompensationConfig | None = None
     _parameters: tuple = None
     _returns: type | None = None
 
