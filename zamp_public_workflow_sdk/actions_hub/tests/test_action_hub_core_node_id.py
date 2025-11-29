@@ -304,12 +304,13 @@ class TestActionsHubNodeIdIntegration:
         assert node_id_arg["__temporal_node_id"].startswith("test_activity#")
 
     @pytest.mark.asyncio
+    @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.upsert_search_attributes")
     @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.execute_child_workflow")
     @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.get_execution_mode_from_context")
     @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.info")
     @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.ActionsHub._get_simulation_response")
     async def test_execute_child_workflow_with_node_id(
-        self, mock_get_simulation_response, mock_workflow_info, mock_get_mode, mock_execute_child
+        self, mock_get_simulation_response, mock_workflow_info, mock_get_mode, mock_execute_child, mock_upsert
     ):
         """Test execute_child_workflow generates and uses node ID."""
         from zamp_public_workflow_sdk.simulation.models import ExecutionType, SimulationResponse
