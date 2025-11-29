@@ -6,59 +6,71 @@ from zamp_public_workflow_sdk.actions_hub.action_hub_core import ActionsHub
 from zamp_public_workflow_sdk.actions_hub.constants import ExecutionMode
 
 
-class TestGetRootWorkflowNameFromNodeId:
-    """Test cases for _get_root_workflow_name_from_node_id method."""
+class TestGetRootWorkflowName:
+    """Test cases for _get_root_workflow_name method."""
 
-    def test_simple_node_id(self):
-        """Test extracting root from simple node_id like 'A#1'."""
-        result = ActionsHub._get_root_workflow_name_from_node_id("A#1")
-        assert result == "A"
+    @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.info")
+    @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.payload_converter")
+    def test_inherits_from_headers(self, mock_payload_converter, mock_workflow_info):
+        """Test that root_workflow_name is inherited from headers (highest priority)."""
+        mock_payload = Mock()
+        mock_headers = {"root_workflow_name": mock_payload}
+        mock_workflow_info.return_value = Mock(headers=mock_headers)
+        mock_payload_converter.return_value.from_payload.return_value = "inherited-root-workflow"
 
-    def test_nested_node_id_two_levels(self):
-        """Test extracting root from nested node_id like 'A#1.B#1'."""
-        result = ActionsHub._get_root_workflow_name_from_node_id("A#1.B#1")
-        assert result == "A"
+        result = ActionsHub._get_root_workflow_name("should-be-ignored")
 
-    def test_nested_node_id_three_levels(self):
-        """Test extracting root from deeply nested node_id like 'A#1.B#1.C#1'."""
-        result = ActionsHub._get_root_workflow_name_from_node_id("A#1.B#1.C#1")
-        assert result == "A"
+        assert result == "inherited-root-workflow"
+        mock_payload_converter.return_value.from_payload.assert_called_once_with(mock_payload, str)
 
-    def test_nested_node_id_many_levels(self):
-        """Test extracting root from many levels deep node_id."""
-        result = ActionsHub._get_root_workflow_name_from_node_id("RootWorkflow#1.Child1#2.Child2#1.Child3#3")
-        assert result == "RootWorkflow"
+    @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.info")
+    def test_uses_provided_name_when_no_headers(self, mock_workflow_info):
+        """Test that provided name is used when no headers present."""
+        mock_workflow_info.return_value = Mock(headers=None)
 
-    def test_workflow_with_underscore(self):
-        """Test extracting root when workflow name contains underscore."""
-        result = ActionsHub._get_root_workflow_name_from_node_id("My_Workflow#1.Child#1")
-        assert result == "My_Workflow"
+        result = ActionsHub._get_root_workflow_name("custom-workflow-name")
 
-    def test_workflow_with_numbers(self):
-        """Test extracting root when workflow name contains numbers."""
-        result = ActionsHub._get_root_workflow_name_from_node_id("Workflow123#1.Child#1")
-        assert result == "Workflow123"
+        assert result == "custom-workflow-name"
 
-    def test_empty_node_id(self):
-        """Test with empty node_id string."""
-        result = ActionsHub._get_root_workflow_name_from_node_id("")
+    @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.info")
+    def test_uses_provided_name_when_header_key_missing(self, mock_workflow_info):
+        """Test that provided name is used when header key is missing."""
+        mock_workflow_info.return_value = Mock(headers={"other_key": "value"})
+
+        result = ActionsHub._get_root_workflow_name("custom-workflow-name")
+
+        assert result == "custom-workflow-name"
+
+    @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.info")
+    def test_returns_none_when_no_headers_and_no_provided_name(self, mock_workflow_info):
+        """Test that None is returned when no headers and no provided name."""
+        mock_workflow_info.return_value = Mock(headers=None)
+
+        result = ActionsHub._get_root_workflow_name(None)
+
         assert result is None
 
-    def test_none_handling(self):
-        """Test with None node_id - should handle gracefully."""
-        # The method expects a string, but should handle empty/falsy values
-        result = ActionsHub._get_root_workflow_name_from_node_id("")
+    @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.info")
+    def test_returns_none_when_empty_provided_name(self, mock_workflow_info):
+        """Test that None is returned when provided name is empty string."""
+        mock_workflow_info.return_value = Mock(headers=None)
+
+        result = ActionsHub._get_root_workflow_name("")
+
         assert result is None
 
-    def test_node_id_with_high_count(self):
-        """Test extracting root when count is high like 'A#999'."""
-        result = ActionsHub._get_root_workflow_name_from_node_id("A#999")
-        assert result == "A"
+    @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.info")
+    @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.payload_converter")
+    def test_header_takes_priority_over_provided_name(self, mock_payload_converter, mock_workflow_info):
+        """Test that header value takes priority over provided name (for chain preservation)."""
+        mock_payload = Mock()
+        mock_headers = {"root_workflow_name": mock_payload}
+        mock_workflow_info.return_value = Mock(headers=mock_headers)
+        mock_payload_converter.return_value.from_payload.return_value = "header-value"
 
-    def test_complex_workflow_name(self):
-        """Test with complex workflow name containing CamelCase."""
-        result = ActionsHub._get_root_workflow_name_from_node_id("MyComplexWorkflowName#1.ChildWorkflow#2")
-        assert result == "MyComplexWorkflowName"
+        result = ActionsHub._get_root_workflow_name("provided-but-ignored")
+
+        assert result == "header-value"
 
 
 class TestUpsertRootWorkflowSearchAttribute:
@@ -75,6 +87,13 @@ class TestUpsertRootWorkflowSearchAttribute:
     def test_upsert_not_called_with_empty_name(self, mock_upsert):
         """Test that upsert is not called when root_workflow_name is empty."""
         ActionsHub._upsert_root_workflow_search_attribute("")
+
+        mock_upsert.assert_not_called()
+
+    @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.upsert_search_attributes")
+    def test_upsert_not_called_with_none(self, mock_upsert):
+        """Test that upsert is not called when root_workflow_name is None."""
+        ActionsHub._upsert_root_workflow_search_attribute(None)
 
         mock_upsert.assert_not_called()
 
@@ -104,10 +123,10 @@ class TestExecuteChildWorkflowRootWorkflowName:
     @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.get_execution_mode_from_context")
     @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.info")
     @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.ActionsHub._get_simulation_response")
-    async def test_execute_child_workflow_upserts_root_workflow_name(
+    async def test_execute_child_workflow_no_upsert_when_no_root_name(
         self, mock_get_simulation_response, mock_workflow_info, mock_get_mode, mock_execute_child, mock_upsert
     ):
-        """Test that execute_child_workflow upserts RootWorkflowName search attribute."""
+        """Test that upsert is not called when no root_workflow_name is set."""
         from zamp_public_workflow_sdk.simulation.models import ExecutionType, SimulationResponse
 
         mock_get_mode.return_value = ExecutionMode.TEMPORAL
@@ -119,54 +138,68 @@ class TestExecuteChildWorkflowRootWorkflowName:
 
         await ActionsHub.execute_child_workflow("ChildWorkflow")
 
-        # Verify upsert_search_attributes was called with correct format
-        mock_upsert.assert_called_once()
-        call_args = mock_upsert.call_args[0][0]
-        assert "RootWorkflowName" in call_args
-        assert call_args["RootWorkflowName"] == ["ChildWorkflow"]
+        # Verify upsert was NOT called (no root_workflow_name)
+        mock_upsert.assert_not_called()
 
     @pytest.mark.asyncio
     @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.upsert_search_attributes")
     @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.execute_child_workflow")
-    @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.payload_converter")
     @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.get_execution_mode_from_context")
     @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.info")
     @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.ActionsHub._get_simulation_response")
-    async def test_execute_child_workflow_preserves_root_in_nested_calls(
-        self,
-        mock_get_simulation_response,
-        mock_workflow_info,
-        mock_get_mode,
-        mock_payload_converter,
-        mock_execute_child,
-        mock_upsert,
+    async def test_execute_child_workflow_uses_provided_root_workflow_name(
+        self, mock_get_simulation_response, mock_workflow_info, mock_get_mode, mock_execute_child, mock_upsert
     ):
-        """Test that nested child workflows preserve the original root workflow name."""
+        """Test that execute_child_workflow uses provided root_workflow_name (CustomerCodeWorkflow case)."""
         from zamp_public_workflow_sdk.simulation.models import ExecutionType, SimulationResponse
-        from zamp_public_workflow_sdk.temporal.interceptors.node_id_interceptor import NODE_ID_HEADER_KEY
-
-        # Mock parent workflow with node ID (simulating we're inside child workflow B)
-        mock_converter = Mock()
-        mock_converter.from_payload.return_value = "ParentWorkflow#1"
-        mock_payload_converter.return_value = mock_converter
 
         mock_get_mode.return_value = ExecutionMode.TEMPORAL
-        mock_workflow_info.return_value = Mock(
-            workflow_id="test-workflow", headers={NODE_ID_HEADER_KEY: "mock_payload"}
-        )
+        mock_workflow_info.return_value = Mock(workflow_id="test-workflow", headers=None)
         mock_execute_child.return_value = "workflow_result"
         mock_get_simulation_response.return_value = SimulationResponse(
             execution_type=ExecutionType.EXECUTE, execution_response=None
         )
 
-        await ActionsHub.execute_child_workflow("GrandchildWorkflow")
+        # CustomerCodeWorkflow case - pass custom workflow name
+        await ActionsHub.execute_child_workflow("ChildWorkflow", root_workflow_name="custom-order-123-workflow")
 
-        # Verify upsert_search_attributes was called with the root (ParentWorkflow)
-        mock_upsert.assert_called_once()
-        call_args = mock_upsert.call_args[0][0]
-        assert "RootWorkflowName" in call_args
-        # The root should be "ParentWorkflow" (first segment before #)
-        assert call_args["RootWorkflowName"] == ["ParentWorkflow"]
+        # Verify upsert was called with the provided custom name
+        mock_upsert.assert_called_once_with({"RootWorkflowName": ["custom-order-123-workflow"]})
+
+    @pytest.mark.asyncio
+    @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.upsert_search_attributes")
+    @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.execute_child_workflow")
+    @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.get_execution_mode_from_context")
+    @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.info")
+    @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.payload_converter")
+    @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.ActionsHub._get_simulation_response")
+    async def test_execute_child_workflow_inherits_from_headers(
+        self,
+        mock_get_simulation_response,
+        mock_payload_converter,
+        mock_workflow_info,
+        mock_get_mode,
+        mock_execute_child,
+        mock_upsert,
+    ):
+        """Test that execute_child_workflow inherits root_workflow_name from headers."""
+        from zamp_public_workflow_sdk.simulation.models import ExecutionType, SimulationResponse
+
+        mock_payload = Mock()
+        mock_headers = {"root_workflow_name": mock_payload}
+        mock_get_mode.return_value = ExecutionMode.TEMPORAL
+        mock_workflow_info.return_value = Mock(workflow_id="test-workflow", headers=mock_headers)
+        mock_payload_converter.return_value.from_payload.return_value = "inherited-root-name"
+        mock_execute_child.return_value = "workflow_result"
+        mock_get_simulation_response.return_value = SimulationResponse(
+            execution_type=ExecutionType.EXECUTE, execution_response=None
+        )
+
+        # Even if we pass a different name, header takes priority
+        await ActionsHub.execute_child_workflow("ChildWorkflow", root_workflow_name="this-should-be-ignored")
+
+        # Verify upsert was called with the inherited name from headers
+        mock_upsert.assert_called_once_with({"RootWorkflowName": ["inherited-root-name"]})
 
     @pytest.mark.asyncio
     @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.upsert_search_attributes")
@@ -175,7 +208,6 @@ class TestExecuteChildWorkflowRootWorkflowName:
         """Test that API mode does not call upsert_search_attributes."""
         mock_get_mode.return_value = ExecutionMode.API
 
-        # Mock the workflow function
         async def mock_workflow_func(*args, **kwargs):
             return "workflow_result"
 
@@ -192,9 +224,8 @@ class TestExecuteChildWorkflowRootWorkflowName:
             func=mock_workflow_func,
         )
 
-        await ActionsHub.execute_child_workflow("TestWorkflow")
+        await ActionsHub.execute_child_workflow("TestWorkflow", root_workflow_name="custom-name")
 
-        # In API mode, upsert should not be called
         mock_upsert.assert_not_called()
 
 
@@ -216,67 +247,45 @@ class TestStartChildWorkflowRootWorkflowName:
     @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.get_execution_mode_from_context")
     @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.info")
     @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.ActionsHub._get_simulation_response")
-    async def test_start_child_workflow_upserts_root_workflow_name(
+    async def test_start_child_workflow_no_upsert_when_no_root_name(
         self, mock_get_simulation_response, mock_workflow_info, mock_get_mode, mock_start_child, mock_upsert
     ):
-        """Test that start_child_workflow upserts RootWorkflowName search attribute."""
+        """Test that upsert is not called when no root_workflow_name is set."""
         from zamp_public_workflow_sdk.simulation.models import ExecutionType, SimulationResponse
 
         mock_get_mode.return_value = ExecutionMode.TEMPORAL
         mock_workflow_info.return_value = Mock(workflow_id="test-workflow", headers=None)
-        mock_start_child.return_value = Mock()  # Returns a handle
+        mock_start_child.return_value = Mock()
         mock_get_simulation_response.return_value = SimulationResponse(
             execution_type=ExecutionType.EXECUTE, execution_response=None
         )
 
         await ActionsHub.start_child_workflow("ChildWorkflow")
 
-        # Verify upsert_search_attributes was called with correct format
-        mock_upsert.assert_called_once()
-        call_args = mock_upsert.call_args[0][0]
-        assert "RootWorkflowName" in call_args
-        assert call_args["RootWorkflowName"] == ["ChildWorkflow"]
+        mock_upsert.assert_not_called()
 
     @pytest.mark.asyncio
     @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.upsert_search_attributes")
     @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.start_child_workflow")
-    @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.payload_converter")
     @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.get_execution_mode_from_context")
     @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.info")
     @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.ActionsHub._get_simulation_response")
-    async def test_start_child_workflow_preserves_root_in_nested_calls(
-        self,
-        mock_get_simulation_response,
-        mock_workflow_info,
-        mock_get_mode,
-        mock_payload_converter,
-        mock_start_child,
-        mock_upsert,
+    async def test_start_child_workflow_uses_provided_root_workflow_name(
+        self, mock_get_simulation_response, mock_workflow_info, mock_get_mode, mock_start_child, mock_upsert
     ):
-        """Test that nested start_child_workflow preserves the original root workflow name."""
+        """Test that start_child_workflow uses provided root_workflow_name."""
         from zamp_public_workflow_sdk.simulation.models import ExecutionType, SimulationResponse
-        from zamp_public_workflow_sdk.temporal.interceptors.node_id_interceptor import NODE_ID_HEADER_KEY
-
-        # Mock parent workflow with node ID
-        mock_converter = Mock()
-        mock_converter.from_payload.return_value = "RootWorkflow#1"
-        mock_payload_converter.return_value = mock_converter
 
         mock_get_mode.return_value = ExecutionMode.TEMPORAL
-        mock_workflow_info.return_value = Mock(
-            workflow_id="test-workflow", headers={NODE_ID_HEADER_KEY: "mock_payload"}
-        )
+        mock_workflow_info.return_value = Mock(workflow_id="test-workflow", headers=None)
         mock_start_child.return_value = Mock()
         mock_get_simulation_response.return_value = SimulationResponse(
             execution_type=ExecutionType.EXECUTE, execution_response=None
         )
 
-        await ActionsHub.start_child_workflow("GrandchildWorkflow")
+        await ActionsHub.start_child_workflow("ChildWorkflow", root_workflow_name="custom-order-456-workflow")
 
-        # Verify upsert_search_attributes was called with the root
-        mock_upsert.assert_called_once()
-        call_args = mock_upsert.call_args[0][0]
-        assert call_args["RootWorkflowName"] == ["RootWorkflow"]
+        mock_upsert.assert_called_once_with({"RootWorkflowName": ["custom-order-456-workflow"]})
 
     @pytest.mark.asyncio
     @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.upsert_search_attributes")
@@ -287,35 +296,108 @@ class TestStartChildWorkflowRootWorkflowName:
 
         await ActionsHub.start_child_workflow("ChildWorkflow", skip_node_id_gen=True)
 
-        # When skipping node_id generation, upsert should not be called
         mock_upsert.assert_not_called()
 
 
-class TestRootWorkflowNameEdgeCases:
-    """Test edge cases for RootWorkflowName functionality."""
+class TestCustomerCodeWorkflowScenario:
+    """Test the CustomerCodeWorkflow use case specifically."""
 
-    def test_node_id_without_hash(self):
-        """Test handling node_id without # character (edge case)."""
-        # This shouldn't happen in practice, but test defensive behavior
-        result = ActionsHub._get_root_workflow_name_from_node_id("WorkflowWithoutHash")
-        # Should return the entire string as there's no # to split on
-        assert result == "WorkflowWithoutHash"
+    def setup_method(self):
+        """Set up test fixtures before each test method."""
+        ActionsHub.clear_node_id_tracker()
 
-    def test_node_id_starting_with_hash(self):
-        """Test handling malformed node_id starting with #."""
-        result = ActionsHub._get_root_workflow_name_from_node_id("#1.B#2")
-        # First segment before # is empty
-        assert result == ""
+    def teardown_method(self):
+        """Clean up after each test method."""
+        ActionsHub.clear_node_id_tracker()
 
-    def test_node_id_with_special_characters(self):
-        """Test handling workflow names with special characters before #."""
-        result = ActionsHub._get_root_workflow_name_from_node_id("Workflow-Name_v2#1")
-        assert result == "Workflow-Name_v2"
-
+    @pytest.mark.asyncio
     @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.upsert_search_attributes")
-    def test_upsert_handles_whitespace_name(self, mock_upsert):
-        """Test that whitespace-only names are handled."""
-        ActionsHub._upsert_root_workflow_search_attribute("   ")
+    @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.execute_child_workflow")
+    @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.get_execution_mode_from_context")
+    @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.info")
+    @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.ActionsHub._get_simulation_response")
+    async def test_customer_code_workflow_passes_custom_workflow_name(
+        self, mock_get_simulation_response, mock_workflow_info, mock_get_mode, mock_execute_child, mock_upsert
+    ):
+        """
+        Test CustomerCodeWorkflow scenario where customWorkflowName is passed.
 
-        # Whitespace is truthy so it will be upserted
-        mock_upsert.assert_called_once_with({"RootWorkflowName": ["   "]})
+        CustomerCodeWorkflow has a customWorkflowName attribute that should be
+        used as the RootWorkflowName for all its child workflows.
+        """
+        from zamp_public_workflow_sdk.simulation.models import ExecutionType, SimulationResponse
+
+        mock_get_mode.return_value = ExecutionMode.TEMPORAL
+        mock_workflow_info.return_value = Mock(workflow_id="customer-code-workflow-123", headers=None)
+        mock_execute_child.return_value = "workflow_result"
+        mock_get_simulation_response.return_value = SimulationResponse(
+            execution_type=ExecutionType.EXECUTE, execution_response=None
+        )
+
+        # Simulate CustomerCodeWorkflow calling child with its customWorkflowName
+        custom_workflow_name = "order-processor-customer-abc-12345"
+
+        await ActionsHub.execute_child_workflow(
+            "ProcessOrderWorkflow", {"order_id": "12345"}, root_workflow_name=custom_workflow_name
+        )
+
+        # Verify the custom name was used
+        mock_upsert.assert_called_once_with({"RootWorkflowName": [custom_workflow_name]})
+
+
+class TestChainedWorkflowScenario:
+    """Test the chained workflow scenario where root_workflow_name propagates through chain."""
+
+    def setup_method(self):
+        """Set up test fixtures before each test method."""
+        ActionsHub.clear_node_id_tracker()
+
+    def teardown_method(self):
+        """Clean up after each test method."""
+        ActionsHub.clear_node_id_tracker()
+
+    @pytest.mark.asyncio
+    @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.upsert_search_attributes")
+    @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.execute_child_workflow")
+    @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.get_execution_mode_from_context")
+    @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.info")
+    @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.payload_converter")
+    @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.ActionsHub._get_simulation_response")
+    async def test_nested_workflow_inherits_root_name_from_chain(
+        self,
+        mock_get_simulation_response,
+        mock_payload_converter,
+        mock_workflow_info,
+        mock_get_mode,
+        mock_execute_child,
+        mock_upsert,
+    ):
+        """
+        Test that nested workflows inherit root_workflow_name from the chain.
+
+        Scenario:
+        CustomerCodeWorkflow (sets "order-123")
+          └── UniversalWorkflow (inherits "order-123" from headers)
+                └── CustomerCodeWorkflow (inherits "order-123" from headers, NOT its own customWorkflowName)
+        """
+        from zamp_public_workflow_sdk.simulation.models import ExecutionType, SimulationResponse
+
+        # Simulate being in a nested workflow that has inherited root_workflow_name in headers
+        mock_payload = Mock()
+        mock_headers = {"root_workflow_name": mock_payload}
+        mock_get_mode.return_value = ExecutionMode.TEMPORAL
+        mock_workflow_info.return_value = Mock(workflow_id="nested-workflow", headers=mock_headers)
+        mock_payload_converter.return_value.from_payload.return_value = "original-root-from-chain"
+        mock_execute_child.return_value = "workflow_result"
+        mock_get_simulation_response.return_value = SimulationResponse(
+            execution_type=ExecutionType.EXECUTE, execution_response=None
+        )
+
+        # Even if this nested CustomerCodeWorkflow has its own customWorkflowName,
+        # it should use the inherited value from the chain
+        await ActionsHub.execute_child_workflow(
+            "AnotherChildWorkflow", root_workflow_name="my-own-custom-name-should-be-ignored"
+        )
+
+        # Verify the inherited name was used (not the provided one)
+        mock_upsert.assert_called_once_with({"RootWorkflowName": ["original-root-from-chain"]})
