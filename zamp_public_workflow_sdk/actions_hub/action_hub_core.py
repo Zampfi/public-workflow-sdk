@@ -913,6 +913,7 @@ class ActionsHub:
         node_id_arg = {TEMPORAL_NODE_ID_KEY: node_id}
         args = (node_id_arg,) + args
 
+        # Pass simulation S3 key to child workflow via memo
         cls._add_simulation_memo_to_child(workflow_id=workflow_id, kwargs=kwargs)
 
         root_workflow_name = cls._get_root_workflow_name_from_node_id(node_id)
@@ -982,21 +983,21 @@ class ActionsHub:
             )
             return simulation_result.execution_response
 
-        node_id_arg = {TEMPORAL_NODE_ID_KEY: node_id}
-        args = (node_id_arg,) + args
-
-        cls._add_simulation_memo_to_child(workflow_id=workflow_id, kwargs=kwargs)
-
-        root_workflow_name = cls._get_root_workflow_name_from_node_id(node_id)
-        cls._upsert_root_workflow_search_attribute(root_workflow_name)
-
         logger.info(
             "Starting child workflow",
             workflow_name=child_workflow_name,
             node_id=node_id,
             workflow_id=workflow_id,
-            root_workflow_name=root_workflow_name,
         )
+
+        node_id_arg = {TEMPORAL_NODE_ID_KEY: node_id}
+        args = (node_id_arg,) + args
+
+        # Pass simulation S3 key to child workflow via memo
+        cls._add_simulation_memo_to_child(workflow_id=workflow_id, kwargs=kwargs)
+
+        root_workflow_name = cls._get_root_workflow_name_from_node_id(node_id)
+        cls._upsert_root_workflow_search_attribute(root_workflow_name)
 
         return await workflow.start_child_workflow(
             workflow_name,
