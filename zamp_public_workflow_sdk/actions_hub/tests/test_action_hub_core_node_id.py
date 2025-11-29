@@ -304,18 +304,19 @@ class TestActionsHubNodeIdIntegration:
         assert node_id_arg["__temporal_node_id"].startswith("test_activity#")
 
     @pytest.mark.asyncio
+    @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.upsert_search_attributes")
     @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.execute_child_workflow")
     @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.get_execution_mode_from_context")
     @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.info")
     @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.ActionsHub._get_simulation_response")
     async def test_execute_child_workflow_with_node_id(
-        self, mock_get_simulation_response, mock_workflow_info, mock_get_mode, mock_execute_child
+        self, mock_get_simulation_response, mock_workflow_info, mock_get_mode, mock_execute_child, mock_upsert
     ):
         """Test execute_child_workflow generates and uses node ID."""
         from zamp_public_workflow_sdk.simulation.models import ExecutionType, SimulationResponse
 
         mock_get_mode.return_value = ExecutionMode.TEMPORAL
-        mock_workflow_info.return_value = Mock(workflow_id="test-workflow", headers=None)
+        mock_workflow_info.return_value = Mock(workflow_id="test-workflow", headers=None, workflow_type="TestWorkflow")
         mock_execute_child.return_value = "workflow_result"
         mock_get_simulation_response.return_value = SimulationResponse(
             execution_type=ExecutionType.EXECUTE, execution_response=None
@@ -327,10 +328,14 @@ class TestActionsHubNodeIdIntegration:
         mock_execute_child.assert_called_once()
         call_args = mock_execute_child.call_args
 
-        # Check that node_id was passed in args
-        assert len(call_args[1]["args"]) > 0
-        node_id_arg = call_args[1]["args"][0]
-        assert "__temporal_node_id" in node_id_arg
+        # Check that node_id was passed in args (find the dict with __temporal_node_id)
+        args = call_args[1]["args"]
+        node_id_arg = None
+        for arg in args:
+            if isinstance(arg, dict) and "__temporal_node_id" in arg:
+                node_id_arg = arg
+                break
+        assert node_id_arg is not None
         # Child workflows use the generated node_id directly (not affected by inverted logic)
         assert node_id_arg["__temporal_node_id"].startswith("TestWorkflow#")
 

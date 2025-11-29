@@ -14,6 +14,9 @@ from temporalio import activity, workflow
 from zamp_public_workflow_sdk.temporal.interceptors.node_id_interceptor import (
     NODE_ID_HEADER_KEY,
 )
+from zamp_public_workflow_sdk.temporal.interceptors.root_workflow_name_interceptor import (
+    ROOT_WORKFLOW_NAME_HEADER_KEY,
+)
 
 from .constants import DEFAULT_MODE, MEMO_KEY, SKIP_SIMULATION_WORKFLOWS, LogMode
 from .models.mcp_models import MCPConfig
@@ -46,6 +49,9 @@ with workflow.unsafe.imports_passed_through():
     from zamp_public_workflow_sdk.temporal.data_converters.type_utils import get_fqn
     from zamp_public_workflow_sdk.temporal.interceptors.node_id_interceptor import (
         TEMPORAL_NODE_ID_KEY,
+    )
+    from zamp_public_workflow_sdk.temporal.interceptors.root_workflow_name_interceptor import (
+        TEMPORAL_ROOT_WORKFLOW_NAME_KEY,
     )
 
     from .constants import ActionType, ExecutionMode
@@ -187,6 +193,47 @@ class ActionsHub:
             node_id = f"{tracking_key}#{count}"
 
         return node_id
+
+    @classmethod
+    def _get_root_workflow_name(cls, provided_name: str | None = None) -> str | None:
+        """
+        Get the root workflow name with proper inheritance through workflow chain.
+
+        Priority:
+        1. Inherited from parent workflow via headers
+        2. Provided parameter (for CustomerCodeWorkflow case)
+        Args:
+            provided_name: Optional explicitly provided root workflow name
+
+        Returns:
+            The root workflow name or None if not set
+        """
+        try:
+            info = workflow.info()
+            if info.headers and ROOT_WORKFLOW_NAME_HEADER_KEY in info.headers:
+                payload = info.headers[ROOT_WORKFLOW_NAME_HEADER_KEY]
+                inherited = workflow.payload_converter().from_payload(payload, str)
+                if inherited:
+                    return inherited
+        except Exception:
+            pass
+
+        if provided_name:
+            return provided_name
+
+        return workflow.info().workflow_type
+
+    @classmethod
+    def _upsert_root_workflow_search_attribute(cls, root_workflow_name: str) -> None:
+        """
+        Upsert RootWorkflowName search attribute for the current workflow.
+
+        Args:
+            root_workflow_name: The root workflow name to set
+        """
+        if not root_workflow_name:
+            return
+        workflow.upsert_search_attributes({"RootWorkflowName": [root_workflow_name]})
 
     @classmethod
     async def _get_simulation_response(
@@ -806,6 +853,7 @@ class ActionsHub:
         workflow_name: str | Callable,
         *args,
         result_type: type | None = None,
+        root_workflow_name: str | None = None,
         **kwargs,
     ):
         execution_mode = get_execution_mode_from_context()
@@ -885,12 +933,19 @@ class ActionsHub:
         # Pass simulation S3 key to child workflow via memo
         cls._add_simulation_memo_to_child(workflow_id=workflow_id, kwargs=kwargs)
 
-        # Executing in temporal mode
+        resolved_root_workflow_name = cls._get_root_workflow_name(root_workflow_name)
+
+        if resolved_root_workflow_name:
+            root_workflow_name_arg = {TEMPORAL_ROOT_WORKFLOW_NAME_KEY: resolved_root_workflow_name}
+            args = (root_workflow_name_arg,) + args
+            cls._upsert_root_workflow_search_attribute(resolved_root_workflow_name)
+
         logger.info(
             "Executing child workflow",
             workflow_name=child_workflow_name,
             node_id=node_id,
             workflow_id=workflow_id,
+            root_workflow_name=resolved_root_workflow_name,
         )
 
         result = await workflow.execute_child_workflow(
@@ -917,6 +972,7 @@ class ActionsHub:
         *args,
         result_type: type | None = None,
         skip_node_id_gen: bool = False,
+        root_workflow_name: str | None = None,
         **kwargs,
     ):
         if skip_node_id_gen:
@@ -949,18 +1005,26 @@ class ActionsHub:
             )
             return simulation_result.execution_response
 
-        logger.info(
-            "Starting child workflow",
-            workflow_name=child_workflow_name,
-            node_id=node_id,
-            workflow_id=workflow_id,
-        )
-
         node_id_arg = {TEMPORAL_NODE_ID_KEY: node_id}
         args = (node_id_arg,) + args
 
         # Pass simulation S3 key to child workflow via memo
         cls._add_simulation_memo_to_child(workflow_id=workflow_id, kwargs=kwargs)
+
+        resolved_root_workflow_name = cls._get_root_workflow_name(root_workflow_name)
+
+        if resolved_root_workflow_name:
+            root_workflow_name_arg = {TEMPORAL_ROOT_WORKFLOW_NAME_KEY: resolved_root_workflow_name}
+            args = (root_workflow_name_arg,) + args
+            cls._upsert_root_workflow_search_attribute(resolved_root_workflow_name)
+
+        logger.info(
+            "Starting child workflow",
+            workflow_name=child_workflow_name,
+            node_id=node_id,
+            workflow_id=workflow_id,
+            root_workflow_name=resolved_root_workflow_name,
+        )
 
         return await workflow.start_child_workflow(
             workflow_name,
