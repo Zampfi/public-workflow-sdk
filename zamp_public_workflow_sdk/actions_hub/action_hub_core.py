@@ -216,12 +216,12 @@ class ActionsHub:
                 if inherited:
                     return inherited
         except Exception:
-            return None
+            pass
 
         if provided_name:
             return provided_name
 
-        return None
+        return workflow.info().workflow_type
 
     @classmethod
     def _upsert_root_workflow_search_attribute(cls, root_workflow_name: str) -> None:

@@ -42,22 +42,22 @@ class TestGetRootWorkflowName:
         assert result == "custom-workflow-name"
 
     @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.info")
-    def test_returns_none_when_no_headers_and_no_provided_name(self, mock_workflow_info):
-        """Test that None is returned when no headers and no provided name."""
-        mock_workflow_info.return_value = Mock(headers=None)
+    def test_returns_workflow_type_when_no_headers_and_no_provided_name(self, mock_workflow_info):
+        """Test that workflow_type is returned when no headers and no provided name."""
+        mock_workflow_info.return_value = Mock(headers=None, workflow_type="CurrentWorkflow")
 
         result = ActionsHub._get_root_workflow_name(None)
 
-        assert result is None
+        assert result == "CurrentWorkflow"
 
     @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.info")
-    def test_returns_none_when_empty_provided_name(self, mock_workflow_info):
-        """Test that None is returned when provided name is empty string."""
-        mock_workflow_info.return_value = Mock(headers=None)
+    def test_returns_workflow_type_when_empty_provided_name(self, mock_workflow_info):
+        """Test that workflow_type is returned when provided name is empty string."""
+        mock_workflow_info.return_value = Mock(headers=None, workflow_type="CurrentWorkflow")
 
         result = ActionsHub._get_root_workflow_name("")
 
-        assert result is None
+        assert result == "CurrentWorkflow"
 
     @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.info")
     @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.payload_converter")
@@ -123,14 +123,16 @@ class TestExecuteChildWorkflowRootWorkflowName:
     @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.get_execution_mode_from_context")
     @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.info")
     @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.ActionsHub._get_simulation_response")
-    async def test_execute_child_workflow_no_upsert_when_no_root_name(
+    async def test_execute_child_workflow_uses_workflow_type_as_fallback(
         self, mock_get_simulation_response, mock_workflow_info, mock_get_mode, mock_execute_child, mock_upsert
     ):
-        """Test that upsert is not called when no root_workflow_name is set."""
+        """Test that workflow_type is used as fallback when no root_workflow_name is set."""
         from zamp_public_workflow_sdk.simulation.models import ExecutionType, SimulationResponse
 
         mock_get_mode.return_value = ExecutionMode.TEMPORAL
-        mock_workflow_info.return_value = Mock(workflow_id="test-workflow", headers=None)
+        mock_workflow_info.return_value = Mock(
+            workflow_id="test-workflow", headers=None, workflow_type="ParentWorkflow"
+        )
         mock_execute_child.return_value = "workflow_result"
         mock_get_simulation_response.return_value = SimulationResponse(
             execution_type=ExecutionType.EXECUTE, execution_response=None
@@ -138,8 +140,8 @@ class TestExecuteChildWorkflowRootWorkflowName:
 
         await ActionsHub.execute_child_workflow("ChildWorkflow")
 
-        # Verify upsert was NOT called (no root_workflow_name)
-        mock_upsert.assert_not_called()
+        # Verify upsert was called with workflow_type as fallback
+        mock_upsert.assert_called_once_with({"RootWorkflowName": ["ParentWorkflow"]})
 
     @pytest.mark.asyncio
     @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.upsert_search_attributes")
@@ -247,14 +249,16 @@ class TestStartChildWorkflowRootWorkflowName:
     @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.get_execution_mode_from_context")
     @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.info")
     @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.ActionsHub._get_simulation_response")
-    async def test_start_child_workflow_no_upsert_when_no_root_name(
+    async def test_start_child_workflow_uses_workflow_type_as_fallback(
         self, mock_get_simulation_response, mock_workflow_info, mock_get_mode, mock_start_child, mock_upsert
     ):
-        """Test that upsert is not called when no root_workflow_name is set."""
+        """Test that workflow_type is used as fallback when no root_workflow_name is set."""
         from zamp_public_workflow_sdk.simulation.models import ExecutionType, SimulationResponse
 
         mock_get_mode.return_value = ExecutionMode.TEMPORAL
-        mock_workflow_info.return_value = Mock(workflow_id="test-workflow", headers=None)
+        mock_workflow_info.return_value = Mock(
+            workflow_id="test-workflow", headers=None, workflow_type="ParentWorkflow"
+        )
         mock_start_child.return_value = Mock()
         mock_get_simulation_response.return_value = SimulationResponse(
             execution_type=ExecutionType.EXECUTE, execution_response=None
@@ -262,7 +266,7 @@ class TestStartChildWorkflowRootWorkflowName:
 
         await ActionsHub.start_child_workflow("ChildWorkflow")
 
-        mock_upsert.assert_not_called()
+        mock_upsert.assert_called_once_with({"RootWorkflowName": ["ParentWorkflow"]})
 
     @pytest.mark.asyncio
     @patch("zamp_public_workflow_sdk.actions_hub.action_hub_core.workflow.upsert_search_attributes")
