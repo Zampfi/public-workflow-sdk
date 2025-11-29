@@ -189,7 +189,7 @@ class ActionsHub:
         return node_id
 
     @classmethod
-    def _get_root_workflow_name_from_node_id(cls, node_id: str) -> str:
+    def _get_root_workflow_name_from_node_id(cls, node_id: str) -> str | None:
         """
         Extract the root workflow name from a node_id.
 
@@ -203,7 +203,7 @@ class ActionsHub:
             The root workflow name (e.g., "A")
         """
         if not node_id:
-            return ""
+            return None
         return node_id.split("#")[0]
 
     @classmethod
@@ -216,7 +216,6 @@ class ActionsHub:
         """
         if not root_workflow_name:
             return
-
         workflow.upsert_search_attributes({"RootWorkflowName": [root_workflow_name]})
 
     @classmethod
@@ -917,7 +916,8 @@ class ActionsHub:
         cls._add_simulation_memo_to_child(workflow_id=workflow_id, kwargs=kwargs)
 
         root_workflow_name = cls._get_root_workflow_name_from_node_id(node_id)
-        cls._upsert_root_workflow_search_attribute(root_workflow_name)
+        if root_workflow_name:
+            cls._upsert_root_workflow_search_attribute(root_workflow_name)
 
         logger.info(
             "Executing child workflow",
@@ -997,7 +997,8 @@ class ActionsHub:
         cls._add_simulation_memo_to_child(workflow_id=workflow_id, kwargs=kwargs)
 
         root_workflow_name = cls._get_root_workflow_name_from_node_id(node_id)
-        cls._upsert_root_workflow_search_attribute(root_workflow_name)
+        if root_workflow_name:
+            cls._upsert_root_workflow_search_attribute(root_workflow_name)
 
         return await workflow.start_child_workflow(
             workflow_name,

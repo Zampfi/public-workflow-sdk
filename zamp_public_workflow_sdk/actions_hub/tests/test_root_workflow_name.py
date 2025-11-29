@@ -42,13 +42,13 @@ class TestGetRootWorkflowNameFromNodeId:
     def test_empty_node_id(self):
         """Test with empty node_id string."""
         result = ActionsHub._get_root_workflow_name_from_node_id("")
-        assert result == ""
+        assert result is None
 
     def test_none_handling(self):
         """Test with None node_id - should handle gracefully."""
         # The method expects a string, but should handle empty/falsy values
         result = ActionsHub._get_root_workflow_name_from_node_id("")
-        assert result == ""
+        assert result is None
 
     def test_node_id_with_high_count(self):
         """Test extracting root when count is high like 'A#999'."""
